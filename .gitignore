@@ -77,3 +77,4 @@ test-results/
 coverage/
 .claude/
 CLAUDE.md
+.notes/
