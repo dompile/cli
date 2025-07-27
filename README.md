@@ -1,6 +1,6 @@
-# 🌱 dompile
+# <img style="height: 32px" src="example/src/imgs/green-icon-64.png" /> dompile
 
-A modern, lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and navigation across multiple pages!
+A modern,  lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and navigation across multiple pages!
 
 ## ✨ Perfect for Frontend Developers
 
