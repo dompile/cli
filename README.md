@@ -114,7 +114,7 @@ Create layout templates with variable substitution:
 <body>
   <!--#include virtual="/.components/header.html" -->
   <main>
-    {{ content }}
+   <slot></slot>
   </main>
   <!--#include virtual="/.components/footer.html" -->
 </body>
@@ -292,6 +292,11 @@ DOMpile has comprehensive test coverage:
 - Pretty URL support
 - Docker containerization
 - **DOM Mode**: Modern `<template>` and `<slot>` syntax
+
+### In Progress (v0.5)
+- Remove the need for build subcommand
+- Fix issues with default layout
+- Simplify and clean up code base
 
 ### 🔮 Future (v0.6+)
 - Canonical URL generation and link rewriting

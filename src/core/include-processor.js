@@ -5,12 +5,11 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { resolveIncludePath, isPathWithinDirectory } from '../utils/path-resolver.js';
+import { resolveIncludePath } from '../utils/path-resolver.js';
 import { 
   DompileError,
   IncludeNotFoundError, 
-  CircularDependencyError, 
-  MalformedDirectiveError,
+  CircularDependencyError,
   FileSystemError 
 } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
