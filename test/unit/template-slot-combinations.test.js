@@ -103,15 +103,18 @@ describe('Template/Slot/Include Combinations', () => {
 
       await createTestStructure(sourceDir, structure);
 
+      const dependencyTracker = new DependencyTracker();
       const config = {
         sourceRoot: sourceDir,
         layoutsDir: 'layouts',
         componentsDir: 'components'
       };
 
-      const result = await processUnifiedHtml(
+      const result = await processHtmlUnified(
         structure['article.html'],
         path.join(sourceDir, 'article.html'),
+        sourceDir,
+        dependencyTracker,
         config
       );
 

@@ -122,15 +122,18 @@ describe('Template Path Resolution Integration', () => {
 
       await createTestStructure(sourceDir, structure);
 
+      const dependencyTracker = new DependencyTracker();
       const config = {
         sourceRoot: sourceDir,
         layoutsDir: 'layouts',
         componentsDir: 'components'
       };
 
-      const result = await processUnifiedHtml(
+      const result = await processHtmlUnified(
         structure['admin/dashboard.html'],
         path.join(sourceDir, 'admin/dashboard.html'),
+        sourceDir,
+        dependencyTracker,
         config
       );
 
@@ -319,6 +322,7 @@ describe('Template Path Resolution Integration', () => {
 
       await createTestStructure(sourceDir, structure);
 
+      const dependencyTracker = new DependencyTracker();
       const config = {
         sourceRoot: sourceDir,
         layoutsDir: 'layouts',
@@ -326,9 +330,11 @@ describe('Template Path Resolution Integration', () => {
       };
 
       // Test index.html
-      const indexResult = await processUnifiedHtml(
+      const indexResult = await processHtmlUnified(
         structure['index.html'],
         path.join(sourceDir, 'index.html'),
+        sourceDir,
+        dependencyTracker,
         config
       );
 
@@ -340,9 +346,11 @@ describe('Template Path Resolution Integration', () => {
       assert(indexResult.includes('© 2024 My Company'));
 
       // Test about.html
-      const aboutResult = await processUnifiedHtml(
+      const aboutResult = await processHtmlUnified(
         structure['about.html'],
         path.join(sourceDir, 'about.html'),
+        sourceDir,
+        dependencyTracker,
         config
       );
 

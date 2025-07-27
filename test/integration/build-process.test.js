@@ -52,6 +52,7 @@ describe('build-process integration', () => {
 <html>
 <head>
   <title>Home - Test Site</title>
+  <!--#include virtual="/.components/head.html" -->
 </head>
 <body>
   <!--#include virtual="/.components/header.html" -->
@@ -123,8 +124,8 @@ describe('build-process integration', () => {
     
     // Verify build results
     assert.strictEqual(result.processed, 3); // index.html, about.html, default-layout.html
-    assert.strictEqual(result.copied, 0);    // style.css
-    assert.strictEqual(result.skipped, 5);   // 4 include files
+    assert.strictEqual(result.copied, 1);    // style.css
+    assert.strictEqual(result.skipped, 4);   // 4 include files (reduced from 5)
     assert.strictEqual(result.errors.length, 0);
     
     // Verify output files exist

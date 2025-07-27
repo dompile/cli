@@ -195,13 +195,45 @@ async function processTemplateExtends(
   sourceRoot,
   config
 ) {
+  // Extract the original slot data from the page content
+  const originalSlotData = extractSlotData(pageContent);
+  
+  // Resolve the template and apply slots recursively
+  return await applyTemplateInheritance(originalSlotData, templatePath, filePath, sourceRoot, config);
+}
+
+/**
+ * Apply template inheritance recursively, preserving slot application order
+ * @param {Object} slotData - Slot data to apply
+ * @param {string} templatePath - Path to the template to extend
+ * @param {string} filePath - Current file path for relative path resolution
+ * @param {string} sourceRoot - Source root directory
+ * @param {Object} config - Processing configuration
+ * @returns {Promise<string>} Final resolved template content
+ */
+async function applyTemplateInheritance(slotData, templatePath, filePath, sourceRoot, config) {
   // Resolve template path
   let resolvedTemplatePath;
+  
   if (templatePath.startsWith("/")) {
     // Absolute path from source root
     resolvedTemplatePath = path.join(sourceRoot, templatePath.substring(1));
+  } else if (templatePath.startsWith("../") || templatePath.startsWith("./")) {
+    // Relative path from current file's directory
+    const currentFileDir = path.dirname(filePath);
+    let candidatePath = path.resolve(currentFileDir, templatePath);
+    
+    // If the resolved path is outside the source root,
+    // try resolving from the components directory instead
+    // This handles cases where templates in included components have relative paths
+    if (!candidatePath.startsWith(sourceRoot + path.sep) && candidatePath !== sourceRoot) {
+      const componentsDir = path.join(sourceRoot, config.componentsDir || 'components');
+      candidatePath = path.resolve(componentsDir, templatePath);
+    }
+    
+    resolvedTemplatePath = candidatePath;
   } else if (templatePath.includes('/')) {
-    // Already includes directory structure, use from source root
+    // Path with directory structure, relative to source root
     resolvedTemplatePath = path.join(sourceRoot, templatePath);
   } else {
     // Bare filename, relative to layouts directory
@@ -236,11 +268,37 @@ async function processTemplateExtends(
     throw new FileSystemError("read", resolvedTemplatePath, error);
   }
 
-  // Extract slot content from page
-  const slotData = extractSlotData(pageContent);
+  // Process includes in the template content before doing template inheritance
+  // This ensures that includes within template slot defaults get processed
+  templateContent = await processIncludes(
+    templateContent,
+    resolvedTemplatePath,
+    sourceRoot,
+    new Set(),
+    0,
+    null // No dependency tracker needed for template processing
+  );
 
-  // Apply slots to template
-  return applySlots(templateContent, slotData);
+  // Check if this template extends another template
+  const dom = new JSDOM(templateContent, { contentType: "text/html" });
+  const document = dom.window.document;
+  const templateElement = document.querySelector("template[extends]");
+  
+  if (templateElement) {
+    const extendsPath = templateElement.getAttribute("extends");
+    
+    // Extract slots from current template
+    const templateSlotData = extractSlotData(templateContent);
+    
+    // Merge original slots with template slots (original slots take precedence)
+    const mergedSlotData = { ...templateSlotData, ...slotData };
+    
+    // Recursively process the parent template
+    return await applyTemplateInheritance(mergedSlotData, extendsPath, resolvedTemplatePath, sourceRoot, config);
+  } else {
+    // This is the base template - apply the slots and return
+    return applySlots(templateContent, slotData);
+  }
 }
 
 /**
@@ -274,49 +332,85 @@ async function processLayoutAttribute(
  * @param {string} htmlContent - HTML content to extract slots from
  * @returns {Object} Object with slot names as keys and content as values
  */
+/**
+ * Extract slot content from HTML
+ * @param {string} htmlContent - HTML content to extract slots from
+ * @returns {Object} Object with slot names as keys and content as values
+ */
 function extractSlotData(htmlContent) {
   const slots = {};
   const dom = new JSDOM(htmlContent, { contentType: "text/html" });
   const document = dom.window.document;
 
-  // Find all elements with slot attribute or template elements with data-slot
-  const slottedElements = document.querySelectorAll(
-    "[slot], template[data-slot]"
-  );
-  slottedElements.forEach((element) => {
-    const slotName =
-      element.getAttribute("slot") || element.getAttribute("data-slot");
-    if (element.tagName.toLowerCase() === "template") {
-      // For template elements, use innerHTML instead of outerHTML
-      slots[slotName] = element.innerHTML;
-    } else {
-      slots[slotName] = element.outerHTML;
+  // Check for template elements with extends attribute
+  const templateElements = document.querySelectorAll("template[extends]");
+  
+  templateElements.forEach((templateEl) => {
+    // Parse the template content to find slots
+    const templateDom = new JSDOM(`<div>${templateEl.innerHTML}</div>`, { contentType: "text/html" });
+    const slotElements = templateDom.window.document.querySelectorAll("slot[name]");
+    
+    slotElements.forEach((element) => {
+      const slotName = element.getAttribute("name");
+      if (slotName) {
+        slots[slotName] = element.innerHTML;
+      }
+    });
+    
+    // Handle default slot (slot elements without name attribute)
+    const defaultSlotElements = templateDom.window.document.querySelectorAll("slot:not([name])");
+    if (defaultSlotElements.length > 0) {
+      // Combine content from all default slots
+      const defaultContent = Array.from(defaultSlotElements)
+        .map(el => el.innerHTML)
+        .join('');
+      if (defaultContent.trim()) {
+        slots["default"] = defaultContent.trim();
+      }
     }
   });
 
-  // Default slot (content not in named slots or template elements)
-  const layoutElement = document.querySelector("[data-layout]");
-  if (layoutElement) {
-    // Remove template elements with data-slot attributes
-    const templateElements = layoutElement.querySelectorAll(
-      "template[data-slot]"
-    );
-    templateElements.forEach((el) => el.remove());
-
-    // The remaining content is the default slot
-    const remainingContent = layoutElement.innerHTML;
-    if (remainingContent.trim()) {
-      slots["default"] = remainingContent.trim();
-    }
-  } else {
-    // For template extends case
-    const templateElement = document.querySelector("template[extends]");
-    if (templateElement) {
-      templateElement.remove();
-      const remainingContent = document.body ? document.body.innerHTML : "";
-      if (remainingContent.trim()) {
-        slots["default"] = remainingContent;
+  // Also check for loose slot elements outside of templates (for include + slot scenarios)
+  // Find all slot elements with name attributes that are not inside template elements
+  const looseSlotElements = Array.from(document.querySelectorAll("slot[name]")).filter(slot => {
+    // Check if this slot is inside a template element
+    let parent = slot.parentElement;
+    while (parent) {
+      if (parent.tagName.toLowerCase() === 'template' && parent.hasAttribute('extends')) {
+        return false; // This slot is inside a template, skip it
       }
+      parent = parent.parentElement;
+    }
+    return true; // This is a loose slot
+  });
+  
+  looseSlotElements.forEach((element) => {
+    const slotName = element.getAttribute("name");
+    if (slotName) {
+      // Loose slots take precedence over template slots
+      slots[slotName] = element.innerHTML;
+    }
+  });
+
+  // Handle loose default slots (slot elements without name attribute, outside templates)
+  const looseDefaultSlotElements = Array.from(document.querySelectorAll("slot:not([name])")).filter(slot => {
+    let parent = slot.parentElement;
+    while (parent) {
+      if (parent.tagName.toLowerCase() === 'template' && parent.hasAttribute('extends')) {
+        return false;
+      }
+      parent = parent.parentElement;
+    }
+    return true;
+  });
+  
+  if (looseDefaultSlotElements.length > 0) {
+    // Combine content from all loose default slots
+    const defaultContent = Array.from(looseDefaultSlotElements)
+      .map(el => el.innerHTML)
+      .join('');
+    if (defaultContent.trim()) {
+      slots["default"] = defaultContent.trim();
     }
   }
 
@@ -355,6 +449,30 @@ function applySlots(templateContent, slotData) {
     result = result.replace(defaultSlotRegex, slotData["default"]);
     result = result.replace(defaultSelfClosingSlotRegex, slotData["default"]);
   }
+
+  // Replace any remaining named slots with their default content
+  // This handles slots that weren't provided in slotData
+  result = result.replace(
+    /<slot\s+name=["'][^"']*["'][^>]*>(.*?)<\/slot>/gs,
+    '$1' // Replace with the default content (everything between slot tags)
+  );
+  
+  // Replace any remaining self-closing named slots (remove them since no default content)
+  result = result.replace(
+    /<slot\s+name=["'][^"']*["'][^>]*\/>/g,
+    '' // Remove self-closing slots with no content
+  );
+
+  // Replace any remaining unnamed default slots with their content or remove them
+  result = result.replace(
+    /<slot(?!\s+name)(?:\s[^>]*)?>([^<]*(?:<(?!\/slot>)[^<]*)*)<\/slot>/gs,
+    '$1' // Replace with default content
+  );
+  
+  result = result.replace(
+    /<slot(?!\s+name)(?:\s[^>]*)?\/>/g,
+    '' // Remove self-closing default slots with no content
+  );
 
   return result;
 }

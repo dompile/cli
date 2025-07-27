@@ -10,11 +10,12 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { createTempDirectory, cleanupTempDirectory, createTestStructure } from '../fixtures/temp-helper.js';
 
+const cliPath = path.resolve('/home/founder3/code/github/dompile/cli/bin/cli.js');
+
 describe('CLI Commands and Options', () => {
   let tempDir;
   let sourceDir;
   let outputDir;
-  const cliPath = '/home/founder3/code/github/dompile/cli/bin/cli.js';
 
   beforeEach(async () => {
     tempDir = await createTempDirectory();
