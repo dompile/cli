@@ -23,16 +23,16 @@ describe('CLI integration', () => {
     outputDir = path.join(testFixturesDir, 'dist');
     
     await fs.mkdir(sourceDir, { recursive: true });
-    await fs.mkdir(path.join(sourceDir, 'includes'), { recursive: true });
+    await fs.mkdir(path.join(sourceDir, '.components'), { recursive: true });
     
     // Create test files
     await fs.writeFile(
-      path.join(sourceDir, 'includes', 'head.html'),
+      path.join(sourceDir, '.components', 'head.html'),
       '<meta charset="UTF-8">'
     );
     
     await fs.writeFile(
-      path.join(sourceDir, 'includes', 'header.html'),
+      path.join(sourceDir, '.components', 'header.html'),
       '<header><h1>CLI Test</h1></header>'
     );
     
@@ -45,7 +45,7 @@ describe('CLI integration', () => {
   <link rel="stylesheet" href="main.css">
 </head>
 <body>
-  <!--#include virtual="/includes/header.html" -->
+  <!--#include virtual="/.components/header.html" -->
   <main><p>Testing CLI</p></main>
 </body>
 </html>`
@@ -119,7 +119,7 @@ describe('CLI integration', () => {
     assert(result.stderr.includes('Source directory not found'));
   });
   
-  it('should fail build when includes are missing', async () => {
+  it('should fail build when components are missing', async () => {
     // Create a source file with missing include
     await fs.writeFile(
       path.join(sourceDir, 'broken.html'),
@@ -194,6 +194,45 @@ describe('CLI integration', () => {
     
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
     assert(indexContent.includes('<meta name="custom" content="test">'));
+  });
+  
+  it('should work with simplified usage (no arguments)', async () => {
+    // Create default directory structure in current working directory for this test
+    const testDir = path.join(testFixturesDir, 'default-test');
+    const defaultSrc = path.join(testDir, 'src');
+    const defaultDist = path.join(testDir, 'dist');
+    const defaultComponents = path.join(defaultSrc, '.components');
+    
+    await fs.mkdir(defaultComponents, { recursive: true });
+    
+    // Create test files in default structure
+    await fs.writeFile(
+      path.join(defaultComponents, 'header.html'),
+      '<header><h1>Default Test</h1></header>'
+    );
+    
+    await fs.writeFile(
+      path.join(defaultSrc, 'index.html'),
+      `<!DOCTYPE html>
+<html>
+<head><title>Default Test</title></head>
+<body>
+  <!--#include virtual="/.components/header.html" -->
+  <main><p>Testing default directories</p></main>
+</body>
+</html>`
+    );
+    
+    // Change to test directory and run with defaults
+    const result = await runCLI(['build'], { cwd: testDir });
+    
+    assert.strictEqual(result.exitCode, 0);
+    assert(result.stdout.includes('Build completed successfully'));
+    
+    // Verify output in default dist directory
+    await fs.access(path.join(defaultDist, 'index.html'));
+    const indexContent = await fs.readFile(path.join(defaultDist, 'index.html'), 'utf-8');
+    assert(indexContent.includes('<header><h1>Default Test</h1></header>'));
   });
   
  

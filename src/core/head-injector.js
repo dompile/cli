@@ -73,14 +73,14 @@ export async function loadHeadSnippet(headFilePath) {
 /**
  * Find head snippet file using conventions
  * @param {string} sourceRoot - Source root directory
- * @param {string} includesDir - Includes directory name
+ * @param {string} componentsDir - Components directory name
  * @returns {Promise<string|null>} Path to head snippet file or null
  */
-export async function findHeadSnippetFile(sourceRoot, includesDir = 'includes') {
+export async function findHeadSnippetFile(sourceRoot, componentsDir = '.components') {
   const possiblePaths = [
-    // In includes directory
-    path.join(sourceRoot, includesDir, 'head.html'),
-    path.join(sourceRoot, includesDir, '_head.html'),
+    // In components directory
+    path.join(sourceRoot, componentsDir, 'head.html'),
+    path.join(sourceRoot, componentsDir, '_head.html'),
     // In source root
     path.join(sourceRoot, 'head.html'),
     path.join(sourceRoot, '_head.html')
@@ -104,11 +104,11 @@ export async function findHeadSnippetFile(sourceRoot, includesDir = 'includes') 
 /**
  * Get head snippet content (from file or custom path)
  * @param {string} sourceRoot - Source root directory
- * @param {string} includesDir - Includes directory name
+ * @param {string} componentsDir - Components directory name
  * @param {string|null} customHeadPath - Custom head file path from CLI
  * @returns {Promise<string|null>} Head snippet content or null
  */
-export async function getHeadSnippet(sourceRoot, includesDir = 'includes', customHeadPath = null) {
+export async function getHeadSnippet(sourceRoot, componentsDir = '.components', customHeadPath = null) {
   let headFilePath;
   
   if (customHeadPath) {
@@ -118,7 +118,7 @@ export async function getHeadSnippet(sourceRoot, includesDir = 'includes', custo
       path.resolve(sourceRoot, customHeadPath);
   } else {
     // Find using conventions
-    headFilePath = await findHeadSnippetFile(sourceRoot, includesDir);
+    headFilePath = await findHeadSnippetFile(sourceRoot, componentsDir);
   }
   
   if (!headFilePath) {

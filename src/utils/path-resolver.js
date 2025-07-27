@@ -78,26 +78,54 @@ export function isHtmlFile(filePath) {
 }
 
 /**
- * Check if file is a partial (should not be output)
- * @param {string} filePath - File path
- * @param {string} includesDir - Includes directory name
- * @returns {boolean} True if file is a partial
+ * Check if file is a partial (should not be output as a page)
+ * @param {string} filePath - File path to check
+ * @param {string|Object} config - Components directory name or full config object
+ * @returns {boolean} True if file is a partial/component/layout file
  */
-export function isPartialFile(filePath, includesDir = 'includes') {
+export function isPartialFile(filePath, config = '.components') {
   const fileName = path.basename(filePath);
-  const dirName = path.basename(path.dirname(filePath));
   
-  // Check if in includes directory
-  if (dirName === includesDir || filePath.includes(`${path.sep}${includesDir}${path.sep}`)) {
-    return true;
+  // Handle both string and object config for backward compatibility
+  let componentsDir, layoutsDir;
+  if (typeof config === 'string') {
+    componentsDir = config;
+    layoutsDir = '.layouts'; // default
+  } else {
+    componentsDir = config.components || '.components';
+    layoutsDir = config.layouts || '.layouts';
   }
   
-  // Check if filename starts with underscore
+  // Check if filename starts with underscore (traditional partial marker)
   if (fileName.startsWith('_')) {
     return true;
   }
   
+  // Check if in components directory
+  if (isFileInDirectory(filePath, componentsDir)) {
+    return true;
+  }
+  
+  // Check if in layouts directory
+  if (isFileInDirectory(filePath, layoutsDir)) {
+    return true;
+  }
+  
   return false;
+}
+
+/**
+ * Check if a file is within a specific directory
+ * @param {string} filePath - File path to check
+ * @param {string} dirName - Directory name to check against
+ * @returns {boolean} True if file is in the directory
+ */
+function isFileInDirectory(filePath, dirName) {
+  const normalizedPath = path.normalize(filePath);
+  const pathParts = normalizedPath.split(path.sep);
+  
+  // Check if any part of the path matches the directory name
+  return pathParts.includes(dirName);
 }
 
 /**

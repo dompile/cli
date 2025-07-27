@@ -7,6 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { resolveIncludePath, isPathWithinDirectory } from '../utils/path-resolver.js';
 import { 
+  DompileError,
   IncludeNotFoundError, 
   CircularDependencyError, 
   MalformedDirectiveError,
@@ -50,7 +51,17 @@ export async function processIncludes(
 ) {
   // Prevent excessive recursion
   if (depth > MAX_INCLUDE_DEPTH) {
-    throw new Error(`Maximum include depth (${MAX_INCLUDE_DEPTH}) exceeded in ${filePath}`);
+    const suggestions = [
+      `Reduce the depth of nested includes to ${MAX_INCLUDE_DEPTH} or fewer levels`,
+      'Check for circular dependencies in your include structure',
+      'Consider flattening your component hierarchy'
+    ];
+    throw new DompileError(
+      `Maximum include depth (${MAX_INCLUDE_DEPTH}) exceeded`, 
+      filePath, 
+      null, 
+      suggestions
+    );
   }
   
   // Detect circular dependencies
@@ -89,7 +100,15 @@ export async function processIncludes(
         logger.debug(`Loaded include: ${includePath} -> ${resolvedPath}`);
       } catch (error) {
         if (error.code === 'ENOENT') {
-          throw new IncludeNotFoundError(includePath, filePath);
+          // Provide context about where we searched
+          const searchPaths = [resolvedPath];
+          if (type === 'file') {
+            searchPaths.push(path.resolve(path.dirname(filePath), includePath));
+          } else if (type === 'virtual') {
+            searchPaths.push(path.resolve(sourceRoot, includePath.replace(/^\/+/, '')));
+          }
+          
+          throw new IncludeNotFoundError(includePath, filePath, searchPaths);
         }
         throw new FileSystemError('read', resolvedPath, error);
       }

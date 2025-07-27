@@ -5,7 +5,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { processIncludes } from './include-processor.js';
+// processIncludes is now handled by unified-html-processor
 import { getHeadSnippet, injectHeadContent } from './head-injector.js';
 import { DependencyTracker } from './dependency-tracker.js';
 import { AssetTracker } from './asset-tracker.js';
@@ -14,7 +14,8 @@ import {
   isMarkdownFile, 
   wrapInLayout, 
   generateTableOfContents, 
-  addAnchorLinks 
+  addAnchorLinks,
+  hasHtmlElement
 } from './markdown-processor.js';
 import { 
   isHtmlFile, 
@@ -29,10 +30,9 @@ import {
   writeSitemap 
 } from './sitemap-generator.js';
 import { 
-  processDOMMode, 
-  shouldUseDOMMode, 
-  getDOMConfig 
-} from './dom-processor.js';
+  processHtmlUnified,
+  getUnifiedConfig
+} from './unified-html-processor.js';
 import { FileSystemError, BuildError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -47,7 +47,8 @@ const fileModificationCache = new Map();
 const DEFAULT_OPTIONS = {
   source: 'src',
   output: 'dist',
-  includes: 'includes',
+  components: '.components',
+  layouts: '.layouts',
   head: null,
   clean: true,
   prettyUrls: false,
@@ -61,8 +62,8 @@ const DEFAULT_OPTIONS = {
  * 
  * @param {Object} options - Build configuration options
  * @param {string} [options.source='src'] - Source directory path
- * @param {string} [options.output='dist'] - Output directory path  
- * @param {string} [options.includes='includes'] - Include directory name
+ * @param {string} [options.output='dist'] - Output directory path
+ * @param {string} [options.components='src/.components'] - Components directory path
  * @param {string} [options.head=null] - Custom head file path (overrides convention)
  * @param {boolean} [options.clean=true] - Whether to clean output directory before build
  * @returns {Promise<Object>} Build results with statistics and dependency tracker
@@ -113,7 +114,7 @@ export async function build(options = {}) {
     await fs.mkdir(outputRoot, { recursive: true });
     
     // Load head snippet
-    const headSnippet = await getHeadSnippet(sourceRoot, config.includes, config.head);
+    const headSnippet = await getHeadSnippet(sourceRoot, config.components, config.head);
     if (headSnippet) {
       logger.info('Loaded global head snippet');
     }
@@ -126,10 +127,11 @@ export async function build(options = {}) {
     const sourceFiles = await scanDirectory(sourceRoot);
     logger.info(`Found ${sourceFiles.length} source files`);
     
-    // Categorize files
-    const contentFiles = sourceFiles.filter(file => 
-      (isHtmlFile(file) && !isPartialFile(file, config.includes)) || isMarkdownFile(file)
-    );
+    // Categorize files - exclude components and layouts from being processed as pages
+    const contentFiles = sourceFiles.filter(file => {
+      const isPartial = isPartialFile(file, config);
+      return (isHtmlFile(file) && !isPartial) || (isMarkdownFile(file) && !isPartial);
+    });
     const assetFiles = sourceFiles.filter(file => 
       !isHtmlFile(file) && !isMarkdownFile(file)
     );
@@ -146,7 +148,7 @@ export async function build(options = {}) {
     const frontmatterData = new Map();
     
     // Load layout file for markdown (if it exists)
-    const layoutFile = await findLayoutFile(sourceRoot);
+    const layoutFile = await findLayoutFile(sourceRoot, config.layouts);
     let layoutContent = null;
     if (layoutFile) {
       try {
@@ -163,7 +165,7 @@ export async function build(options = {}) {
         const relativePath = path.relative(sourceRoot, filePath);
         
         if (isHtmlFile(filePath)) {
-          if (isPartialFile(filePath, config.includes)) {
+          if (isPartialFile(filePath, config)) {
             // Skip partial files in output
             logger.debug(`Skipping partial file: ${relativePath}`);
             results.skipped++;
@@ -191,7 +193,8 @@ export async function build(options = {}) {
             headSnippet,
             layoutContent,
             assetTracker,
-            config.prettyUrls
+            config.prettyUrls,
+            config.layouts
           );
           processedFiles.push(filePath);
           if (frontmatter) {
@@ -201,8 +204,22 @@ export async function build(options = {}) {
           logger.debug(`Processed Markdown: ${relativePath}`);
         }
       } catch (error) {
-        logger.error(`Error processing ${filePath}: ${error.message}`);
-        results.errors.push({ file: filePath, error: error.message });
+        const relativePath = path.relative(sourceRoot, filePath);
+        
+        // Use enhanced error formatting if available
+        if (error.formatForCLI) {
+          logger.error(error.formatForCLI());
+        } else {
+          logger.error(`Error processing ${relativePath}: ${error.message}`);
+        }
+        
+        results.errors.push({ 
+          file: filePath, 
+          relativePath,
+          error: error.message,
+          errorType: error.constructor.name,
+          suggestions: error.suggestions || []
+        });
       }
     }
     
@@ -220,8 +237,22 @@ export async function build(options = {}) {
           results.skipped++;
         }
       } catch (error) {
-        logger.error(`Error copying asset ${filePath}: ${error.message}`);
-        results.errors.push({ file: filePath, error: error.message });
+        const relativePath = path.relative(sourceRoot, filePath);
+        
+        // Use enhanced error formatting if available
+        if (error.formatForCLI) {
+          logger.error(error.formatForCLI());
+        } else {
+          logger.error(`Error copying asset ${relativePath}: ${error.message}`);
+        }
+        
+        results.errors.push({ 
+          file: filePath, 
+          relativePath,
+          error: error.message,
+          errorType: error.constructor.name,
+          suggestions: error.suggestions || []
+        });
       }
     }
     
@@ -242,8 +273,20 @@ export async function build(options = {}) {
     logger.info(`Processed: ${results.processed} pages, Copied: ${results.copied} assets, Skipped: ${results.skipped} partials`);
     
     if (results.errors.length > 0) {
-      logger.error(`Build failed with ${results.errors.length} errors`);
-      throw new BuildError(`Build failed with ${results.errors.length} errors`, results.errors);
+      // Enhanced error reporting with categorization
+      const errorsByType = results.errors.reduce((acc, err) => {
+        acc[err.errorType] = (acc[err.errorType] || 0) + 1;
+        return acc;
+      }, {});
+      
+      logger.error('\\n📋 Build Error Summary:');
+      for (const [errorType, count] of Object.entries(errorsByType)) {
+        logger.error(`   ${errorType}: ${count} error(s)`);
+      }
+      
+      logger.error(`\\n💥 Total: ${results.errors.length} error(s) encountered`);
+      
+      throw new BuildError(`${results.errors.length} error(s)`, results.errors);
     }
     
     return {
@@ -281,10 +324,10 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
     const assets = assetTracker || new AssetTracker();
     
     // Load head snippet
-    const headSnippet = await getHeadSnippet(sourceRoot, config.includes, config.head);
+    const headSnippet = await getHeadSnippet(sourceRoot, config.components, config.head);
     
     // Determine what files need rebuilding
-    const filesToRebuild = await getFilesToRebuild(sourceRoot, changedFile, tracker);
+    const filesToRebuild = await getFilesToRebuild(sourceRoot, changedFile, tracker, config);
     
     const results = {
       processed: 0,
@@ -305,14 +348,14 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
         const relativePath = path.relative(sourceRoot, filePath);
         
         if (isHtmlFile(filePath)) {
-          if (!isPartialFile(filePath, config.includes)) {
+          if (!isPartialFile(filePath, config)) {
             await processHtmlFile(filePath, sourceRoot, outputRoot, headSnippet, tracker, assets, config);
             results.processed++;
             logger.debug(`Rebuilt HTML: ${relativePath}`);
           }
         } else if (isMarkdownFile(filePath)) {
           // Load layout for markdown processing
-          const layoutFile = await findLayoutFile(sourceRoot);
+          const layoutFile = await findLayoutFile(sourceRoot, config.layouts);
           let layoutContent = null;
           if (layoutFile) {
             try {
@@ -322,7 +365,7 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
             }
           }
           
-          await processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet, layoutContent, assets, config.prettyUrls);
+          await processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet, layoutContent, assets, config.prettyUrls, config.layouts);
           results.processed++;
           logger.debug(`Rebuilt Markdown: ${relativePath}`);
         } else {
@@ -376,7 +419,7 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
  * @param {DependencyTracker} dependencyTracker - Dependency tracker
  * @returns {Promise<string[]>} Array of file paths to rebuild
  */
-async function getFilesToRebuild(sourceRoot, changedFile, dependencyTracker) {
+async function getFilesToRebuild(sourceRoot, changedFile, dependencyTracker, config = {}) {
   const filesToRebuild = new Set();
   
   if (changedFile) {
@@ -384,7 +427,7 @@ async function getFilesToRebuild(sourceRoot, changedFile, dependencyTracker) {
     const resolvedChangedFile = path.resolve(changedFile);
     
     if (isHtmlFile(resolvedChangedFile)) {
-      if (isPartialFile(resolvedChangedFile)) {
+      if (isPartialFile(resolvedChangedFile, config)) {
         // Partial file changed - rebuild all pages that depend on it
         const dependentPages = dependencyTracker.getDependentPages(resolvedChangedFile);
         dependentPages.forEach(page => filesToRebuild.add(page));
@@ -489,13 +532,14 @@ function getOutputPathWithPrettyUrls(filePath, sourceRoot, outputRoot, prettyUrl
  * @param {string} sourceRoot - Source root directory
  * @returns {Promise<string|null>} Path to layout file or null if not found
  */
-async function findLayoutFile(sourceRoot) {
+async function findLayoutFile(sourceRoot, layoutsDir = '.layouts') {
   const possibleLayouts = [
     path.join(sourceRoot, 'layout.html'),
     path.join(sourceRoot, '_layout.html'),
     path.join(sourceRoot, 'templates', 'layout.html'),
-    path.join(sourceRoot, 'layouts', 'default.html'),
-    path.join(sourceRoot, 'includes', 'layout.html')
+    path.join(sourceRoot, layoutsDir, 'default.html'),
+    path.join(sourceRoot, 'layouts', 'default.html'),  // Legacy support
+    path.join(sourceRoot, '.components', 'layout.html')  // Components directory fallback
   ];
   
   for (const layoutPath of possibleLayouts) {
@@ -511,6 +555,46 @@ async function findLayoutFile(sourceRoot) {
 }
 
 /**
+ * Check if default.html layout exists in the layouts directory
+ * @param {string} sourceRoot - Source root directory
+ * @param {string} layoutsDir - Layouts directory name
+ * @returns {Promise<boolean>} True if default.html exists
+ */
+async function hasDefaultLayout(sourceRoot, layoutsDir = '.layouts') {
+  const defaultLayoutPath = path.join(sourceRoot, layoutsDir, 'default.html');
+  try {
+    await fs.access(defaultLayoutPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Create basic HTML structure for content without layout
+ * @param {string} content - HTML content
+ * @param {string} title - Page title
+ * @param {string} excerpt - Page excerpt
+ * @returns {string} Complete HTML document
+ */
+function createBasicHtmlStructure(content, title, excerpt) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title || 'Untitled'}</title>
+  ${excerpt ? `<meta name="description" content="${excerpt}">` : ''}
+</head>
+<body>
+  <main>
+    ${content}
+  </main>
+</body>
+</html>`;
+}
+
+/**
  * Process a single Markdown file
  * @param {string} filePath - Path to Markdown file
  * @param {string} sourceRoot - Source root directory
@@ -519,9 +603,10 @@ async function findLayoutFile(sourceRoot) {
  * @param {string|null} layoutContent - Layout template content
  * @param {AssetTracker} assetTracker - Asset tracker instance
  * @param {boolean} prettyUrls - Whether to generate pretty URLs
+ * @param {string} layoutsDir - Layouts directory name
  * @returns {Promise<Object|null>} Frontmatter data or null
  */
-async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet, layoutContent, assetTracker, prettyUrls = false) {
+async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet, layoutContent, assetTracker, prettyUrls = false, layoutsDir = '.layouts') {
   // Read markdown content
   let markdownContent;
   try {
@@ -531,6 +616,8 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet
   }
   
   // Process includes in markdown content first (before converting to HTML)
+  // For markdown, we'll import processIncludes directly since we're processing markdown syntax
+  const { processIncludes } = await import('./include-processor.js');
   const processedMarkdown = await processIncludes(markdownContent, filePath, sourceRoot, new Set(), 0, null);
   
   // Process markdown to HTML
@@ -542,28 +629,37 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet
   // Generate table of contents
   const tableOfContents = generateTableOfContents(htmlWithAnchors);
   
-  // Wrap in layout if available
+  // Determine if layout should be applied
   const metadata = { frontmatter, title, excerpt, tableOfContents };
   let finalContent;
   
-  if (layoutContent) {
+  // Check if content already has <html> element
+  const contentHasHtml = hasHtmlElement(htmlWithAnchors);
+  
+  if (layoutContent && !contentHasHtml) {
+    // Apply layout only if content doesn't have <html> element
     finalContent = wrapInLayout(htmlWithAnchors, metadata, layoutContent);
+  } else if (!contentHasHtml) {
+    // Check if default layout exists and apply it only if no <html> element
+    const hasDefault = await hasDefaultLayout(sourceRoot, layoutsDir);
+    if (hasDefault) {
+      // Load and apply default layout
+      const defaultLayoutPath = path.join(sourceRoot, layoutsDir, 'default.html');
+      try {
+        const defaultLayoutContent = await fs.readFile(defaultLayoutPath, 'utf-8');
+        finalContent = wrapInLayout(htmlWithAnchors, metadata, defaultLayoutContent);
+      } catch (error) {
+        logger.warn(`Could not read default layout: ${error.message}`);
+        // Fallback to basic HTML structure
+        finalContent = createBasicHtmlStructure(htmlWithAnchors, title, excerpt);
+      }
+    } else {
+      // No layout available, create basic HTML structure
+      finalContent = createBasicHtmlStructure(htmlWithAnchors, title, excerpt);
+    }
   } else {
-    // Create basic HTML structure
-    finalContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title || 'Untitled'}</title>
-  ${excerpt ? `<meta name="description" content="${excerpt}">` : ''}
-</head>
-<body>
-  <main>
-    ${htmlWithAnchors}
-  </main>
-</body>
-</html>`;
+    // Content already has <html> element, use as-is
+    finalContent = htmlWithAnchors;
   }
   
   // Inject head content if available
@@ -608,34 +704,22 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, headSnippet, de
     throw new FileSystemError('read', filePath, error);
   }
   
-  let processedContent;
+  // Use unified HTML processor that handles both SSI includes and DOM templating
+  logger.debug(`Processing HTML with unified processor: ${path.relative(sourceRoot, filePath)}`);
   
-  // Check if file should use DOM mode
-  if (shouldUseDOMMode(htmlContent)) {
-    logger.debug(`Using DOM mode for: ${path.relative(sourceRoot, filePath)}`);
-    
-    // Use DOM mode processor
-    const domConfig = getDOMConfig(config);
-    processedContent = await processDOMMode(htmlContent, filePath, sourceRoot, domConfig);
-    
-    // Inject head content if provided (DOM mode might have already handled head)
-    if (headSnippet && !processedContent.includes('</head>')) {
-      processedContent = injectHeadContent(processedContent, headSnippet);
-    }
-  } else {
-    logger.debug(`Using traditional SSI mode for: ${path.relative(sourceRoot, filePath)}`);
-    
-    // Track dependencies before processing (traditional mode only)
-    dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
-    
-    // Process traditional includes
-    processedContent = await processIncludes(htmlContent, filePath, sourceRoot, new Set(), 0, dependencyTracker);
-    
-    // Inject head content
-    processedContent = headSnippet ? 
-      injectHeadContent(processedContent, headSnippet) : 
-      processedContent;
-  }
+  const unifiedConfig = getUnifiedConfig(config);
+  let processedContent = await processHtmlUnified(
+    htmlContent, 
+    filePath, 
+    sourceRoot, 
+    dependencyTracker,
+    unifiedConfig
+  );
+  
+  // Inject head content
+  processedContent = headSnippet ? 
+    injectHeadContent(processedContent, headSnippet) : 
+    processedContent;
   
   // Track asset references in the final content
   if (assetTracker) {
@@ -689,8 +773,9 @@ async function scanDirectory(dirPath, files = []) {
     const fullPath = path.join(dirPath, entry.name);
     
     if (entry.isDirectory()) {
-      // Skip hidden directories and common build/dependency directories
-      if (!entry.name.startsWith('.') && 
+      // Skip hidden directories except for .components and .layouts
+      // Also skip common build/dependency directories
+      if ((!entry.name.startsWith('.') || entry.name === '.components' || entry.name === '.layouts') &&
           entry.name !== 'node_modules' && 
           entry.name !== 'dist' && 
           entry.name !== 'build') {

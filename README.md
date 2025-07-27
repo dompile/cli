@@ -4,7 +4,7 @@ A modern, lightweight static site generator that brings the power of server-side
 
 ## ✨ Perfect for Frontend Developers
 
-- **Zero Learning Curve**: Uses familiar Apache SSI syntax (`<!--#include file="header.html" -->`)
+- **Zero Learning Curve**: Uses familiar Apache SSI syntax (`<!--#include file="header.html" -->`) or intuitive `<slot>`, `<template>`, and `<include>` elements.
 - **Modern Tooling**: Built with ESM modules, works on Node.js, Deno, and Bun
 - **Live Development**: Built-in dev server with live reload via Server-Sent Events
 - **Multi-Format Support**: HTML, Markdown with frontmatter, and static assets
@@ -18,36 +18,41 @@ A modern, lightweight static site generator that brings the power of server-side
 # Install globally
 npm install -g dompile
 
+# Simple usage with defaults (src → dist)
+dompile build                    # Build from src/ to dist/
+dompile serve                    # Serve with live reload on port 3000
+
 # Or use with npx
-npx dompile build --source src --output dist
+npx dompile build
+npx dompile serve
 
-# Start development server with live reload
-npx dompile serve --source src --port 3000
-
-# Build with pretty URLs for markdown
-npx dompile build --source src --output dist --pretty-urls --base-url https://mysite.com
+# Advanced usage with custom options
+dompile build --pretty-urls --base-url https://mysite.com
+dompile serve --port 8080
 ```
 
 ## 📁 Project Structure
 
 ```
 my-site/
-├── src/
-│   ├── includes/
+├── src/                     # Source directory (default)
+│   ├── .components/        # Reusable components and includes (default: .components, relative to source)
 │   │   ├── header.html
 │   │   ├── footer.html
-│   │   └── head.html         # Auto-injected into all pages
+│   │   ├── head.html       # Auto-injected into all pages
+│   │   └── button.html
+│   ├── .layouts/           # Layout templates (default: .layouts, relative to source)
+│   │   └── base.html
 │   ├── pages/
 │   │   ├── index.html
-│   │   ├── about.md          # Markdown with frontmatter
+│   │   ├── about.md        # Markdown with frontmatter
 │   │   └── contact.html
-│   ├── layout.html           # Layout template for markdown
 │   ├── css/
 │   │   └── style.css
 │   └── images/
 │       └── logo.png
-├── dist/                     # Generated output
-│   ├── sitemap.xml          # Auto-generated
+├── dist/                   # Output directory (default)
+│   ├── sitemap.xml        # Auto-generated
 │   └── ...
 └── package.json
 ```
@@ -62,15 +67,15 @@ Use Apache SSI syntax to include partials:
 <!-- index.html -->
 <html>
   <head>
-    <!--includes/head.html automatically injected here -->
+    <!--.components/head.html automatically injected here -->
     <title>My Site</title>
   </head>
   <body>
-    <!--#include virtual="/includes/header.html" -->
+    <!--#include virtual="/.components/header.html" -->
     <main>
       <h1>Welcome!</h1>
     </main>
-    <!--#include virtual="/includes/footer.html" -->
+    <!--#include virtual="/.components/footer.html" -->
   </body>
 </html>
 ```
@@ -91,7 +96,7 @@ layout: "page"
 
 This markdown content will be wrapped in your layout template and processed with includes.
 
-<!--#include virtual="/includes/contact-form.html" -->
+<!--#include virtual="/.components/contact-form.html" -->
 ```
 
 ### Layout System
@@ -107,11 +112,11 @@ Create layout templates with variable substitution:
   <meta name="description" content="{{ description }}">
 </head>
 <body>
-  <!--#include virtual="/includes/header.html" -->
+  <!--#include virtual="/.components/header.html" -->
   <main>
     {{ content }}
   </main>
-  <!--#include virtual="/includes/footer.html" -->
+  <!--#include virtual="/.components/footer.html" -->
 </body>
 </html>
 ```
@@ -147,7 +152,8 @@ dompile serve --source src --output dist --port 3000
 
 - `--source, -s`: Source directory (default: `src`)
 - `--output, -o`: Output directory (default: `dist`)
-- `--includes, -i`: Includes directory name (default: `includes`)
+- `--layouts`: Layouts directory (default: `.layouts`, relative to source)
+- `--components`: Components directory (default: `.components`, relative to source)
 - `--head`: Custom head include file path
 - `--port, -p`: Development server port (default: `3000`)
 - `--host`: Development server host (default: `localhost`)

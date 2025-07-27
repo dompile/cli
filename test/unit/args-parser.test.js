@@ -37,10 +37,24 @@ describe('parseArgs', () => {
     assert.strictEqual(args.output, 'my-dist');
   });
   
+  
+  it('should parse layouts option', () => {
+    const args = parseArgs(['build', '--layouts', 'templates']);
+    assert.strictEqual(args.layouts, 'templates');
+  });
+  
+  it('should parse components option', () => {
+    const args = parseArgs(['build', '--components', 'ui']);
+    assert.strictEqual(args.components, 'ui');
+  });
+  
   it('should use default values', () => {
     const args = parseArgs(['build']);
     assert.strictEqual(args.source, 'src');
     assert.strictEqual(args.output, 'dist');
+    assert.strictEqual(args.layouts, '.layouts');
+    assert.strictEqual(args.components, '.components');
+    assert.strictEqual(args.port, 3000);
   });
   
   it('should throw error for unknown option', () => {

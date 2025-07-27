@@ -8,7 +8,8 @@ export function parseArgs(argv) {
     command: null,
     source: 'src',
     output: 'dist', 
-    includes: 'includes',
+    layouts: '.layouts',
+    components: '.components',
     head: null,
     port: 3000,
     host: 'localhost',
@@ -58,8 +59,14 @@ export function parseArgs(argv) {
       continue;
     }
     
-    if ((arg === '--includes' || arg === '-i') && nextArg) {
-      args.includes = nextArg;
+    if (arg === '--layouts' && nextArg) {
+      args.layouts = nextArg;
+      i++;
+      continue;
+    }
+    
+    if (arg === '--components' && nextArg) {
+      args.components = nextArg;
       i++;
       continue;
     }

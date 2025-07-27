@@ -1,6 +1,7 @@
-// Quick test file to debug DOM mode
+// Quick test file to debug unified processing with DOM templating
 import fs from 'fs/promises';
-import { processDOMMode } from '../src/core/dom-processor-v2.js';
+import { processHtmlUnified } from '../src/core/unified-html-processor.js';
+import { DependencyTracker } from '../src/core/dependency-tracker.js';
 
 const testHTML = `
 <div data-layout="/layouts/default.html">
@@ -27,7 +28,13 @@ await fs.mkdir('./test-dom/layouts', { recursive: true });
 await fs.writeFile('./test-dom/layouts/default.html', layoutHTML);
 
 try {
-  const result = await processDOMMode(testHTML, './test.html', './test-dom');
+  const dependencyTracker = new DependencyTracker();
+  const config = {
+    layoutsDir: 'layouts',
+    componentsDir: 'components'
+  };
+  
+  const result = await processHtmlUnified(testHTML, './test.html', './test-dom', dependencyTracker, config);
   console.log('Result:', result);
 } catch (error) {
   console.error('Error:', error);

@@ -22,27 +22,27 @@ describe('build-process integration', () => {
     outputDir = path.join(testFixturesDir, 'dist');
     
     await fs.mkdir(sourceDir, { recursive: true });
-    await fs.mkdir(path.join(sourceDir, 'includes'), { recursive: true });
+    await fs.mkdir(path.join(sourceDir, '.components'), { recursive: true });
     await fs.mkdir(path.join(sourceDir, 'css'), { recursive: true });
     
     // Create test files
     await fs.writeFile(
-      path.join(sourceDir, 'includes', 'head.html'),
+      path.join(sourceDir, '.components', 'head.html'),
       '<meta charset="UTF-8">\n<link rel="stylesheet" href="/css/style.css">'
     );
     
     await fs.writeFile(
-      path.join(sourceDir, 'includes', 'header.html'),
+      path.join(sourceDir, '.components', 'header.html'),
       '<header><h1>Test Site</h1><nav><!--#include file="nav.html" --></nav></header>'
     );
     
     await fs.writeFile(
-      path.join(sourceDir, 'includes', 'nav.html'),
+      path.join(sourceDir, '.components', 'nav.html'),
       '<ul><li><a href="/">Home</a></li><li><a href="/about.html">About</a></li></ul>'
     );
     
     await fs.writeFile(
-      path.join(sourceDir, 'includes', 'footer.html'),
+      path.join(sourceDir, '.components', 'footer.html'),
       '<footer><p>&copy; 2024 Test Site</p></footer>'
     );
     
@@ -54,12 +54,12 @@ describe('build-process integration', () => {
   <title>Home - Test Site</title>
 </head>
 <body>
-  <!--#include virtual="/includes/header.html" -->
+  <!--#include virtual="/.components/header.html" -->
   <main>
     <h2>Welcome</h2>
     <p>This is the home page.</p>
   </main>
-  <!--#include virtual="/includes/footer.html" -->
+  <!--#include virtual="/.components/footer.html" -->
 </body>
 </html>`
     );
@@ -72,12 +72,12 @@ describe('build-process integration', () => {
   <title>About - Test Site</title>
 </head>
 <body>
-  <!--#include virtual="/includes/header.html" -->
+  <!--#include virtual="/.components/header.html" -->
   <main>
     <h2>About Us</h2>
     <p>This is the about page.</p>
   </main>
-  <!--#include virtual="/includes/footer.html" -->
+  <!--#include virtual="/.components/footer.html" -->
 </body>
 </html>`
     );
@@ -97,11 +97,11 @@ describe('build-process integration', () => {
     }
   });
   
-  it('should build complete site with includes and head injection', async () => {
+  it('should build complete site with components and head injection', async () => {
     const result = await build({
       source: sourceDir,
       output: outputDir,
-      includes: 'includes',
+      components: '.components',
       clean: true
     });
     
@@ -121,17 +121,17 @@ describe('build-process integration', () => {
     await fs.access(cssPath);
     
     // Verify include files are NOT in output
-    const headerPath = path.join(outputDir, 'includes', 'header.html');
+    const headerPath = path.join(outputDir, '.components', 'header.html');
     await assert.rejects(async () => {
       await fs.access(headerPath);
     });
   });
   
-  it('should process nested includes correctly', async () => {
+  it('should process nested components correctly', async () => {
     await build({
       source: sourceDir,
       output: outputDir,
-      includes: 'includes'
+      components: '.components'
     });
     
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
@@ -148,7 +148,7 @@ describe('build-process integration', () => {
     await build({
       source: sourceDir,
       output: outputDir,
-      includes: 'includes'
+      components: '.components'
     });
     
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
@@ -179,19 +179,19 @@ describe('build-process integration', () => {
     const result = await build({
       source: sourceDir,
       output: outputDir,
-      includes: 'includes'
+      components: '.components'
     });
     
     const tracker = result.dependencyTracker;
     
     // Verify dependency tracking
     const indexPath = path.join(sourceDir, 'index.html');
-    const headerPath = path.join(sourceDir, 'includes', 'header.html');
-    const navPath = path.join(sourceDir, 'includes', 'nav.html');
+    const headerPath = path.join(sourceDir, '.components', 'header.html');
+    const navPath = path.join(sourceDir, '.components', 'nav.html');
     
     const indexDeps = tracker.getPageDependencies(indexPath);
     assert(indexDeps.includes(headerPath));
-    assert(indexDeps.includes(path.join(sourceDir, 'includes', 'footer.html')));
+    assert(indexDeps.includes(path.join(sourceDir, '.components', 'footer.html')));
     
     // Verify reverse mapping
     const headerAffected = tracker.getAffectedPages(headerPath);
@@ -204,7 +204,7 @@ describe('build-process integration', () => {
     assert(navAffected.length > 0, `Expected nav.html to affect pages, got: ${JSON.stringify(navAffected)}`);
   });
   
-  it('should fail build when includes are missing', async () => {
+  it('should fail build when components are missing', async () => {
     // Create a file with missing include
     const brokenFilePath = path.join(sourceDir, 'broken.html');
     await fs.writeFile(
@@ -212,12 +212,12 @@ describe('build-process integration', () => {
       '<!DOCTYPE html><html><head></head><body><!--#include file="missing.html" --></body></html>'
     );
     
-    // Build should throw an error when includes are missing
+    // Build should throw an error when components are missing
     await assert.rejects(async () => {
       await build({
         source: sourceDir,
         output: outputDir,
-        includes: 'includes'
+        components: '.components'
       });
     }, /Build failed with .* errors/);
     
@@ -267,5 +267,107 @@ describe('build-process integration', () => {
     // Should contain custom head content
     assert(indexContent.includes('<meta name="custom" content="test">'));
     assert(indexContent.includes('console.log("custom")'));
+  });
+  
+  it('should apply default layout only when content has no html element and default.html exists', async () => {
+    // Create layouts directory with default.html
+    await fs.mkdir(path.join(sourceDir, '.layouts'), { recursive: true });
+    await fs.writeFile(
+      path.join(sourceDir, '.layouts', 'default.html'),
+      `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+</head>
+<body>
+  <header><h1>Default Layout</h1></header>
+  <main>{{ content }}</main>
+  <footer><p>Default Footer</p></footer>
+</body>
+</html>`
+    );
+    
+    // Create markdown file without html element
+    await fs.writeFile(
+      path.join(sourceDir, 'test-markdown.md'),
+      `---
+title: Test Page
+---
+
+# Test Content
+
+This is a test page content.`
+    );
+    
+    // Create markdown file WITH html element (should not use layout)
+    await fs.writeFile(
+      path.join(sourceDir, 'full-html.md'),
+      `---
+title: Full HTML Page
+---
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Custom HTML</title>
+</head>
+<body>
+  <h1>Custom HTML Structure</h1>
+  <p>This has its own HTML structure.</p>
+</body>
+</html>`
+    );
+    
+    await build({
+      source: sourceDir,
+      output: outputDir,
+      components: '.components',
+      layouts: '.layouts',
+      clean: true
+    });
+    
+    // Verify markdown without html element uses default layout
+    const testMarkdownContent = await fs.readFile(path.join(outputDir, 'test-markdown.html'), 'utf-8');
+    assert(testMarkdownContent.includes('Default Layout'));
+    assert(testMarkdownContent.includes('Default Footer'));
+    assert(testMarkdownContent.includes('Test Content')); // Check for content presence
+    
+    // Verify markdown with html element does NOT use layout
+    const fullHtmlContent = await fs.readFile(path.join(outputDir, 'full-html.html'), 'utf-8');
+    assert(fullHtmlContent.includes('Custom HTML Structure'));
+    assert(!fullHtmlContent.includes('Default Layout'));
+    assert(!fullHtmlContent.includes('Default Footer'));
+  });
+  
+  it('should not apply layout when no default.html exists and content has no html element', async () => {
+    // Create markdown file without html element, but no default layout
+    await fs.writeFile(
+      path.join(sourceDir, 'no-layout.md'),
+      `---
+title: No Layout Test
+---
+
+# Content Without Layout
+
+This should get basic HTML structure.`
+    );
+    
+    await build({
+      source: sourceDir,
+      output: outputDir,
+      components: '.components',
+      layouts: '.layouts',
+      clean: true
+    });
+    
+    // Verify basic HTML structure is created
+    const noLayoutContent = await fs.readFile(path.join(outputDir, 'no-layout.html'), 'utf-8');
+    assert(noLayoutContent.includes('<!DOCTYPE html>'));
+    assert(noLayoutContent.includes('<html lang="en">'));
+    assert(noLayoutContent.includes('<title>No Layout Test</title>'));
+    assert(noLayoutContent.includes('<main>'));
+    assert(noLayoutContent.includes('Content Without Layout')); // Check for content presence
+    assert(!noLayoutContent.includes('Default Layout')); // Should not have default layout content
   });
 });

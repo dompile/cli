@@ -82,6 +82,15 @@ export function isMarkdownFile(filePath) {
 }
 
 /**
+ * Check if content contains an HTML element
+ * @param {string} content - Content to check
+ * @returns {boolean} True if content contains an <html> element
+ */
+export function hasHtmlElement(content) {
+  return /<html[^>]*>/i.test(content);
+}
+
+/**
  * Wrap markdown HTML in a layout template
  * @param {string} html - Generated HTML content
  * @param {Object} metadata - Frontmatter and extracted metadata

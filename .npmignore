@@ -2,6 +2,14 @@
 test/
 docs/
 examples/
+docker/
+Dockerfile
+.dockerignore
+.github/
+.claude/
+CLAUDE.md
+.notes/
+
 *.test.js
 *.spec.js
 
