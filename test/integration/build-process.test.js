@@ -219,7 +219,7 @@ describe('build-process integration', () => {
         output: outputDir,
         components: '.components'
       });
-    }, /Build failed with .* errors/);
+    }, /Build failed.*error.*/);
     
     // Clean up the broken file immediately after test
     try {

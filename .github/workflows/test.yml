@@ -7,7 +7,7 @@ on:
       - test
 
 jobs:
-  test-and-publish:
+  run-tests:
     runs-on: ubuntu-latest
     
     steps:

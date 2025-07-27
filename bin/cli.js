@@ -64,27 +64,37 @@ async function main() {
         break;
         
       default:
-        logger.error(`Unknown command: ${args.command}`);
-        showHelp();
-        process.exit(1);
+        throw new (await import('../src/utils/errors.js')).DompileError(
+          `Unknown command: ${args.command}`,
+          null,
+          null,
+          [
+            'Use --help to see valid commands',
+            'Check for typos in the command name',
+            'Refer to the documentation for supported commands'
+          ]
+        );
     }
   } catch (error) {
     // Enhanced error formatting
     if (error.formatForCLI) {
-      console.error('\\n' + error.formatForCLI());
+      console.error('\n' + error.formatForCLI());
     } else {
       logger.error('❌ Error:', error.message);
     }
-    
+
     // Show stack trace in debug mode or for unexpected errors
     if (process.env.DEBUG || (!error.suggestions && !error.formatForCLI)) {
-      console.error('\\n🔍 Stack trace:');
+      console.error('\n🔍 Stack trace:');
       console.error(error.stack);
     }
-    
-    // Exit with appropriate code
-    const exitCode = error.suggestions ? 1 : 2;
-    process.exit(exitCode);
+
+    // Exit with code 1 for errors with suggestions, 2 for unexpected errors
+    if (error && error.suggestions && Array.isArray(error.suggestions)) {
+      process.exit(1);
+    } else {
+      process.exit(2);
+    }
   }
 }
 

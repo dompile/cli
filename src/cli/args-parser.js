@@ -1,3 +1,4 @@
+import { DompileError } from "../utils/errors.js";
 /**
  * Command-line argument parser for dompile
  * Handles parsing of CLI arguments and options
@@ -6,17 +7,17 @@
 export function parseArgs(argv) {
   const args = {
     command: null,
-    source: 'src',
-    output: 'dist', 
-    layouts: '.layouts',
-    components: '.components',
+    source: "src",
+    output: "dist",
+    layouts: ".layouts",
+    components: ".components",
     head: null,
     port: 3000,
-    host: 'localhost',
+    host: "localhost",
     prettyUrls: false,
-    baseUrl: 'https://example.com',
+    baseUrl: "https://example.com",
     help: false,
-    version: false
+    version: false,
   };
   
   for (let i = 0; i < argv.length; i++) {
@@ -31,7 +32,19 @@ export function parseArgs(argv) {
     
     // Check for unknown commands (first non-option argument)
     if (!arg.startsWith('-') && !args.command) {
-      args.command = arg; // Set unknown command to be handled by CLI
+      if (arg !== 'build' && arg !== 'watch' && arg !== 'serve') {
+        throw new DompileError(
+          `Unknown command: ${arg}`,
+          null,
+          null,
+          [
+            'Use --help to see valid commands',
+            'Check for typos in the command name',
+            'Refer to the documentation for supported commands'
+          ]
+        );
+      }
+      args.command = arg;
       continue;
     }
     
@@ -105,7 +118,17 @@ export function parseArgs(argv) {
     
     // Unknown arguments
     if (arg.startsWith('-')) {
-      throw new Error(`Unknown option: ${arg}`);
+      // Use DompileError for consistent CLI exit code
+      throw new DompileError(
+        `Unknown option: ${arg}`,
+        null,
+        null,
+        [
+          'Use --help to see valid options',
+          'Check for typos in the option name',
+          'Refer to the documentation for supported flags'
+        ]
+      );
     }
   }
   
