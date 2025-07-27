@@ -1,6 +1,8 @@
-# <img style="height: 32px" src="example/src/imgs/green-icon-64.png" /> dompile
+# dompile - an SSG for a more peaceful future
 
-A modern,  lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and navigation across multiple pages!
+![dompile banner](example/src/imgs/green-banner-800.png)
+
+A modern,  lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture-no more copying and pasting headers, footers, and navigation across multiple pages!
 
 ## ✨ Perfect for Frontend Developers
 
@@ -9,7 +11,7 @@ A modern,  lightweight static site generator that brings the power of server-sid
 - **Live Development**: Built-in dev server with live reload via Server-Sent Events
 - **Multi-Format Support**: HTML, Markdown with frontmatter, and static assets
 - **SEO Optimized**: Automatic sitemap generation and head injection
-- **Framework-Free**: Pure HTML and CSS output—no build complexity or JavaScript frameworks required
+- **Framework-Free**: Pure HTML and CSS output-no build complexity or JavaScript frameworks required
 - **Minimal Dependencies**: Just 3 dependencies (chokidar, markdown-it, gray-matter)
 
 ## 🚀 Quick Start
