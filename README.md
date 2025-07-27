@@ -1,4 +1,4 @@
-# DOMpile 🍪
+# 🌱 dompile
 
 A modern, lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and navigation across multiple pages!
 
@@ -16,15 +16,15 @@ A modern, lightweight static site generator that brings the power of server-side
 
 ```bash
 # Install globally
-npm install -g dompile
+npm install -g dompile/cli
 
 # Simple usage with defaults (src → dist)
 dompile build                    # Build from src/ to dist/
 dompile serve                    # Serve with live reload on port 3000
 
 # Or use with npx
-npx dompile build
-npx dompile serve
+npx dompile/cli build
+npx dompile/cli serve
 
 # Advanced usage with custom options
 dompile build --pretty-urls --base-url https://mysite.com
@@ -36,21 +36,20 @@ dompile serve --port 8080
 ```
 my-site/
 ├── src/                     # Source directory (default)
-│   ├── .components/        # Reusable components and includes (default: .components, relative to source)
+│   ├── .components/        # Reusable components and includes (default: src/.components)
 │   │   ├── header.html
 │   │   ├── footer.html
 │   │   ├── head.html       # Auto-injected into all pages
 │   │   └── button.html
-│   ├── .layouts/           # Layout templates (default: .layouts, relative to source)
+│   ├── .layouts/           # Layout templates (default: src/.layouts)
 │   │   └── base.html
-│   ├── pages/
-│   │   ├── index.html
-│   │   ├── about.md        # Markdown with frontmatter
-│   │   └── contact.html
 │   ├── css/
 │   │   └── style.css
 │   └── images/
-│       └── logo.png
+│   |    └── logo.png
+│   ├── index.html
+│   ├── about.md        # Markdown with frontmatter
+│   └── contact.html
 ├── dist/                   # Output directory (default)
 │   ├── sitemap.xml        # Auto-generated
 │   └── ...
@@ -107,17 +106,17 @@ Create layout templates with variable substitution:
 <!-- layout.html -->
 <!DOCTYPE html>
 <html>
-<head>
-  <title>{{ title }} - My Site</title>
-  <meta name="description" content="{{ description }}">
-</head>
-<body>
-  <!--#include virtual="/.components/header.html" -->
-  <main>
-   <slot></slot>
-  </main>
-  <!--#include virtual="/.components/footer.html" -->
-</body>
+  <head>
+    <title>{{ title }} - My Site</title>
+    <meta name="description" content="{{ description }}" />
+  </head>
+  <body>
+    <!--#include virtual="/.components/header.html" -->
+    <main>
+      <slot></slot>
+    </main>
+    <!--#include virtual="/.components/footer.html" -->
+  </body>
 </html>
 ```
 
@@ -131,7 +130,7 @@ Built-in development server with live reload:
 
 ```bash
 # Start dev server with live reload
-dompile serve --source src --output dist --port 3000
+dompile serve
 
 # Server features:
 # - Live reload via Server-Sent Events
@@ -165,11 +164,13 @@ dompile serve --source src --output dist --port 3000
 ## 🎯 Key Features
 
 ### ⚡ Incremental Builds
+
 - Only rebuilds files that have changed or are affected by changes
 - Smart dependency tracking for includes and partials
 - Fast rebuilds even for large sites
 
 ### 📄 Markdown Support
+
 - Full markdown processing with markdown-it
 - YAML frontmatter for metadata
 - Automatic table of contents generation
@@ -178,12 +179,14 @@ dompile serve --source src --output dist --port 3000
 - Include processing within markdown
 
 ### 🎨 Asset Management
+
 - Smart asset copying - only copies referenced assets
 - Automatic asset discovery from HTML/CSS references
 - Maintains directory structure in output
 - Supports images, CSS, JS, fonts, and other media
 
 ### 🔍 SEO Features
+
 - Automatic XML sitemap generation
 - SEO metadata (priority, changefreq, lastmod)
 - Head injection for global meta tags and analytics
@@ -191,35 +194,12 @@ dompile serve --source src --output dist --port 3000
 - Frontmatter integration for custom metadata
 
 ### 🛠️ Developer Experience
+
 - Live reload with Server-Sent Events
 - Comprehensive error messages with file context
 - Dependency tracking and change impact analysis
 - Built-in development server
 - Docker support with multi-stage builds
-
-## 🌟 Example Projects
-
-### Basic HTML Site
-```bash
-# Clone the basic example
-git clone https://github.com/username/dompile
-cd dompile/examples/basic
-dompile serve --source src --port 3000
-```
-
-### Markdown Blog
-```bash
-# Use markdown example
-cd examples/markdown
-dompile build --source . --output dist --pretty-urls
-```
-
-### DOM Mode (v0.5 Preview)
-```bash
-# See the future of dompile templating
-cd examples/dom-mode
-# DOM Mode coming in v0.5 with <template> and <slot> syntax
-```
 
 ## 🐳 Docker Support
 
@@ -227,10 +207,10 @@ cd examples/dom-mode
 
 ```bash
 # Build and serve with Docker
-docker run --rm -p 8080:80 -v $(pwd)/src:/site dompile
+docker run --rm -p 8080:80 -v $(pwd)/src:/site itlackey/dompile
 
 # Development with live reload
-docker run --rm -p 3000:3000 -v $(pwd)/src:/site dompile \
+docker run --rm -p 3000:3000 -v $(pwd)/src:/site itlackey/dompile \
   dompile serve --source /site --output /var/www/html --port 3000 --host 0.0.0.0
 ```
 
@@ -238,7 +218,7 @@ docker run --rm -p 3000:3000 -v $(pwd)/src:/site dompile \
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 services:
   dompile:
     build: .
@@ -267,7 +247,7 @@ services:
 
 ## 🧪 Testing
 
-DOMpile has comprehensive test coverage:
+dompile has comprehensive test coverage:
 
 - **72 tests passing** across unit and integration suites
 - **Security tests**: Path traversal and validation
@@ -278,12 +258,13 @@ DOMpile has comprehensive test coverage:
 ## 🔗 Cross-Platform Support
 
 - **Node.js** 14+ (native ESM support)
-- **Bun**: `bun run dompile serve` (faster execution)
-- **Deno**: `deno run --allow-read --allow-write --allow-net npm:dompile`
+- **Bun**: `bun run dompile/cli serve` (faster execution)
+- **Deno**: `deno run --allow-read --allow-write --allow-net npm:dompile/cli`
 
 ## 🗺️ Roadmap
 
 ### ✅ Completed (v0.4)
+
 - Apache SSI includes with dependency tracking
 - Markdown processing with frontmatter and layouts
 - Live reload development server
@@ -294,11 +275,13 @@ DOMpile has comprehensive test coverage:
 - **DOM Mode**: Modern `<template>` and `<slot>` syntax
 
 ### In Progress (v0.5)
+
 - Remove the need for build subcommand
 - Fix issues with default layout
 - Simplify and clean up code base
 
 ### 🔮 Future (v0.6+)
+
 - Canonical URL generation and link rewriting
 - Enhanced SEO features (Open Graph, JSON-LD)
 - Dead link detection
@@ -312,8 +295,8 @@ We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for deta
 ### Development Setup
 
 ```bash
-git clone https://github.com/username/dompile
-cd dompile
+git clone https://github.com/dompile/cli
+cd cli
 npm install
 npm test
 npm run build

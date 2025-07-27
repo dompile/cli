@@ -16,10 +16,10 @@
   },
   "scripts": {
     "test": "node --test test/**/*.test.js",
-    "watch": "node bin/cli.js watch --source examples/basic/src --output examples/basic/dist",
-    "serve": "node bin/cli.js serve --source examples/basic/dist --port 3000",
+    "watch": "node bin/cli.js watch --source example/src --output example/dist",
+    "serve": "node bin/cli.js serve --source example/dist --port 3000",
     "example": "npm run build && npm run serve",
-    "build": "node bin/cli.js build --source examples/basic/src --output  examples/basic/dist"
+    "build": "node bin/cli.js build --source example/src --output example/dist"
   },
   "keywords": [
     "static-site-generator",
