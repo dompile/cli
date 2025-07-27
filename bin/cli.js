@@ -24,9 +24,10 @@ async function main() {
       process.exit(0);
     }
     
+    // Default to build command if none specified
     if (!args.command) {
-      showHelp();
-      process.exit(0);
+      args.command = 'build';
+      logger.info('No command specified, defaulting to build');
     }
     
     // Execute commands
@@ -102,19 +103,18 @@ function showHelp() {
   console.log(`
 dompile v${VERSION}
 
-Usage: dompile <command> [options]
+Usage: dompile [command] [options]
 
 Commands:
-  build     Build static site from source files
+  build     Build static site from source files (default)
   watch     Watch files and rebuild on changes
   serve     Start development server with live reload
 
 Options:
   --source, -s      Source directory (default: src)
   --output, -o      Output directory (default: dist)
-  --layouts         Layouts directory (default: .layouts, relative to source)
-  --components      Components directory (default: .components, relative to source)
-  --head            Custom head include file path
+  --layouts, -l     Layouts directory (default: .layouts, relative to source)
+  --components, -c  Components directory (default: .components, relative to source)
   --port, -p        Server port (default: 3000)
   --host            Server host (default: localhost)
   --pretty-urls     Generate pretty URLs (about.md → about/index.html)
@@ -123,12 +123,12 @@ Options:
   --version, -v     Show version number
 
 Examples:
-  dompile build                           # Uses all defaults (src → dist)
+  dompile                                 # Build with defaults (src → dist)
+  dompile build                           # Explicit build command
   dompile serve                           # Serve with live reload on port 3000
   dompile build --pretty-urls
   dompile build --base-url https://mysite.com
   dompile serve --port 8080
-  dompile build --head common/head.html
 `);
 }
 

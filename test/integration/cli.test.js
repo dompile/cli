@@ -81,10 +81,20 @@ describe('CLI integration', () => {
     assert(result.stdout.includes('watch'));
   });
   
-  it('should show help when no command provided', async () => {
-    const result = await runCLI([]);
+  it('should run build when no command is provided', async () => {
+    const result = await runCLI([], { cwd: sourceDir });
     assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Usage: dompile'));
+    assert(result.stdout.includes('Building static site'));
+    assert(result.stdout.includes('Build completed successfully'));
+
+    // Verify output files
+    await fs.access(path.join(outputDir, 'index.html'));
+    await fs.access(path.join(outputDir, 'main.css'));
+
+    // Verify content processing
+    const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
+    assert(indexContent.includes('<header><h1>CLI Test</h1></header>'));
+    assert(indexContent.includes('<meta charset="UTF-8">'));
   });
   
   it('should build site with build command', async () => {
@@ -178,23 +188,6 @@ describe('CLI integration', () => {
     await fs.access(path.join(outputDir, 'index.html'));
   });
   
-  it('should work with custom head file', async () => {
-    // Create custom head file
-    const customHeadPath = path.join(sourceDir, 'custom-head.html');
-    await fs.writeFile(customHeadPath, '<meta name="custom" content="test">');
-    
-    const result = await runCLI([
-      'build',
-      '--source', sourceDir,
-      '--output', outputDir,
-      '--head', customHeadPath
-    ]);
-    
-    assert.strictEqual(result.exitCode, 0);
-    
-    const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
-    assert(indexContent.includes('<meta name="custom" content="test">'));
-  });
   
   it('should work with simplified usage (no arguments)', async () => {
     // Create default directory structure in current working directory for this test

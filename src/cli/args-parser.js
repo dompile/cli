@@ -11,7 +11,6 @@ export function parseArgs(argv) {
     output: "dist",
     layouts: ".layouts",
     components: ".components",
-    head: null,
     port: 3000,
     host: "localhost",
     prettyUrls: false,
@@ -72,23 +71,18 @@ export function parseArgs(argv) {
       continue;
     }
     
-    if (arg === '--layouts' && nextArg) {
+    if ((arg === '--layouts' || arg === '-l') && nextArg) {
       args.layouts = nextArg;
       i++;
       continue;
     }
     
-    if (arg === '--components' && nextArg) {
+    if ((arg === '--components' || arg === '-c') && nextArg) {
       args.components = nextArg;
       i++;
       continue;
     }
     
-    if (arg === '--head' && nextArg) {
-      args.head = nextArg;
-      i++;
-      continue;
-    }
     
     if ((arg === '--port' || arg === '-p') && nextArg) {
       args.port = parseInt(nextArg, 10);

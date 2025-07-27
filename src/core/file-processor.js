@@ -6,7 +6,6 @@
 import fs from 'fs/promises';
 import path from 'path';
 // processIncludes is now handled by unified-html-processor
-import { getHeadSnippet, injectHeadContent } from './head-injector.js';
 import { DependencyTracker } from './dependency-tracker.js';
 import { AssetTracker } from './asset-tracker.js';
 import { 
@@ -35,6 +34,7 @@ import {
 } from './unified-html-processor.js';
 import { FileSystemError, BuildError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { getBaseUrlFromPackage } from '../utils/package-reader.js';
 
 /**
  * Cache for tracking file modification times for incremental builds
@@ -49,7 +49,6 @@ const DEFAULT_OPTIONS = {
   output: 'dist',
   components: '.components',
   layouts: '.layouts',
-  head: null,
   clean: true,
   prettyUrls: false,
   baseUrl: 'https://example.com'
@@ -64,7 +63,6 @@ const DEFAULT_OPTIONS = {
  * @param {string} [options.source='src'] - Source directory path
  * @param {string} [options.output='dist'] - Output directory path
  * @param {string} [options.components='src/.components'] - Components directory path
- * @param {string} [options.head=null] - Custom head file path (overrides convention)
  * @param {boolean} [options.clean=true] - Whether to clean output directory before build
  * @returns {Promise<Object>} Build results with statistics and dependency tracker
  * @returns {number} returns.processed - Number of HTML pages processed
@@ -80,11 +78,11 @@ const DEFAULT_OPTIONS = {
  * const result = await build({ source: 'src', output: 'dist' });
  * console.log(`Built ${result.processed} pages in ${result.duration}ms`);
  * 
- * // Build with custom head file
+ * // Build with custom options
  * const result = await build({ 
  *   source: 'src', 
  *   output: 'public',
- *   head: 'common/global-head.html'
+ *   prettyUrls: true
  * });
  */
 export async function build(options = {}) {
@@ -112,12 +110,6 @@ export async function build(options = {}) {
     
     // Ensure output directory exists
     await fs.mkdir(outputRoot, { recursive: true });
-    
-    // Load head snippet
-    const headSnippet = await getHeadSnippet(sourceRoot, config.components, config.head);
-    if (headSnippet) {
-      logger.info('Loaded global head snippet');
-    }
     
     // Initialize dependency and asset trackers
     const dependencyTracker = new DependencyTracker();
@@ -175,7 +167,6 @@ export async function build(options = {}) {
               filePath, 
               sourceRoot, 
               outputRoot, 
-              headSnippet,
               dependencyTracker,
               assetTracker,
               config
@@ -190,7 +181,6 @@ export async function build(options = {}) {
             filePath,
             sourceRoot,
             outputRoot,
-            headSnippet,
             layoutContent,
             assetTracker,
             config.prettyUrls,
@@ -258,9 +248,14 @@ export async function build(options = {}) {
     
     // Generate sitemap.xml
     try {
+      // Resolve baseUrl: CLI arg → package.json homepage → default
+      const baseUrl = config.baseUrl !== 'https://example.com' 
+        ? config.baseUrl 
+        : await getBaseUrlFromPackage(sourceRoot, config.baseUrl);
+        
       const pageInfo = extractPageInfo(processedFiles, sourceRoot, outputRoot, config.prettyUrls);
       const enhancedPageInfo = enhanceWithFrontmatter(pageInfo, frontmatterData);
-      const sitemapContent = generateSitemap(enhancedPageInfo, config.baseUrl);
+      const sitemapContent = generateSitemap(enhancedPageInfo, baseUrl);
       await writeSitemap(sitemapContent, outputRoot);
     } catch (error) {
       logger.error(`Error generating sitemap: ${error.message}`);
@@ -323,9 +318,6 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
     const tracker = dependencyTracker || new DependencyTracker();
     const assets = assetTracker || new AssetTracker();
     
-    // Load head snippet
-    const headSnippet = await getHeadSnippet(sourceRoot, config.components, config.head);
-    
     // Determine what files need rebuilding
     const filesToRebuild = await getFilesToRebuild(sourceRoot, changedFile, tracker, config);
     
@@ -349,7 +341,7 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
         
         if (isHtmlFile(filePath)) {
           if (!isPartialFile(filePath, config)) {
-            await processHtmlFile(filePath, sourceRoot, outputRoot, headSnippet, tracker, assets, config);
+            await processHtmlFile(filePath, sourceRoot, outputRoot, tracker, assets, config);
             results.processed++;
             logger.debug(`Rebuilt HTML: ${relativePath}`);
           }
@@ -365,7 +357,7 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
             }
           }
           
-          await processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet, layoutContent, assets, config.prettyUrls, config.layouts);
+          await processMarkdownFile(filePath, sourceRoot, outputRoot, layoutContent, assets, config.prettyUrls, config.layouts);
           results.processed++;
           logger.debug(`Rebuilt Markdown: ${relativePath}`);
         } else {
@@ -599,14 +591,13 @@ function createBasicHtmlStructure(content, title, excerpt) {
  * @param {string} filePath - Path to Markdown file
  * @param {string} sourceRoot - Source root directory
  * @param {string} outputRoot - Output root directory
- * @param {string|null} headSnippet - Head snippet to inject
  * @param {string|null} layoutContent - Layout template content
  * @param {AssetTracker} assetTracker - Asset tracker instance
  * @param {boolean} prettyUrls - Whether to generate pretty URLs
  * @param {string} layoutsDir - Layouts directory name
  * @returns {Promise<Object|null>} Frontmatter data or null
  */
-async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet, layoutContent, assetTracker, prettyUrls = false, layoutsDir = '.layouts') {
+async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutContent, assetTracker, prettyUrls = false, layoutsDir = '.layouts') {
   // Read markdown content
   let markdownContent;
   try {
@@ -629,18 +620,23 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet
   // Generate table of contents
   const tableOfContents = generateTableOfContents(htmlWithAnchors);
   
-  // Determine if layout should be applied
+  // Determine layout application strategy
   const metadata = { frontmatter, title, excerpt, tableOfContents };
   let finalContent;
   
   // Check if content already has <html> element
   const contentHasHtml = hasHtmlElement(htmlWithAnchors);
   
-  if (layoutContent && !contentHasHtml) {
-    // Apply layout only if content doesn't have <html> element
+  if (contentHasHtml) {
+    // Content already has complete HTML structure, use as-is
+    finalContent = htmlWithAnchors;
+    logger.debug('Using content as-is (contains <html> element)');
+  } else if (layoutContent) {
+    // Apply specified layout when content doesn't have <html> element
     finalContent = wrapInLayout(htmlWithAnchors, metadata, layoutContent);
-  } else if (!contentHasHtml) {
-    // Check if default layout exists and apply it only if no <html> element
+    logger.debug('Applied specified layout');
+  } else {
+    // No layout specified, check for default layout
     const hasDefault = await hasDefaultLayout(sourceRoot, layoutsDir);
     if (hasDefault) {
       // Load and apply default layout
@@ -648,23 +644,18 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet
       try {
         const defaultLayoutContent = await fs.readFile(defaultLayoutPath, 'utf-8');
         finalContent = wrapInLayout(htmlWithAnchors, metadata, defaultLayoutContent);
+        logger.debug('Applied default layout');
       } catch (error) {
         logger.warn(`Could not read default layout: ${error.message}`);
-        // Fallback to basic HTML structure
+        // Fallback: only create basic HTML if layout is not specified, default not found, and no <html> element
         finalContent = createBasicHtmlStructure(htmlWithAnchors, title, excerpt);
+        logger.debug('Created basic HTML structure (default layout failed)');
       }
     } else {
-      // No layout available, create basic HTML structure
+      // No layout specified, no default layout found, no <html> element → create basic HTML
       finalContent = createBasicHtmlStructure(htmlWithAnchors, title, excerpt);
+      logger.debug('Created basic HTML structure (no layout available)');
     }
-  } else {
-    // Content already has <html> element, use as-is
-    finalContent = htmlWithAnchors;
-  }
-  
-  // Inject head content if available
-  if (headSnippet) {
-    finalContent = injectHeadContent(finalContent, headSnippet);
   }
   
   // Track asset references in the final content
@@ -691,11 +682,10 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, headSnippet
  * @param {string} filePath - Path to HTML file
  * @param {string} sourceRoot - Source root directory
  * @param {string} outputRoot - Output root directory
- * @param {string|null} headSnippet - Head snippet to inject
  * @param {DependencyTracker} dependencyTracker - Dependency tracker instance
  * @param {AssetTracker} assetTracker - Asset tracker instance
  */
-async function processHtmlFile(filePath, sourceRoot, outputRoot, headSnippet, dependencyTracker, assetTracker, config = {}) {
+async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTracker, assetTracker, config = {}) {
   // Read HTML content
   let htmlContent;
   try {
@@ -715,11 +705,6 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, headSnippet, de
     dependencyTracker,
     unifiedConfig
   );
-  
-  // Inject head content
-  processedContent = headSnippet ? 
-    injectHeadContent(processedContent, headSnippet) : 
-    processedContent;
   
   // Track asset references in the final content
   if (assetTracker) {

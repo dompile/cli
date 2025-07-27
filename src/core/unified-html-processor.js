@@ -200,8 +200,11 @@ async function processTemplateExtends(
   if (templatePath.startsWith("/")) {
     // Absolute path from source root
     resolvedTemplatePath = path.join(sourceRoot, templatePath.substring(1));
+  } else if (templatePath.includes('/')) {
+    // Already includes directory structure, use from source root
+    resolvedTemplatePath = path.join(sourceRoot, templatePath);
   } else {
-    // Relative to layouts directory
+    // Bare filename, relative to layouts directory
     resolvedTemplatePath = path.join(
       sourceRoot,
       config.layoutsDir,

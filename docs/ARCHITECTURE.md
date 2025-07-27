@@ -20,14 +20,14 @@ DOMpile is a modern static site generator that processes HTML files with Apache 
 
 - **Live Development**: Built-in dev server with live reload
 
-- **SEO Optimized**: Automatic sitemap generation and head injection
+- **SEO Optimized**: Automatic sitemap generation
 
 ## System Architecture
 
 ### Build Mode Architecture
 ```
-Source Files → Include Processor → Head Injector → Static Files → Output
-     ↓              ↓                 ↓              ↓           ↓
+Source Files → Include Processor → Static Files → Output
+     ↓              ↓                 ↓           ↓
 Dependencies → Dependency Tracker → File Processor → Assets → Complete Site
      ↓              ↓                 ↓              ↓           ↓
   Markdown → Markdown Processor → Layout System → Sitemap → sitemap.xml
@@ -51,7 +51,6 @@ src/
 
 ├── core/
 │   ├── include-processor.js   # HTML include expansion logic
-│   ├── head-injector.js      # Global head content injection
 │   ├── file-processor.js     # File system operations and build logic
 │   ├── dependency-tracker.js # Include dependency mapping
 │   ├── asset-tracker.js      # Asset reference tracking
@@ -81,12 +80,6 @@ src/
 - Recursive processing with circular dependency detection using Set-based tracking
 - 10-level depth limit prevents runaway recursion
 - Security: Path traversal prevention, files must be within source tree
-
-### Head Injection (`src/core/head-injector.js`)  
-- Convention-based discovery: looks for `head.html`, `_head.html` in includes/ or source root
-- CLI override: `--head custom/path.html`
-- Injection point: immediately after `<head>` opening tag
-- Preserves existing title/meta tags while adding global styles/scripts
 
 ### Dependency Tracking (`src/core/dependency-tracker.js`)
 - Bidirectional mapping: `includesInPage` (page → includes) and `pagesByInclude` (include → pages)
@@ -149,7 +142,6 @@ src/
 - `--source, -s`: Source directory (default: src)
 - `--output, -o`: Output directory (default: dist)
 - `--includes, -i`: Includes directory (default: includes)
-- `--head`: Custom head include file path
 - `--port, -p`: Server port for serve command (default: 3000)
 - `--host`: Server host for serve command (default: localhost)
 - `--pretty-urls`: Generate pretty URLs (about.md → about/index.html)
@@ -194,7 +186,6 @@ src/
 test/
 ├── unit/
 │   ├── include-processor.test.js
-│   ├── head-injector.test.js
 │   ├── args-parser.test.js
 │   └── path-resolver.test.js
 ├── integration/
@@ -261,7 +252,7 @@ DOMpile's architecture delivers a powerful yet simple static site generator that
 Key architectural strengths:
 - **Performance**: Incremental builds and smart asset tracking
 - **Developer Experience**: Live reload and comprehensive error handling  
-- **SEO**: Automatic sitemap generation and head injection
+- **SEO**: Automatic sitemap generation
 - **Flexibility**: Multiple content formats with consistent processing
 - **Security**: Path traversal prevention and input validation
 - **Maintainability**: Clear module separation and comprehensive testing
