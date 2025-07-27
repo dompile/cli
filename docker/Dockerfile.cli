@@ -1,0 +1,8 @@
+# Simple Docker container for dompile CLI
+FROM node:lts
+
+# Install dompile CLI globally
+RUN npm install -g dompile/cli
+
+# Set default command to dompile
+CMD ["dompile"]

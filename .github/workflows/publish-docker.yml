@@ -24,15 +24,42 @@ jobs:
       - name: Extract version from package.json
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-        
-      - name: Build and push Docker image
+      
+      - name: Build and push Docker image for CLI
         uses: docker/build-push-action@v5
         with:
+          file: docker/Dockerfile.cli
           context: .
           push: true
           tags: |
-            itlackey/dompile:latest
-            itlackey/dompile:${{ steps.package-version.outputs.version }}
+            itlackey/dompile-cli:latest
+            itlackey/dompile-cli:${{ steps.package-version.outputs.version }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Docker image for NGINX
+        uses: docker/build-push-action@v5
+        with:
+          file: docker/Dockerfile.nginx
+          context: .
+          push: true
+          tags: |
+            itlackey/dompile-nginx:latest
+            itlackey/dompile-nginx:${{ steps.package-version.outputs.version }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Docker image for Apache
+        uses: docker/build-push-action@v5
+        with:
+          file: docker/Dockerfile.apache
+          context: .
+          push: true
+          tags: |
+            itlackey/dompile-apache:latest
+            itlackey/dompile-apache:${{ steps.package-version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max

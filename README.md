@@ -20,7 +20,7 @@ A modern,  lightweight static site generator that brings the power of server-sid
 # Install globally
 npm install -g dompile/cli
 
-# Simple usage with defaults (src → dist)
+# Simple usage with defaults (src => dist)
 dompile build                    # Build from src/ to dist/
 dompile serve                    # Serve with live reload on port 3000
 
@@ -158,7 +158,7 @@ dompile serve
 - `--head`: Custom head include file path
 - `--port, -p`: Development server port (default: `3000`)
 - `--host`: Development server host (default: `localhost`)
-- `--pretty-urls`: Generate pretty URLs (about.md → about/index.html)
+- `--pretty-urls`: Generate pretty URLs (about.md => about/index.html)
 - `--base-url`: Base URL for sitemap.xml (default: `https://example.com`)
 - `--help, -h`: Show help message
 - `--version, -v`: Show version
@@ -203,43 +203,6 @@ dompile serve
 - Built-in development server
 - Docker support with multi-stage builds
 
-## 🐳 Docker Support
-
-### Quick Start with Docker
-
-```bash
-# Build and serve with Docker
-docker run --rm -p 8080:80 -v $(pwd)/src:/site itlackey/dompile
-
-# Development with live reload
-docker run --rm -p 3000:3000 -v $(pwd)/src:/site itlackey/dompile \
-  dompile serve --source /site --output /var/www/html --port 3000 --host 0.0.0.0
-```
-
-### Docker Compose
-
-```yaml
-# docker-compose.yml
-version: "3.8"
-services:
-  dompile:
-    build: .
-    ports:
-      - "8080:80"
-    volumes:
-      - ./src:/site
-    environment:
-      - NODE_ENV=production
-```
-
-## 📊 Performance
-
-- **Fast builds**: Typical sites build in under 50ms
-- **Incremental rebuilds**: Only processes changed files
-- **Memory efficient**: Streaming operations, no full-site loading
-- **Smart asset tracking**: Only copies referenced assets
-- **Optimized file watching**: Debounced with selective rebuilding
-
 ## 🔒 Security
 
 - **Path traversal prevention**: All file operations validated against source boundaries
@@ -251,7 +214,6 @@ services:
 
 dompile has comprehensive test coverage:
 
-- **72 tests passing** across unit and integration suites
 - **Security tests**: Path traversal and validation
 - **CLI tests**: All commands and options
 - **Build process tests**: Complete workflows
@@ -301,12 +263,8 @@ git clone https://github.com/dompile/cli
 cd cli
 npm install
 npm test
-npm run build
+npm run example
 ```
-
-## 📜 License
-
-MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
