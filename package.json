@@ -7,6 +7,9 @@
   "bin": {
     "dompile": "bin/cli.js"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=14.0.0"
   },
