@@ -69,7 +69,7 @@ describe('CLI integration', () => {
   it('should show version with --version flag', async () => {
     const result = await runCLI(['--version']);
     assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('dompile v0.4.0'));
+    assert(result.stdout.includes('dompile v0.5.2'));
   });
   
   it('should show help with --help flag', async () => {
@@ -282,13 +282,13 @@ function runCLI(args, options = {}) {
     const timeoutId = setTimeout(() => {
       if (!resolved) {
         resolved = true;
-        child.kill('SIGTERM');
+        child.kill('SIGKILL');
         resolve({
           exitCode: -1,
           stdout,
-          stderr: stderr + '\nTest timeout'
+          stderr: stderr + '\nTest timeout after 5000ms'
         });
       }
-    }, 10000);
+    }, 5000);
   });
 }

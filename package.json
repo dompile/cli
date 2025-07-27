@@ -19,7 +19,8 @@
     "watch": "node bin/cli.js watch --source example/src --output example/dist",
     "serve": "node bin/cli.js serve --source example/dist --port 3000",
     "example": "npm run build && npm run serve",
-    "build": "node bin/cli.js build --source example/src --output example/dist"
+    "build": "node bin/cli.js build --source example/src --output example/dist",
+    "build:advanced": "node ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/components/ -l example/advanced/src/layouts/"
   },
   "keywords": [
     "static-site-generator",
@@ -40,7 +41,7 @@
   "bugs": {
     "url": "https://github.com/dompile/cli/issues"
   },
-  "homepage": "https://github.com/dompile/cli#readme",
+  "homepage": "https://dompile.github.io/website",
   "dependencies": {
     "chokidar": "^3.5.3",
     "gray-matter": "^4.0.3",

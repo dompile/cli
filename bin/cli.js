@@ -7,7 +7,7 @@ import { DevServer } from '../src/server/dev-server.js';
 import { liveReload } from '../src/server/live-reload.js';
 import { logger } from '../src/utils/logger.js';
 
-const VERSION = '0.4.0';
+const VERSION = '0.5.2';
 
 async function main() {
   try {

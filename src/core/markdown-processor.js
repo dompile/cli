@@ -116,7 +116,7 @@ export function wrapInLayout(html, metadata, layout) {
 </html>`;
   }
   
-  // Simple template replacement (can be enhanced with a proper template engine later)
+  // Simple template replacement
   let result = layout;
   
   // Replace content placeholder

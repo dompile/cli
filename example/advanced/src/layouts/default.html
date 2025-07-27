@@ -7,14 +7,12 @@
     <link rel="stylesheet" href="/styles/site.css">
   </head>
   <body>
-    <header>
-      <slot name="header"><h1>Default Header</h1></slot>
-    </header>
-    <main>
+    <include src="/components/header.html" />
+    <main class="default-layout">
       <slot></slot> <!-- unnamed slot receives default content -->
     </main>
     <footer>
-      <slot name="footer">© 2025</slot>
+      <slot name="footer">&copy; 2025</slot>
     </footer>
   </body>
 </html>

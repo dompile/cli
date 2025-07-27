@@ -1,4 +1,5 @@
-<div data-layout="/layouts/default.html">
+<div>
+  <!--Uses default layout since it is an html fragment and not data-layout attribute is provided -->
   <template data-slot="title">About DOM Mode</template>
   <template data-slot="header">
     <h1>About DOM Mode</h1>
@@ -33,8 +34,4 @@
     <li>Components are included with <code>&lt;include src="..." /&gt;</code></li>
     <li>Token replacement happens with <code>data-token</code> attributes</li>
   </ol>
-
-  <template data-slot="footer">
-    <p>Learn more about <a href="/">DOM Mode</a></p>
-  </template>
 </div>
