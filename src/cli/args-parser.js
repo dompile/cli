@@ -25,14 +25,28 @@ export function parseArgs(argv) {
     const arg = argv[i];
     const nextArg = argv[i + 1];
     
-    // Commands
+    // Commands (only at the beginning, before any options)
     if (arg === 'build' || arg === 'watch' || arg === 'serve') {
-      args.command = arg;
-      continue;
+      if (i === 0) {
+        args.command = arg;
+        continue;
+      } else {
+        // Command found after options, treat as unknown option
+        throw new DompileError(
+          `Unknown option: ${arg}`,
+          null,
+          null,
+          [
+            'Commands must be the first argument',
+            'Use --help to see valid options',
+            'Check for typos in the option name'
+          ]
+        );
+      }
     }
     
     // Check for unknown commands (first non-option argument)
-    if (!arg.startsWith('-') && !args.command) {
+    if (!arg.startsWith('-') && !args.command && i === 0) {
       if (arg !== 'build' && arg !== 'watch' && arg !== 'serve') {
         throw new DompileError(
           `Unknown command: ${arg}`,
@@ -133,6 +147,18 @@ export function parseArgs(argv) {
           'Use --help to see valid options',
           'Check for typos in the option name',
           'Refer to the documentation for supported flags'
+        ]
+      );
+    } else {
+      // Non-option argument that's not a command
+      throw new DompileError(
+        `Unknown option: ${arg}`,
+        null,
+        null,
+        [
+          'Commands must be the first argument',
+          'Use --help to see valid options',
+          'Check for typos in the argument'
         ]
       );
     }

@@ -134,7 +134,8 @@ export async function processIncludes(
       // Log error and provide helpful context
       logger.error(`Failed to process include: ${includePath} in ${filePath}`);
       logger.error(error.message);
-      
+     
+
       // Re-throw all errors to fail the build
       throw error;
     }

@@ -67,8 +67,6 @@ describe('Default Command Behavior', () => {
 
     it('should handle command at any position', () => {
       // Commands should only be first argument
-      const args = parseArgs(['--source', 'src', 'build']);
-      
       // This should be treated as an unknown argument, not a command
       assert.throws(() => {
         parseArgs(['--source', 'src', 'build']);

@@ -83,7 +83,7 @@ describe('CLI integration', () => {
   });
   
   it('should run build when no command is provided', async () => {
-    const result = await runCLI([], { cwd: sourceDir });
+    const result = await runCLI([], { cwd: testFixturesDir });
     assert.strictEqual(result.exitCode, 0);
     assert(result.stdout.includes('Building static site'));
     assert(result.stdout.includes('Build completed successfully'));
