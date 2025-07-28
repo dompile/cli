@@ -89,21 +89,22 @@ export async function build(options = {}) {
   const config = { ...DEFAULT_OPTIONS, ...options };
   const startTime = Date.now();
   
-  // Convert relative paths to absolute paths for proper partial file detection
-  if (config.components && !path.isAbsolute(config.components) && !config.components.startsWith('.')) {
-    config.components = path.resolve(config.components);
-  }
-  
-  if (config.layouts && !path.isAbsolute(config.layouts) && !config.layouts.startsWith('.')) {
-    config.layouts = path.resolve(config.layouts);
-  }
-  
   logger.info(`Building site from ${config.source} to ${config.output}`);
   
   try {
     // Resolve paths
     const sourceRoot = path.resolve(config.source);
     const outputRoot = path.resolve(config.output);
+    
+    // Convert relative paths to absolute paths for proper partial file detection
+    // If paths are relative and don't start with '.', join them with source root
+    if (config.components && !path.isAbsolute(config.components) && !config.components.startsWith('.')) {
+      config.components = path.join(sourceRoot, config.components);
+    }
+    
+    if (config.layouts && !path.isAbsolute(config.layouts) && !config.layouts.startsWith('.')) {
+      config.layouts = path.join(sourceRoot, config.layouts);
+    }
     
     // Validate source directory exists
     try {
@@ -133,9 +134,10 @@ export async function build(options = {}) {
       const isPartial = isPartialFile(file, config);
       return (isHtmlFile(file) && !isPartial) || (isMarkdownFile(file) && !isPartial);
     });
-    const assetFiles = sourceFiles.filter(file => 
-      !isHtmlFile(file) && !isMarkdownFile(file)
-    );
+    const assetFiles = sourceFiles.filter(file => {
+      const isPartial = isPartialFile(file, config);
+      return !isHtmlFile(file) && !isMarkdownFile(file) && !isPartial;
+    });
     
     const results = {
       processed: 0,

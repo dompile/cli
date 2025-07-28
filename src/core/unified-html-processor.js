@@ -136,13 +136,21 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
     const layoutElement = document.querySelector("[data-layout]");
     if (layoutElement) {
       const layoutAttr = layoutElement.getAttribute("data-layout");
-      return await processLayoutAttribute(
-        htmlContent,
-        layoutAttr,
-        filePath,
-        sourceRoot,
-        config
-      );
+      try {
+        return await processLayoutAttribute(
+          htmlContent,
+          layoutAttr,
+          filePath,
+          sourceRoot,
+          config
+        );
+      } catch (error) {
+        // Graceful degradation: if specific layout is missing, log warning and return original content
+        logger.warn(`Layout not found for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
+        // Remove data-layout attribute from content to avoid reprocessing
+        const contentWithoutLayout = htmlContent.replace(/\s*data-layout=["'][^"']*["']/gi, '');
+        return contentWithoutLayout;
+      }
     }
 
     // Check for root element, other than head or html. If no html tag exists,
@@ -152,18 +160,36 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
       document.documentElement.tagName.toLowerCase() !== "html"
     ) {
       // If no html tag, we assume a default layout is needed
-      const defaultLayoutPath = path.join(
-        sourceRoot,
-        config.layoutsDir,
-        config.defaultLayout
-      );
-      return await processLayoutAttribute(
-        htmlContent,
-        defaultLayoutPath,
-        filePath,
-        sourceRoot,
-        config
-      );
+      let defaultLayoutPath;
+      if (path.isAbsolute(config.layoutsDir)) {
+        // If layoutsDir is an absolute path (from CLI), use it directly
+        defaultLayoutPath = path.join(config.layoutsDir, config.defaultLayout);
+      } else {
+        // If layoutsDir is relative, join with sourceRoot
+        defaultLayoutPath = path.join(sourceRoot, config.layoutsDir, config.defaultLayout);
+      }
+      
+      try {
+        return await processLayoutAttribute(
+          htmlContent,
+          defaultLayoutPath,
+          filePath,
+          sourceRoot,
+          config
+        );
+      } catch (error) {
+        // Graceful degradation: if default layout is missing, wrap content in basic HTML
+        logger.warn(`Default layout not found for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Page</title>
+</head>
+<body>
+${htmlContent}
+</body>
+</html>`;
+      }
     }
 
     // If no layout, process any standalone slots

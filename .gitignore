@@ -79,3 +79,4 @@ coverage/
 CLAUDE.md
 .notes/
 .giv/config
+test/test-temp/

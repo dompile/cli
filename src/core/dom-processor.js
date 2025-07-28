@@ -33,11 +33,41 @@ export async function processDOMMode(pageContent, pagePath, sourceRoot, config =
     const document = dom.window.document;
     
     // Detect layout from root element
-    const layoutPath = await detectLayout(document, sourceRoot, domConfig);
-    logger.debug(`Using layout: ${layoutPath}`);
+    let layoutPath;
+    try {
+      layoutPath = await detectLayout(document, sourceRoot, domConfig);
+      logger.debug(`Using layout: ${layoutPath}`);
+    } catch (error) {
+      // Graceful degradation: if layout cannot be found, return content wrapped in basic HTML
+      logger.warn(`Layout not found for ${path.relative(sourceRoot, pagePath)}: ${error.message}`);
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Page</title>
+</head>
+<body>
+${pageContent}
+</body>
+</html>`;
+    }
     
     // Load layout content as string
-    const layoutContent = await fs.readFile(layoutPath, 'utf-8');
+    let layoutContent;
+    try {
+      layoutContent = await fs.readFile(layoutPath, 'utf-8');
+    } catch (error) {
+      // Graceful degradation: if layout file cannot be read, return content wrapped in basic HTML
+      logger.warn(`Could not read layout file ${layoutPath}: ${error.message}`);
+      return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Page</title>
+</head>
+<body>
+${pageContent}
+</body>
+</html>`;
+    }
     
     // Extract slot content from page
     const slotData = extractSlotData(document);
@@ -75,19 +105,30 @@ async function detectLayout(document, sourceRoot, config) {
         // Absolute path relative to source root
         const relativePath = layoutAttr.substring(1); // Remove leading slash
         layoutPath = path.join(sourceRoot, relativePath);
+        
+        // Security check - must be within source root for absolute paths
+        if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
+          throw new Error(`Layout path outside source directory: ${layoutAttr}`);
+        }
       } else {
         // Relative path within layouts directory
         if (path.isAbsolute(config.layoutsDir)) {
           // If layoutsDir is an absolute path (from CLI), use it directly
           layoutPath = path.join(config.layoutsDir, layoutAttr);
+          
+          // Security check - must be within the configured layouts directory
+          if (!isPathWithinDirectory(layoutPath, config.layoutsDir)) {
+            throw new Error(`Layout path outside layouts directory: ${layoutAttr}`);
+          }
         } else {
           // If layoutsDir is relative, join with sourceRoot
           layoutPath = path.join(sourceRoot, config.layoutsDir, layoutAttr);
+          
+          // Security check - must be within source root for relative paths
+          if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
+            throw new Error(`Layout path outside source directory: ${layoutAttr}`);
+          }
         }
-      }
-      
-      if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
-        throw new Error(`Layout path outside source directory: ${layoutAttr}`);
       }
       
       return layoutPath;
@@ -167,11 +208,24 @@ function applySlots(layoutContent, slotData) {
 }
 
 /**
- * Process includes in HTML content
+ * Process includes in HTML content (both SSI and <include> elements)
  */
 async function processIncludesInHTML(htmlContent, sourceRoot, config) {
+  // First, import and use the SSI include processor for <!--#include --> directives
+  const { processIncludes } = await import('./include-processor.js');
+  
+  // Process SSI includes first
+  let result = await processIncludes(
+    htmlContent,
+    null, // filePath not needed for this context 
+    sourceRoot,
+    new Set(),
+    0,
+    null // No dependency tracker needed
+  );
+  
+  // Then process <include> elements if any remain
   const includeRegex = /<include\s+([^>]+)\/?\s*>/gi;
-  let result = htmlContent;
   const allStyles = [];
   const allScripts = [];
   
