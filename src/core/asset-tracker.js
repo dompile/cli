@@ -37,12 +37,14 @@ export class AssetTracker {
       /<link[^>]+href=["']([^"']+\.css)["']/gi,
       // JavaScript files
       /<script[^>]+src=["']([^"']+\.js)["']/gi,
-      // Images
+      // Images in img tags
       /<img[^>]+src=["']([^"']+\.(png|jpg|jpeg|gif|svg|webp|ico))["']/gi,
+      // Link icons (favicon, apple-icon, etc.)
+      /<link[^>]+(?:rel=["'](?:icon|apple-touch-icon|shortcut icon)["'][^>]*href=["']([^"']+\.[^"']+)["']|href=["']([^"']+\.[^"']+)["'][^>]*rel=["'](?:icon|apple-touch-icon|shortcut icon)["'])/gi,
       // Background images in style attributes
       /style=["'][^"']*background-image:\s*url\(["']?([^"')]+)["']?\)/gi,
-      // Fonts
-      /@font-face[^}]*url\(["']?([^"')]+\.(woff2?|ttf|eot|otf))["']?\)/gi,
+      // Fonts in link tags
+      /<link[^>]+href=["']([^"']+\.(woff2?|ttf|eot|otf))["']/gi,
       // Video/audio sources
       /<(?:video|audio)[^>]+src=["']([^"']+\.(mp4|webm|ogg|mp3|wav))["']/gi,
       // Source elements
@@ -54,7 +56,10 @@ export class AssetTracker {
     for (const pattern of patterns) {
       let match;
       while ((match = pattern.exec(htmlContent)) !== null) {
-        const assetPath = match[1];
+        // Handle different capture groups - some patterns have multiple groups
+        let assetPath = match[1] || match[2] || match[3];
+        
+        if (!assetPath) continue;
         
         // Skip external URLs
         if (assetPath.startsWith('http://') || 
@@ -70,6 +75,61 @@ export class AssetTracker {
         
         // Resolve relative paths
         const resolvedPath = this.resolveAssetPath(assetPath, pagePath, sourceRoot);
+        if (resolvedPath) {
+          references.add(resolvedPath);
+        }
+      }
+    }
+
+    return Array.from(references);
+  }
+
+  /**
+   * Extract asset references from CSS content
+   * @param {string} cssContent - CSS content to analyze
+   * @param {string} cssPath - Path to the CSS file
+   * @param {string} sourceRoot - Source root directory
+   * @returns {string[]} Array of referenced asset paths
+   */
+  extractCssAssetReferences(cssContent, cssPath, sourceRoot) {
+    const references = new Set();
+    
+    // Patterns to match asset references in CSS
+    const patterns = [
+      // url() references
+      /url\(\s*["']?([^"')]+)["']?\s*\)/gi,
+      // @font-face src
+      /@font-face[^}]*src:\s*url\(\s*["']?([^"')]+)["']?\s*\)/gi,
+      // @import
+      /@import\s+(?:url\()?\s*["']([^"']+)["']?\s*\)?/gi
+    ];
+
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(cssContent)) !== null) {
+        const assetPath = match[1];
+        
+        if (!assetPath) continue;
+        
+        // Skip external URLs
+        if (assetPath.startsWith('http://') || 
+            assetPath.startsWith('https://') || 
+            assetPath.startsWith('//')) {
+          continue;
+        }
+        
+        // Skip data URLs
+        if (assetPath.startsWith('data:')) {
+          continue;
+        }
+        
+        // Skip CSS fragments (anchors)
+        if (assetPath.startsWith('#')) {
+          continue;
+        }
+        
+        // Resolve relative paths
+        const resolvedPath = this.resolveAssetPath(assetPath, cssPath, sourceRoot);
         if (resolvedPath) {
           references.add(resolvedPath);
         }
@@ -120,15 +180,36 @@ export class AssetTracker {
    * @param {string} htmlContent - HTML content to analyze
    * @param {string} sourceRoot - Source root directory
    */
-  recordAssetReferences(pagePath, htmlContent, sourceRoot) {
+  async recordAssetReferences(pagePath, htmlContent, sourceRoot) {
     // Clear existing references for this page
     this.clearPageAssetReferences(pagePath);
     
-    // Extract new references
+    // Extract new references from HTML
     const assets = this.extractAssetReferences(htmlContent, pagePath, sourceRoot);
     
-    // Record new references
+    // Also extract references from any CSS files referenced in the HTML
+    const cssAssets = new Set();
     for (const assetPath of assets) {
+      if (assetPath.endsWith('.css')) {
+        try {
+          const fs = await import('fs/promises');
+          const cssContent = await fs.default.readFile(assetPath, 'utf-8');
+          const cssReferences = this.extractCssAssetReferences(cssContent, assetPath, sourceRoot);
+          for (const cssRef of cssReferences) {
+            cssAssets.add(cssRef);
+          }
+        } catch (error) {
+          // CSS file might not exist or be readable, continue without error
+          logger.debug(`Could not read CSS file for asset extraction: ${assetPath}`);
+        }
+      }
+    }
+    
+    // Combine HTML and CSS asset references
+    const allAssets = [...assets, ...Array.from(cssAssets)];
+    
+    // Record new references
+    for (const assetPath of allAssets) {
       if (!this.assetReferences.has(assetPath)) {
         this.assetReferences.set(assetPath, []);
       }
@@ -136,11 +217,11 @@ export class AssetTracker {
       this.referencedAssets.add(assetPath);
     }
     
-    // Cache for this page
-    this.htmlAssetCache.set(pagePath, assets);
+    // Cache for this page (include both HTML and CSS references)
+    this.htmlAssetCache.set(pagePath, allAssets);
     
-    if (assets.length > 0) {
-      logger.debug(`Found ${assets.length} asset references in ${pagePath}`);
+    if (allAssets.length > 0) {
+      logger.debug(`Found ${allAssets.length} asset references in ${pagePath}`);
     }
   }
 

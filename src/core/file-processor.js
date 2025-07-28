@@ -670,7 +670,7 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutConte
   
   // Track asset references in the final content
   if (assetTracker) {
-    assetTracker.recordAssetReferences(filePath, finalContent, sourceRoot);
+    await assetTracker.recordAssetReferences(filePath, finalContent, sourceRoot);
   }
   
   // Generate output path with pretty URL support
@@ -718,7 +718,7 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTrack
   
   // Track asset references in the final content
   if (assetTracker) {
-    assetTracker.recordAssetReferences(filePath, processedContent, sourceRoot);
+    await assetTracker.recordAssetReferences(filePath, processedContent, sourceRoot);
   }
   
   // Write to output
