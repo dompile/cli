@@ -155,8 +155,8 @@ ${'<p>This is paragraph content that repeats many times to create a large file. 
         const result = await processIncludes(
           pageContent,
           path.join(sourceDir, `page-${page}.html`),
-          sourceDir,
-          dependencyTracker
+          sourceDir, // Use sourceDir instead of undefined sourceRoot
+          new Set() // Use a Set instead of DependencyTracker
         );
 
         assert(result.includes(`Page ${page}`));

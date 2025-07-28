@@ -20,8 +20,8 @@ import { FileSystemError } from '../utils/errors.js';
  */
 export async function processDOMMode(pageContent, pagePath, sourceRoot, config = {}) {
   const domConfig = { 
-    layoutsDir: 'layouts',
-    componentsDir: 'components', 
+    layoutsDir: '.layouts',
+    componentsDir: '.components', 
     defaultLayout: 'default.html',
     sourceRoot, 
     ...config 
@@ -312,8 +312,8 @@ export function shouldUseDOMMode(content) {
  */
 export function getDOMConfig(args = {}) {
   return {
-    layoutsDir: args.layoutsDir || 'layouts',
-    componentsDir: args.componentsDir || 'components',
+    layoutsDir: args.layoutsDir || '.layouts',
+    componentsDir: args.componentsDir || '.components',
     defaultLayout: args.defaultLayout || 'default.html'
   };
 }

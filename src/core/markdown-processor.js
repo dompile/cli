@@ -137,6 +137,9 @@ export function wrapInLayout(html, metadata, layout) {
   // Clean up unused placeholders
   result = result.replace(/\{\{[^}]*\}\}/g, '');
   
+  // Re-process anchor links after template variable replacement
+  result = addAnchorLinks(result);
+  
   return result;
 }
 

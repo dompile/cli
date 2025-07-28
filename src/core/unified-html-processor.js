@@ -94,9 +94,8 @@ export async function processHtmlUnified(
  * @returns {boolean} True if content has DOM templating
  */
 function hasDOMTemplating(content) {
-  // Check for template extends attribute or slot elements
+  // Check for slot elements or layout attributes
   return (
-    content.includes("extends=") ||
     content.includes("<slot") ||
     content.includes("<template") ||
     content.includes("data-layout=")
@@ -104,7 +103,7 @@ function hasDOMTemplating(content) {
 }
 
 /**
- * Process DOM templating features (template extends, slot replacement)
+ * Process DOM templating features (slot replacement and layout)
  * @param {string} htmlContent - HTML content with DOM templating
  * @param {string} filePath - Path to the current file
  * @param {string} sourceRoot - Source root directory
@@ -116,19 +115,6 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
     // Parse the HTML content
     const dom = new JSDOM(htmlContent, { contentType: "text/html" });
     const document = dom.window.document;
-
-    // Check for template extends
-    const templateElement = document.querySelector("template[extends]");
-    if (templateElement) {
-      const extendsPath = templateElement.getAttribute("extends");
-      return await processTemplateExtends(
-        htmlContent,
-        extendsPath,
-        filePath,
-        sourceRoot,
-        config
-      );
-    }
 
     // Check for layout attribute on any element
     const layoutElement = document.querySelector("[data-layout]");
@@ -143,11 +129,11 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
       );
     }
 
-    // Check for root element, other than head or html. If not html tag exists,
+    // Check for root element, other than head or html. If no html tag exists,
     // apply the default layout
     if (
       !document.documentElement ||
-      !document.documentElement.tagName.toLowerCase() === "html"
+      document.documentElement.tagName.toLowerCase() !== "html"
     ) {
       // If no html tag, we assume a default layout is needed
       const defaultLayoutPath = path.join(
@@ -157,14 +143,14 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
       );
       return await processLayoutAttribute(
         htmlContent,
-        layoutAttr,
+        defaultLayoutPath,
         filePath,
         sourceRoot,
         config
       );
     }
 
-    // If no template extends or layout, process any standalone slots
+    // If no layout, process any standalone slots
     if (htmlContent.includes("<slot")) {
       return processStandaloneSlots(htmlContent);
     }
@@ -176,128 +162,6 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
       `DOM templating processing failed: ${error.message}`,
       filePath
     );
-  }
-}
-
-/**
- * Process template extends functionality
- * @param {string} pageContent - Page HTML content
- * @param {string} templatePath - Path to template file
- * @param {string} filePath - Current file path
- * @param {string} sourceRoot - Source root directory
- * @param {Object} config - Processing configuration
- * @returns {Promise<string>} Processed HTML with template applied
- */
-async function processTemplateExtends(
-  pageContent,
-  templatePath,
-  filePath,
-  sourceRoot,
-  config
-) {
-  // Extract the original slot data from the page content
-  const originalSlotData = extractSlotData(pageContent);
-  
-  // Resolve the template and apply slots recursively
-  return await applyTemplateInheritance(originalSlotData, templatePath, filePath, sourceRoot, config);
-}
-
-/**
- * Apply template inheritance recursively, preserving slot application order
- * @param {Object} slotData - Slot data to apply
- * @param {string} templatePath - Path to the template to extend
- * @param {string} filePath - Current file path for relative path resolution
- * @param {string} sourceRoot - Source root directory
- * @param {Object} config - Processing configuration
- * @returns {Promise<string>} Final resolved template content
- */
-async function applyTemplateInheritance(slotData, templatePath, filePath, sourceRoot, config) {
-  // Resolve template path
-  let resolvedTemplatePath;
-  
-  if (templatePath.startsWith("/")) {
-    // Absolute path from source root
-    resolvedTemplatePath = path.join(sourceRoot, templatePath.substring(1));
-  } else if (templatePath.startsWith("../") || templatePath.startsWith("./")) {
-    // Relative path from current file's directory
-    const currentFileDir = path.dirname(filePath);
-    let candidatePath = path.resolve(currentFileDir, templatePath);
-    
-    // If the resolved path is outside the source root,
-    // try resolving from the components directory instead
-    // This handles cases where templates in included components have relative paths
-    if (!candidatePath.startsWith(sourceRoot + path.sep) && candidatePath !== sourceRoot) {
-      const componentsDir = path.join(sourceRoot, config.componentsDir || 'components');
-      candidatePath = path.resolve(componentsDir, templatePath);
-    }
-    
-    resolvedTemplatePath = candidatePath;
-  } else if (templatePath.includes('/')) {
-    // Path with directory structure, relative to source root
-    resolvedTemplatePath = path.join(sourceRoot, templatePath);
-  } else {
-    // Bare filename, relative to layouts directory
-    resolvedTemplatePath = path.join(
-      sourceRoot,
-      config.layoutsDir,
-      templatePath
-    );
-  }
-
-  // Security check
-  if (!isPathWithinDirectory(resolvedTemplatePath, sourceRoot)) {
-    throw new LayoutError(
-      resolvedTemplatePath,
-      `Template path outside source directory: ${templatePath}`,
-      [path.join(sourceRoot, config.layoutsDir)]
-    );
-  }
-
-  // Load template content
-  let templateContent;
-  try {
-    templateContent = await fs.readFile(resolvedTemplatePath, "utf-8");
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new LayoutError(
-        resolvedTemplatePath,
-        `Template file not found: ${templatePath}`,
-        [path.join(sourceRoot, config.layoutsDir)]
-      );
-    }
-    throw new FileSystemError("read", resolvedTemplatePath, error);
-  }
-
-  // Process includes in the template content before doing template inheritance
-  // This ensures that includes within template slot defaults get processed
-  templateContent = await processIncludes(
-    templateContent,
-    resolvedTemplatePath,
-    sourceRoot,
-    new Set(),
-    0,
-    null // No dependency tracker needed for template processing
-  );
-
-  // Check if this template extends another template
-  const dom = new JSDOM(templateContent, { contentType: "text/html" });
-  const document = dom.window.document;
-  const templateElement = document.querySelector("template[extends]");
-  
-  if (templateElement) {
-    const extendsPath = templateElement.getAttribute("extends");
-    
-    // Extract slots from current template
-    const templateSlotData = extractSlotData(templateContent);
-    
-    // Merge original slots with template slots (original slots take precedence)
-    const mergedSlotData = { ...templateSlotData, ...slotData };
-    
-    // Recursively process the parent template
-    return await applyTemplateInheritance(mergedSlotData, extendsPath, resolvedTemplatePath, sourceRoot, config);
-  } else {
-    // This is the base template - apply the slots and return
-    return applySlots(templateContent, slotData);
   }
 }
 
@@ -317,21 +181,70 @@ async function processLayoutAttribute(
   sourceRoot,
   config
 ) {
-  // Similar to template extends but for data-layout attribute
-  return await processTemplateExtends(
-    pageContent,
-    layoutPath,
-    filePath,
+  // Resolve layout path
+  let resolvedLayoutPath;
+  
+  if (layoutPath.startsWith("/")) {
+    // Absolute path from source root
+    resolvedLayoutPath = path.join(sourceRoot, layoutPath.substring(1));
+  } else if (layoutPath.includes('/')) {
+    // Path with directory structure, relative to source root
+    resolvedLayoutPath = path.join(sourceRoot, layoutPath);
+  } else {
+    // Bare filename, relative to layouts directory
+    if (path.isAbsolute(config.layoutsDir)) {
+      // layoutsDir is absolute path (from CLI)
+      resolvedLayoutPath = path.join(config.layoutsDir, layoutPath);
+    } else {
+      // layoutsDir is relative path (default or relative)
+      resolvedLayoutPath = path.join(sourceRoot, config.layoutsDir, layoutPath);
+    }
+  }
+
+  // Security check - allow layouts in configured layouts directory or within source root
+  const layoutsBaseDir = path.isAbsolute(config.layoutsDir) 
+    ? config.layoutsDir 
+    : path.join(sourceRoot, config.layoutsDir);
+    
+  if (!isPathWithinDirectory(resolvedLayoutPath, sourceRoot) && 
+      !isPathWithinDirectory(resolvedLayoutPath, layoutsBaseDir)) {
+    throw new LayoutError(
+      resolvedLayoutPath,
+      `Layout path outside allowed directories: ${layoutPath}`,
+      [layoutsBaseDir, path.join(sourceRoot, config.layoutsDir)]
+    );
+  }
+
+  // Load layout content
+  let layoutContent;
+  try {
+    layoutContent = await fs.readFile(resolvedLayoutPath, "utf-8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new LayoutError(
+        resolvedLayoutPath,
+        `Layout file not found: ${layoutPath}`,
+        [path.join(sourceRoot, config.layoutsDir)]
+      );
+    }
+    throw new FileSystemError("read", resolvedLayoutPath, error);
+  }
+
+  // Process includes in the layout content first
+  layoutContent = await processIncludes(
+    layoutContent,
+    resolvedLayoutPath,
     sourceRoot,
-    config
+    new Set(),
+    0,
+    null // No dependency tracker needed for layout processing
   );
+
+  // Extract slot data from page content and apply to layout
+  const slotData = extractSlotData(pageContent);
+  return applySlots(layoutContent, slotData);
 }
 
-/**
- * Extract slot content from HTML
- * @param {string} htmlContent - HTML content to extract slots from
- * @returns {Object} Object with slot names as keys and content as values
- */
 /**
  * Extract slot content from HTML
  * @param {string} htmlContent - HTML content to extract slots from
@@ -342,75 +255,37 @@ function extractSlotData(htmlContent) {
   const dom = new JSDOM(htmlContent, { contentType: "text/html" });
   const document = dom.window.document;
 
-  // Check for template elements with extends attribute
-  const templateElements = document.querySelectorAll("template[extends]");
+  // Find template elements with data-slot attributes
+  const templateElements = document.querySelectorAll("template[data-slot]");
   
   templateElements.forEach((templateEl) => {
-    // Parse the template content to find slots
-    const templateDom = new JSDOM(`<div>${templateEl.innerHTML}</div>`, { contentType: "text/html" });
-    const slotElements = templateDom.window.document.querySelectorAll("slot[name]");
-    
-    slotElements.forEach((element) => {
-      const slotName = element.getAttribute("name");
-      if (slotName) {
-        slots[slotName] = element.innerHTML;
-      }
-    });
-    
-    // Handle default slot (slot elements without name attribute)
-    const defaultSlotElements = templateDom.window.document.querySelectorAll("slot:not([name])");
-    if (defaultSlotElements.length > 0) {
-      // Combine content from all default slots
-      const defaultContent = Array.from(defaultSlotElements)
-        .map(el => el.innerHTML)
-        .join('');
-      if (defaultContent.trim()) {
-        slots["default"] = defaultContent.trim();
-      }
-    }
-  });
-
-  // Also check for loose slot elements outside of templates (for include + slot scenarios)
-  // Find all slot elements with name attributes that are not inside template elements
-  const looseSlotElements = Array.from(document.querySelectorAll("slot[name]")).filter(slot => {
-    // Check if this slot is inside a template element
-    let parent = slot.parentElement;
-    while (parent) {
-      if (parent.tagName.toLowerCase() === 'template' && parent.hasAttribute('extends')) {
-        return false; // This slot is inside a template, skip it
-      }
-      parent = parent.parentElement;
-    }
-    return true; // This is a loose slot
-  });
-  
-  looseSlotElements.forEach((element) => {
-    const slotName = element.getAttribute("name");
+    const slotName = templateEl.getAttribute("data-slot");
     if (slotName) {
-      // Loose slots take precedence over template slots
-      slots[slotName] = element.innerHTML;
+      slots[slotName] = templateEl.innerHTML;
     }
   });
 
-  // Handle loose default slots (slot elements without name attribute, outside templates)
-  const looseDefaultSlotElements = Array.from(document.querySelectorAll("slot:not([name])")).filter(slot => {
-    let parent = slot.parentElement;
-    while (parent) {
-      if (parent.tagName.toLowerCase() === 'template' && parent.hasAttribute('extends')) {
-        return false;
-      }
-      parent = parent.parentElement;
-    }
-    return true;
-  });
-  
-  if (looseDefaultSlotElements.length > 0) {
-    // Combine content from all loose default slots
-    const defaultContent = Array.from(looseDefaultSlotElements)
-      .map(el => el.innerHTML)
-      .join('');
-    if (defaultContent.trim()) {
-      slots["default"] = defaultContent.trim();
+  // Extract default content from the page (everything not in template elements)
+  const bodyElement = document.body || document.documentElement;
+  if (bodyElement) {
+    // Clone the body to avoid modifying the original
+    const bodyClone = bodyElement.cloneNode(true);
+    
+    // Remove all template elements from the clone
+    const templatesInClone = bodyClone.querySelectorAll("template");
+    templatesInClone.forEach(template => template.remove());
+    
+    // Remove script and style elements  
+    const scriptsInClone = bodyClone.querySelectorAll("script");
+    scriptsInClone.forEach(script => script.remove());
+    
+    const stylesInClone = bodyClone.querySelectorAll("style");
+    stylesInClone.forEach(style => style.remove());
+    
+    // Get the remaining content as default slot
+    const defaultContent = bodyClone.innerHTML.trim();
+    if (defaultContent) {
+      slots["default"] = defaultContent;
     }
   }
 
@@ -497,8 +372,8 @@ function processStandaloneSlots(htmlContent) {
  */
 export function getUnifiedConfig(userConfig = {}) {
   return {
-    componentsDir: ".components",
-    layoutsDir: ".layouts",
+    componentsDir: userConfig.components || ".components",
+    layoutsDir: userConfig.layouts || ".layouts",
     defaultLayout: "default.html",
     ...userConfig,
   };

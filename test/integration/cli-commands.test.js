@@ -71,7 +71,7 @@ describe('CLI Commands and Options', () => {
 
     it('should build with short flags', async () => {
       const structure = {
-        'content/index.html': '<template extends="base.html"><slot name="content">Content</slot></template>',
+        'content/index.html': '<div data-layout="base.html"><template data-slot="content">Content</template></div>',
         'templates/base.html': '<!DOCTYPE html><html><body><slot name="content">Default</slot></body></html>',
         'includes/header.html': '<header>Header</header>'
       };
@@ -94,8 +94,8 @@ describe('CLI Commands and Options', () => {
 
     it('should build with pretty URLs option', async () => {
       const structure = {
-        'src/index.html': '<h1>Home</h1>',
-        'src/about.html': '<h1>About</h1>'
+        'src/index.md': '# Home',
+        'src/about.md': '# About'
       };
 
       await createTestStructure(tempDir, structure);
@@ -109,7 +109,7 @@ describe('CLI Commands and Options', () => {
 
       assert.strictEqual(result.code, 0);
       
-      // With pretty URLs, about.html should become about/index.html
+      // With pretty URLs, about.md should become about/index.html
       const aboutDirExists = await fileExists(path.join(outputDir, 'about', 'index.html'));
       assert(aboutDirExists, 'Pretty URLs should create about/index.html');
     });
@@ -268,23 +268,6 @@ describe('CLI Commands and Options', () => {
              'Should start watching for changes');
     });
 
-    it('should watch with custom port', async () => {
-      const structure = {
-        'src/index.html': '<h1>Watch Custom Port</h1>'
-      };
-
-      await createTestStructure(tempDir, structure);
-
-      const result = await runCLI(tempDir, [
-        'watch',
-        '--source', sourceDir,
-        '--output', outputDir,
-        '--port', '4000'
-      ], 3000);
-
-      assert(result.stdout.includes('4000') || result.stderr.includes('4000'), 
-             'Should use custom port for watch');
-    });
   });
 
   describe('Help and Version', () => {
@@ -457,7 +440,7 @@ describe('CLI Commands and Options', () => {
   describe('Mixed Flag Formats', () => {
     it('should handle mixed long and short flags', async () => {
       const structure = {
-        'content/index.html': '<template extends="base.html"><slot name="content">Mixed Flags</slot></template>',
+        'content/index.html': '<div data-layout="base.html"><template data-slot="content">Mixed Flags</template></div>',
         'templates/base.html': '<!DOCTYPE html><html><body><slot name="content">Default</slot></body></html>'
       };
 

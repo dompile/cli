@@ -15,6 +15,8 @@ export function parseArgs(argv) {
     host: "localhost",
     prettyUrls: false,
     baseUrl: "https://example.com",
+    clean: false,
+    sitemap: true,
     help: false,
     version: false,
   };
@@ -107,6 +109,16 @@ export function parseArgs(argv) {
     if (arg === '--base-url' && nextArg) {
       args.baseUrl = nextArg;
       i++;
+      continue;
+    }
+    
+    if (arg === '--clean') {
+      args.clean = true;
+      continue;
+    }
+    
+    if (arg === '--no-sitemap') {
+      args.sitemap = false;
       continue;
     }
     

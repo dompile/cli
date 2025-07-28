@@ -246,20 +246,22 @@ export async function build(options = {}) {
       }
     }
     
-    // Generate sitemap.xml
-    try {
-      // Resolve baseUrl: CLI arg → package.json homepage → default
-      const baseUrl = config.baseUrl !== 'https://example.com' 
-        ? config.baseUrl 
-        : await getBaseUrlFromPackage(sourceRoot, config.baseUrl);
-        
-      const pageInfo = extractPageInfo(processedFiles, sourceRoot, outputRoot, config.prettyUrls);
-      const enhancedPageInfo = enhanceWithFrontmatter(pageInfo, frontmatterData);
-      const sitemapContent = generateSitemap(enhancedPageInfo, baseUrl);
-      await writeSitemap(sitemapContent, outputRoot);
-    } catch (error) {
-      logger.error(`Error generating sitemap: ${error.message}`);
-      results.errors.push({ file: 'sitemap.xml', error: error.message });
+    // Generate sitemap.xml (if enabled)  
+    if (config.sitemap !== false) {
+      try {
+        // Resolve baseUrl: CLI arg → package.json homepage → default
+        const baseUrl = config.baseUrl !== 'https://example.com' 
+          ? config.baseUrl 
+          : await getBaseUrlFromPackage(sourceRoot, config.baseUrl);
+          
+        const pageInfo = extractPageInfo(processedFiles, sourceRoot, outputRoot, config.prettyUrls);
+        const enhancedPageInfo = enhanceWithFrontmatter(pageInfo, frontmatterData);
+        const sitemapContent = generateSitemap(enhancedPageInfo, baseUrl);
+        await writeSitemap(sitemapContent, outputRoot);
+      } catch (error) {
+        logger.error(`Error generating sitemap: ${error.message}`);
+        results.errors.push({ file: 'sitemap.xml', error: error.message });
+      }
     }
     
     // Build summary

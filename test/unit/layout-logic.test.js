@@ -73,7 +73,7 @@ describe('Layout Conditional Logic', () => {
       
       assert.ok(result.includes('<!DOCTYPE html>'));
       assert.ok(result.includes('<title>Test Page</title>'));
-      assert.ok(result.includes('<h1>Test Title</h1>'));
+      assert.ok(result.includes('<h1 id="test-title">Test Title</h1>'));
     });
 
     it('should not apply layout when content already has HTML element', async () => {
@@ -189,7 +189,7 @@ layout: non-existent
       
       const result = wrapInLayout(content, metadata, layout);
       
-      assert.ok(result.includes('<main><h1>Title</h1><p>Text</p></main>'));
+      assert.ok(result.includes('<main><h1 id="title">Title</h1><p>Text</p></main>'));
     });
 
     it('should handle missing variables gracefully', () => {

@@ -43,6 +43,7 @@ describe('CLI integration', () => {
 <head>
   <title>CLI Test</title>
   <link rel="stylesheet" href="main.css">
+  <!--#include virtual="/.components/head.html" -->
 </head>
 <body>
   <!--#include virtual="/.components/header.html" -->

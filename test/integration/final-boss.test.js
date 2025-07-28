@@ -6,7 +6,7 @@
  * 
  * Features tested:
  * - Apache SSI-style includes (file and virtual)
- * - Template/slot system with inheritance
+ * - Layout/slot system with data-layout attributes
  * - Markdown processing with frontmatter and layouts
  * - Layout conditional logic
  * - Asset tracking and copying
@@ -24,6 +24,279 @@ import fs from 'fs/promises';
 import path from 'path';
 import { spawn } from 'child_process';
 import { createTempDirectory, cleanupTempDirectory, createTestStructure } from '../fixtures/temp-helper.js';
+
+describe('Final Boss Integration Test', () => {
+  let tempDir;
+  let sourceDir;
+  let outputDir;
+
+  beforeEach(async () => {
+    tempDir = await createTempDirectory();
+    sourceDir = path.join(tempDir, 'src');
+    outputDir = path.join(tempDir, 'dist');
+  });
+
+  afterEach(async () => {
+    await cleanupTempDirectory(tempDir);
+  });
+
+  describe('Complete Website Build', () => {
+    it('should build a complex multi-page website with all features', async () => {
+      const siteStructure = {
+        // Package.json for sitemap baseUrl
+        'package.json': JSON.stringify({
+          name: 'final-boss-test-site',
+          homepage: 'https://finalboss.example.com',
+          version: '1.0.0'
+        }),
+
+        // Base layout
+        'src/.layouts/base.html': `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><slot name="title">Final Boss Test Site</slot></title>
+  <meta name="description" content="<slot name="description">A comprehensive test site</slot>">
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <header>
+    <nav><!--#include virtual="/.components/navigation.html" --></nav>
+  </header>
+  <main>
+    <slot></slot>
+  </main>
+  <footer>
+    <p>&copy; 2025 Final Boss Test Site</p>
+  </footer>
+</body>
+</html>`,
+
+        // Simple components
+        'src/.components/navigation.html': `<ul>
+  <li><a href="/index.html">Home</a></li>
+  <li><a href="/about.html">About</a></li>
+  <li><a href="/features.html">Features</a></li>
+</ul>`,
+
+        'src/.components/card.html': `<div class="card">
+  <h3>Feature Card</h3>
+  <p>This is a reusable card component.</p>
+</div>`,
+
+        // Main pages using simplified layout system
+        'src/index.html': `<div data-layout="/.layouts/base.html">
+  <template data-slot="title">Home - Final Boss Test</template>
+  <template data-slot="description">Welcome to our comprehensive test site</template>
+  
+  <h1>Welcome to Final Boss Test Site</h1>
+  <p>This site tests all major DOMpile features.</p>
+  
+  <!--#include virtual="/.components/card.html" -->
+  
+  <h2>Features Tested</h2>
+  <ul>
+    <li>Layout system with slots</li>
+    <li>SSI-style includes</li>
+    <li>Asset processing</li>
+    <li>Sitemap generation</li>
+  </ul>
+</div>`,
+
+        'src/about.html': `<div data-layout="/.layouts/base.html">
+  <template data-slot="title">About - Final Boss Test</template>
+  <template data-slot="description">Learn about our test methodology</template>
+  
+  <h1>About This Test</h1>
+  <p>This is a comprehensive integration test for DOMpile.</p>
+  
+  <!--#include virtual="/.components/card.html" -->
+</div>`,
+
+        'src/features.html': `<div data-layout="/.layouts/base.html">
+  <template data-slot="title">Features - Final Boss Test</template>
+  <template data-slot="description">Explore all the features we test</template>
+  
+  <h1>Features</h1>
+  <p>Here are all the features this test covers:</p>
+  
+  <!--#include virtual="/.components/card.html" -->
+</div>`,
+
+        // Assets
+        'src/styles/main.css': `body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+.card {
+  border: 1px solid #ddd;
+  padding: 16px;
+  margin: 16px 0;
+  border-radius: 8px;
+}`,
+
+        // Markdown file
+        'src/blog.md': `---
+title: "Blog Post"
+description: "A test blog post"
+---
+
+# Blog Post
+
+This is a test blog post written in Markdown.
+
+## Features
+
+- Frontmatter support
+- Automatic layout application
+- Markdown to HTML conversion
+`
+      };
+
+      await createTestStructure(tempDir, siteStructure);
+
+      // Run the build
+      const result = await runCLI([
+        'build',
+        '--source', sourceDir,
+        '--output', outputDir,
+        '--clean'
+      ], { cwd: tempDir });
+
+      // Verify build succeeded
+      assert.strictEqual(result.code, 0, `Build failed: ${result.stderr}`);
+      assert(result.stdout.includes('Build completed successfully'));
+
+      // Verify all pages were generated
+      const expectedFiles = [
+        'index.html',
+        'about.html', 
+        'features.html',
+        'blog.html',
+        'styles/main.css',
+        'sitemap.xml'
+      ];
+
+      for (const file of expectedFiles) {
+        const filePath = path.join(outputDir, file);
+        try {
+          await fs.access(filePath);
+        } catch (error) {
+          assert.fail(`Expected file ${file} was not generated`);
+        }
+      }
+
+      // Verify content processing
+      const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
+      assert(indexContent.includes('<!DOCTYPE html>'), 'Should have doctype');
+      assert(indexContent.includes('<title>Home - Final Boss Test</title>'), 'Should have correct title');
+      assert(indexContent.includes('Welcome to Final Boss Test Site'), 'Should have main content');
+      assert(indexContent.includes('<div class="card">'), 'Should include card component');
+      assert(indexContent.includes('<li><a href="/index.html">Home</a></li>'), 'Should include navigation');
+
+      // Verify sitemap was generated with correct base URL
+      const sitemapContent = await fs.readFile(path.join(outputDir, 'sitemap.xml'), 'utf-8');
+      assert(sitemapContent.includes('https://finalboss.example.com'), 'Should use homepage from package.json');
+      assert(sitemapContent.includes('<loc>https://finalboss.example.com/index.html</loc>'), 'Should include index page');
+      assert(sitemapContent.includes('<loc>https://finalboss.example.com/about.html</loc>'), 'Should include about page');
+
+      // Verify markdown processing
+      const blogContent = await fs.readFile(path.join(outputDir, 'blog.html'), 'utf-8');
+      assert(blogContent.includes('<title>Blog Post</title>'), 'Should have title from frontmatter');
+      assert(blogContent.includes('<h1 id="blog-post">Blog Post</h1>'), 'Should convert markdown to HTML');
+    });
+
+    it('should handle edge cases and error conditions', async () => {
+      const edgeCaseStructure = {
+        'package.json': JSON.stringify({
+          name: 'edge-case-test',
+          homepage: 'https://edge.example.com'
+        }),
+
+        'src/.layouts/default.html': `<!DOCTYPE html>
+<html>
+<head>
+  <title><slot name="title">Default</slot></title>
+</head>
+<body>
+  <slot></slot>
+</body>
+</html>`,
+
+        // Test with missing component (should build but show error)
+        'src/test-missing.html': `<div data-layout="/.layouts/default.html">
+  <template data-slot="title">Missing Component Test</template>
+  <!--#include virtual="/.components/missing.html" -->
+  <p>This page tries to include a missing component.</p>
+</div>`,
+
+        // Test with circular dependency protection  
+        'src/.components/circular-a.html': `<div>
+  Component A
+  <!--#include virtual="/.components/circular-b.html" -->
+</div>`,
+
+        'src/.components/circular-b.html': `<div>
+  Component B
+  <!--#include virtual="/.components/circular-c.html" -->
+</div>`,
+
+        'src/.components/circular-c.html': `<div>
+  Component C
+  <!--#include virtual="/.components/circular-a.html" -->
+</div>`,
+
+        'src/test-circular.html': `<div data-layout="/.layouts/default.html">
+  <template data-slot="title">Circular Test</template>
+  <!--#include virtual="/.components/circular-a.html" -->
+</div>`
+      };
+
+      await createTestStructure(tempDir, edgeCaseStructure);
+
+      // Run the build - should fail due to errors but report them gracefully
+      const result = await runCLI([
+        'build',
+        '--source', sourceDir,
+        '--output', outputDir
+      ], { cwd: tempDir });
+
+      // Build should fail due to errors
+      assert.strictEqual(result.code, 1, 'Build should fail due to missing files and circular deps');
+      assert(result.stderr.includes('missing.html') || result.stdout.includes('missing.html'), 'Should report missing file');
+      assert(result.stderr.includes('Circular dependency') || result.stdout.includes('Circular dependency'), 'Should report circular dependency');
+    });
+  });
+});
+
+// Helper function to run CLI commands
+async function runCLI(args, options = {}) {
+  const cliPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../bin/cli.js');
+  
+  return new Promise((resolve) => {
+    const child = spawn('node', [cliPath, ...args], {
+      cwd: options.cwd || process.cwd(),
+      stdio: 'pipe'
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('close', (code) => {
+      resolve({ code, stdout, stderr });
+    });
+  });
+}
 
 describe('Final Boss Integration Test', () => {
   let tempDir;
@@ -155,7 +428,7 @@ describe('Final Boss Integration Test', () => {
     
     <section class="recent-posts">
       <h2>Recent Blog Posts</h2>
-      <!--#include file="../blog/recent.html" -->
+      <!--#include virtual="/blog/recent.html" -->
     </section>
   </slot>
 </template>`,
