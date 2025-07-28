@@ -11,7 +11,6 @@ import { processIncludes } from "./include-processor.js";
 import { logger } from "../utils/logger.js";
 import { isPathWithinDirectory } from "../utils/path-resolver.js";
 import {
-  DompileError,
   ComponentError,
   LayoutError,
   FileSystemError,

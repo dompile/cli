@@ -10,7 +10,8 @@ import {
   DompileError,
   IncludeNotFoundError, 
   CircularDependencyError,
-  FileSystemError 
+  FileSystemError,
+  MaxDepthExceededError
 } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
@@ -50,17 +51,7 @@ export async function processIncludes(
 ) {
   // Prevent excessive recursion
   if (depth > MAX_INCLUDE_DEPTH) {
-    const suggestions = [
-      `Reduce the depth of nested includes to ${MAX_INCLUDE_DEPTH} or fewer levels`,
-      'Check for circular dependencies in your include structure',
-      'Consider flattening your component hierarchy'
-    ];
-    throw new DompileError(
-      `Maximum include depth (${MAX_INCLUDE_DEPTH}) exceeded`, 
-      filePath, 
-      null, 
-      suggestions
-    );
+    throw new MaxDepthExceededError(filePath, depth, MAX_INCLUDE_DEPTH);
   }
   
   // Detect circular dependencies
@@ -131,13 +122,25 @@ export async function processIncludes(
       processedContent = processedContent.replace(fullMatch, processedInclude);
       
     } catch (error) {
-      // Log error and provide helpful context
-      logger.error(`Failed to process include: ${includePath} in ${filePath}`);
-      logger.error(error.message);
-     
-
-      // Re-throw all errors to fail the build
-      throw error;
+      // Handle errors gracefully based on their type
+      if (error.isRecoverable && error.isRecoverable()) {
+        // Log warning and continue processing with error comment
+        logger.warn(`Include warning: ${error.message.split(' in ')[0]} in ${filePath}`);
+        
+        // Replace the directive with a warning comment
+        const warningComment = error.toWarningComment();
+        processedContent = processedContent.replace(fullMatch, warningComment);
+        
+        // Continue processing other includes
+        continue;
+      } else {
+        // Fatal error - log and re-throw to stop processing
+        logger.error(`Failed to process include: ${includePath} in ${filePath}`);
+        logger.error(error.message);
+        
+        // Re-throw fatal errors to fail the build
+        throw error;
+      }
     }
   }
   

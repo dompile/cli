@@ -445,18 +445,18 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         "index.html": '<!--#include virtual="/components/existing.html" -->',
       };
 
-      try {
-        await createTestStructure(sourceDir, structure);
+      await createTestStructure(sourceDir, structure);
 
-        const result = await processIncludes(
-          structure["index.html"],
-          path.join(sourceDir, "index.html"),
-          sourceDir
-        );
-        assert.fail("Should have thrown an error for missing file");
-      } catch (error) {
-        assert(error.message.includes("not found"));
-      }
+      const result = await processIncludes(
+        structure["index.html"],
+        path.join(sourceDir, "index.html"),
+        sourceDir
+      );
+
+      // Should continue processing with warning comment for missing file
+      assert(result.includes("Existing content"));
+      assert(result.includes("After missing"));
+      assert(result.includes("WARNING: Include file not found"));
     });
 
     it("should handle template processing with unusual slot configurations", async () => {

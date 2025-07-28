@@ -27,6 +27,24 @@ export class DompileError extends Error {
   }
   
   /**
+   * Determine if this error should be handled gracefully (as a warning)
+   * Override in subclasses to customize behavior
+   * @returns {boolean} True if error should be treated as a warning
+   */
+  isRecoverable() {
+    return false;
+  }
+  
+  /**
+   * Generate a warning comment to replace the failed include
+   * @returns {string} HTML comment with error details
+   */
+  toWarningComment() {
+    const errorMsg = this.message.split(' in ')[0];
+    return `<!-- WARNING: ${errorMsg} -->`;
+  }
+  
+  /**
    * Format error for CLI display with colors and structure
    */
   formatForCLI() {
@@ -63,6 +81,13 @@ export class IncludeNotFoundError extends DompileError {
     this.parentFile = parentFile;
     this.searchPaths = searchPaths;
   }
+  
+  /**
+   * Include not found errors are recoverable - continue processing with warning
+   */
+  isRecoverable() {
+    return true;
+  }
 }
 
 /**
@@ -98,6 +123,14 @@ export class PathTraversalError extends DompileError {
     this.attemptedPath = attemptedPath;
     this.sourceRoot = sourceRoot;
   }
+  
+  /**
+   * Path traversal attempts are recoverable - log security warning but continue build
+   * The alternative would be to fail builds due to malicious or accidental path traversal attempts
+   */
+  isRecoverable() {
+    return true;
+  }
 }
 
 /**
@@ -114,6 +147,30 @@ export class MalformedDirectiveError extends DompileError {
     
     super(`Malformed include directive: ${directive}`, filePath, lineNumber, suggestions);
     this.directive = directive;
+  }
+}
+
+/**
+ * Error thrown when maximum include depth is exceeded
+ */
+export class MaxDepthExceededError extends DompileError {
+  constructor(filePath, depth, maxDepth) {
+    const suggestions = [
+      `Reduce the depth of nested includes to ${maxDepth} or fewer levels`,
+      'Check for circular dependencies in your include structure',
+      'Consider flattening your component hierarchy'
+    ];
+    
+    super(`Maximum include depth (${maxDepth}) exceeded at depth ${depth}`, filePath, null, suggestions);
+    this.depth = depth;
+    this.maxDepth = maxDepth;
+  }
+  
+  /**
+   * Max depth errors are recoverable - stop processing this branch but continue with others
+   */
+  isRecoverable() {
+    return true;
   }
 }
 

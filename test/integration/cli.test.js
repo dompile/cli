@@ -143,8 +143,7 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Build failed'));
+    assert.strictEqual(result.exitCode, 0);
     assert(result.stderr.includes('Include file not found'));
   });
   

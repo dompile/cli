@@ -85,10 +85,9 @@ describe('include-processor', () => {
       const html = '<!DOCTYPE html><html><head></head><body><!--#include file="missing.html" --></body></html>';
       const filePath = path.join(testFixturesDir, 'test.html');
       
-      // Should throw IncludeNotFoundError
-      await assert.rejects(async () => {
-        await processIncludes(html, filePath, testFixturesDir);
-      }, IncludeNotFoundError);
+      // Should write a warning comment in place of the missing include
+      const result = await processIncludes(html, filePath, testFixturesDir);
+      assert(result.includes('<!-- WARNING: Include file not found: missing.html -->'));
     });
     
     it('should detect circular dependencies', async () => {

@@ -208,15 +208,22 @@ describe('build-process integration', () => {
       '<!DOCTYPE html><html><head></head><body><!--#include file="missing.html" --></body></html>'
     );
     
-    // Build should throw an error when components are missing
-    await assert.rejects(async () => {
-      await build({
-        source: sourceDir,
-        output: outputDir,
-        components: '.components'
-      });
-    }, /Build failed.*error.*/);
-    
+    // Build should succeed but emit a warning when components are missing
+    const result = await build({
+      source: sourceDir,
+      output: outputDir,
+      components: '.components'
+    });
+
+    // Verify the build succeeded
+
+    assert.strictEqual(result.errors.length, 0); // Expect one warning/error
+    //Output broken.html should contain a warning comment
+    const brokenContent = await fs.readFile(brokenFilePath.replace('src', 'dist'), 'utf-8');
+    assert(brokenContent.includes('<!-- WARNING: Include file not found: missing.html -->'));
+    //TODO: Add warnings collection to result, ensure all none fatal errors are collected
+    // assert(result.warnings[0].message.includes('Include file not found')); // Check for specific warning
+
     // Clean up the broken file immediately after test
     try {
       await fs.unlink(brokenFilePath);

@@ -147,7 +147,15 @@ export async function build(options = {}) {
         layoutContent = await fs.readFile(layoutFile, 'utf-8');
         logger.debug(`Using layout file: ${path.relative(sourceRoot, layoutFile)}`);
       } catch (error) {
-        logger.warn(`Could not read layout file ${layoutFile}: ${error.message}`);
+        const msg = `Could not read layout file ${layoutFile}: ${error.message}`;
+        logger.warn(msg);
+        results.errors.push({
+          file: layoutFile,
+          relativePath: path.relative(sourceRoot, layoutFile),
+          error: error.message,
+          errorType: error.constructor.name,
+          suggestions: error.suggestions || [],
+        });
       }
     }
     
