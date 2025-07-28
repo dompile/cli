@@ -37,12 +37,12 @@ describe('Final Boss Debug', () => {
 <body><slot name="content">Default</slot></body>
 </html>`,
 
-      'src/index.html': `<div data-layout="layouts/base.html">
-  <slot name="title">Home Page</slot>
-  <slot name="content">
+      'src/index.html': `<div data-layout="/layouts/base.html">
+  <template data-slot="title">Home Page</template>
+  <template data-slot="content">
     <h1>Welcome</h1>
     <img src="/assets/images/logo.png" alt="Logo" />
-  </slot>
+  </template>
 </div>`,
 
       'src/assets/images/logo.png': 'FAKE_PNG_DATA',
