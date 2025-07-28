@@ -71,14 +71,23 @@ src/
 
 Layouts are selected in order of precedence:
 
-1. **Frontmatter**: `layout: custom`
-2. **Default layout**: `.layouts/default.html`
-3. **Basic HTML structure**: Auto-generated if no layout
+1. **Data attribute**: `<div data-layout="layouts/custom.html">` or on html/body elements
+2. **Frontmatter**: `layout: custom` (for markdown files)
+3. **Default layout**: `.layouts/default.html`
+4. **Basic HTML structure**: Auto-generated if no layout found
+
+```html
+<!-- Page with data-layout attribute -->
+<div data-layout="blog.html">
+  <h1>My Blog Post</h1>
+</div>
+```
 
 ```markdown
 ---
 layout: blog              # Uses .layouts/blog.html
 ---
+# My Blog Post
 ```
 
 ### Variable Substitution
@@ -149,13 +158,13 @@ Use `<template>` elements for modern component-based templating:
 </html>
 ```
 
-### Template Extends Syntax
+### Data-Layout Attribute Syntax
 
-Use template inheritance for complex layouts:
+Use the `data-layout` attribute to specify layouts and fill slots:
 
-**Page with template extends:**
+**Page with data-layout:**
 ```html
-<template extends="layouts/blog.html">
+<div data-layout="layouts/blog.html">
   <template data-slot="sidebar">
     <h3>Recent Posts</h3>
     <ul>
@@ -166,19 +175,35 @@ Use template inheritance for complex layouts:
   <template data-slot="meta">
     <meta name="author" content="John Doe">
   </template>
-</template>
-
-<h1>My Blog Post</h1>
-<p>This is the main content that goes in the default slot.</p>
+  
+  <!-- Content outside templates goes to default slot -->
+  <h1>My Blog Post</h1>
+  <p>This is the main content that goes in the default slot.</p>
+</div>
 ```
 
-### Path Resolution for Templates
+**Alternative placement on html/body elements:**
+```html
+<html data-layout="layouts/blog.html">
+  <template data-slot="title">My Page Title</template>
+  <!-- Page content -->
+</html>
 
-Template paths are resolved in order:
+<!-- OR -->
 
-1. **Absolute from source**: `/layouts/custom.html` → `src/layouts/custom.html`
-2. **Relative to layouts**: `blog.html` → `src/.layouts/blog.html`
-3. **With directory structure**: `layouts/blog.html` → `src/layouts/blog.html`
+<body data-layout="layouts/blog.html">
+  <template data-slot="header">Custom Header</template>
+  <!-- Page content -->
+</body>
+```
+
+### Path Resolution for Layouts
+
+Layout paths are resolved in this order:
+
+1. **Absolute from source**: `data-layout="/layouts/custom.html"` → `src/layouts/custom.html`
+2. **Relative to .layouts**: `data-layout="blog.html"` → `src/.layouts/blog.html`
+3. **Custom directory**: `data-layout="templates/blog.html"` → `src/templates/blog.html`
 
 ## Slot System
 

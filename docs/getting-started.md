@@ -7,13 +7,13 @@ This guide will walk you through creating your first dompile site and understand
 ### Global Installation (Recommended)
 
 ```bash
-npm install -g dompile/cli
+npm install -g @dompile/cli
 ```
 
 ### Or use with npx
 
 ```bash
-npx dompile/cli --help
+npx @dompile/cli --help
 ```
 
 ## Your First Site

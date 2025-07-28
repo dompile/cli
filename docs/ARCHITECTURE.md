@@ -141,11 +141,14 @@ src/
 
 - `--source, -s`: Source directory (default: src)
 - `--output, -o`: Output directory (default: dist)
-- `--includes, -i`: Includes directory (default: includes)
+- `--layouts, -l`: Layouts directory (default: .layouts, relative to source)
+- `--components, -c`: Components directory (default: .components, relative to source)
 - `--port, -p`: Server port for serve command (default: 3000)
 - `--host`: Server host for serve command (default: localhost)
 - `--pretty-urls`: Generate pretty URLs (about.md → about/index.html)
 - `--base-url`: Base URL for sitemap.xml generation (default: https://example.com)
+- `--clean`: Clean output directory before build
+- `--no-sitemap`: Disable sitemap.xml generation
 
 ## Performance & Optimization
 

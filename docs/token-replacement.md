@@ -1,208 +1,165 @@
 # Token Replacement Documentation
 
-dompile provides a simple but powerful token replacement system that allows you to insert dynamic content into your templates and pages using `{{ variable }}` syntax.
+dompile provides token replacement primarily for **component parameterization** in DOM mode. This system allows components to accept data through `data-*` attributes and replace placeholders marked with `data-token` attributes.
 
-## Basic Syntax
+## Component Token Replacement
 
-### Simple Variables
+### How It Works
 
-Replace content with variables using double curly braces:
+Components use `data-token` attributes to mark replaceable content. When included with `<include>` elements, matching `data-*` attributes provide the replacement values.
 
+### Basic Example
+
+**Component: `src/.components/card.html`**
 ```html
-<h1>{{ title }}</h1>
-<p>Published on {{ date }} by {{ author }}</p>
-<meta name="description" content="{{ description }}">
+<div class="card">
+  <h3 data-token="title">Default Title</h3>
+  <p data-token="content">Default content</p>
+  <a href="#" data-token="link">Default Link</a>
+</div>
 ```
 
-### Case Sensitivity
-
-Variable names are case-sensitive:
-
+**Page using component:**
 ```html
-{{ title }}    <!-- Different from -->
-{{ Title }}    <!-- or -->
-{{ TITLE }}
+<body data-layout="layouts/default.html">
+  <include src="/.components/card.html"
+           data-title="My Custom Title"
+           data-content="This is custom content for the card"
+           data-link="/learn-more">
+</body>
 ```
 
-### Whitespace Handling
-
-Spaces around variable names are ignored:
-
+**Result:**
 ```html
-{{ title }}      <!-- Same as -->
-{{title}}        <!-- and -->
-{{  title  }}
+<div class="card">
+  <h3>My Custom Title</h3>
+  <p>This is custom content for the card</p>
+  <a href="#">/learn-more</a>
+</div>
 ```
 
-## Variable Sources
+### Token Attribute Mapping
 
-### Frontmatter Variables
+- `data-token="fieldname"` in component → replaced by `data-fieldname` value from include
+- Token names are case-sensitive and must match exactly
+- Missing data attributes leave original content unchanged
 
-YAML frontmatter in markdown files provides the primary source of variables:
+## Layout Variable Substitution (Limited)
+
+### Frontmatter Variables in Layouts
+
+**Markdown with frontmatter:**
+```markdown
+---
+title: "My Blog Post" 
+author: "Jane Doe"
+date: "2024-01-15"
+---
+
+# My Blog Post Content
+```
+
+**Layout: `src/.layouts/blog.html`**
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ title }}</title>
+</head>
+<body>
+  <article>
+    <h1>{{ title }}</h1>
+    <p>By {{ author }} on {{ date }}</p>
+    <div class="content">
+      {{ content }}
+    </div>
+  </article>
+</body>
+</html>
+```
+
+### Supported Variables
+
+- `{{ title }}` - From frontmatter or first heading
+- `{{ content }}` - Processed markdown content
+- `{{ author }}`, `{{ date }}` - Any frontmatter field
+- Custom frontmatter fields work with `{{ fieldname }}`
+
+## Limitations
+
+### What's NOT Supported
+
+dompile's token replacement is **intentionally simple**. These advanced features are NOT available:
+
+- **Conditional logic**: `{{#if condition}}` syntax
+- **Loops/iteration**: `{{#each items}}` syntax  
+- **Filters/pipes**: `{{ title | upper }}` syntax
+- **Complex expressions**: `{{ items.length > 0 }}` syntax
+- **Built-in functions**: `{{ formatDate() }}` syntax
+- **Nested object access**: `{{ author.name }}` syntax
+
+For complex templating needs, generate content at build time or use multiple simple components.
+
+## Integration Examples
+
+### With Components
+
+Token replacement works well with HTML components:
 
 ```markdown
 ---
-title: "My Blog Post"
+title: "JavaScript Tutorial"
 author: "Jane Doe"
-date: "2024-01-15"
-description: "A comprehensive guide to token replacement"
-tags: ["tutorial", "documentation"]
-custom_field: "Any value you need"
+tags: "javascript, tutorial, web development"
 ---
 
 # {{ title }}
 
-Written by {{ author }} on {{ date }}.
+By {{ author }}
 
-{{ description }}
+Topics: {{ tags }}
 ```
 
-### Built-in Variables
-
-dompile provides several built-in variables:
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `{{ content }}` | Main content (markdown converted to HTML) | Full article content |
-| `{{ title }}` | Page title (from frontmatter or first heading) | "My Blog Post" |
-| `{{ excerpt }}` | Page excerpt (from frontmatter or first paragraph) | "A comprehensive guide..." |
-| `{{ tableOfContents }}` | Auto-generated table of contents | HTML list of headings |
-
-### Global Variables
-
-Pass global variables to the build process:
-
-```bash
-# Command line (future feature)
-dompile build --var site_name="My Site" --var year=2024
-
-# Environment variables
-SITE_NAME="My Site" YEAR=2024 dompile build
+**Component: `src/components/article-header.html`**
+```html
+<header class="article-header">
+  <h1>{{ title }}</h1>
+  <p class="byline">By {{ author }}</p>
+  <div class="tags">{{ tags }}</div>
+</header>
 ```
 
-### Nested Object Variables
+### With Layouts
 
-Access nested data from frontmatter:
+Combine token replacement with layout systems:
 
 ```markdown
 ---
-author:
-  name: "Jane Doe"
-  email: "jane@example.com"
-  bio: "Tech writer and developer"
-site:
-  name: "My Blog"
-  url: "https://myblog.com"
+title: "My Article"
+author: "Jane Doe"
+date: "2024-01-15"
 ---
 
-# {{ site.name }}
-
-By {{ author.name }} ({{ author.email }})
-
-{{ author.bio }}
+# Article content here...
 ```
 
-## Advanced Features
-
-### Conditional Replacement
-
-Use conditional logic with variables:
-
+**Layout: `src/.layouts/article.html`**
 ```html
-<!-- Simple conditional -->
-{{#if author}}
-<p>By {{ author }}</p>
-{{/if}}
-
-<!-- Conditional with else -->
-{{#if description}}
-<meta name="description" content="{{ description }}">
-{{else}}
-<meta name="description" content="Default description">
-{{/if}}
-
-<!-- Multiple conditions -->
-{{#if author}}
-  {{#if date}}
-  <p>By {{ author }} on {{ date }}</p>
-  {{else}}
-  <p>By {{ author }}</p>
-  {{/if}}
-{{/if}}
-```
-
-### Array Iteration
-
-Loop through arrays in frontmatter:
-
-```markdown
----
-tags: ["javascript", "tutorial", "web development"]
-categories: 
-  - "Programming"
-  - "Frontend"
-  - "Tutorials"
-related_posts:
-  - title: "First Post"
-    url: "/posts/first"
-  - title: "Second Post"
-    url: "/posts/second"
----
-
-<!-- Simple array -->
-<div class="tags">
-{{#each tags}}
-  <span class="tag">{{ . }}</span>
-{{/each}}
-</div>
-
-<!-- Array of objects -->
-<ul class="related">
-{{#each related_posts}}
-  <li><a href="{{ url }}">{{ title }}</a></li>
-{{/each}}
-</ul>
-
-<!-- Categories with index -->
-<ol class="categories">
-{{#each categories}}
-  <li class="category-{{ @index }}">{{ . }}</li>
-{{/each}}
-</ol>
-```
-
-### String Operations
-
-Apply transformations to variables:
-
-```html
-<!-- Uppercase/lowercase -->
-<h1>{{ title | upper }}</h1>
-<p>{{ author | lower }}</p>
-
-<!-- Date formatting -->
-<time datetime="{{ date }}">{{ date | date: "MMMM DD, YYYY" }}</time>
-
-<!-- String truncation -->
-<p>{{ description | truncate: 150 }}</p>
-
-<!-- URL slugification -->
-<a href="/posts/{{ title | slug }}">{{ title }}</a>
-```
-
-### Default Values
-
-Provide fallback values for missing variables:
-
-```html
-<!-- Default value syntax -->
-<h1>{{ title | default: "Untitled Post" }}</h1>
-<p>By {{ author | default: "Anonymous" }}</p>
-<meta name="description" content="{{ description | default: site.description }}">
-
-<!-- Alternative syntax -->
-<h1>{{ title || "Untitled Post" }}</h1>
-<p>{{ excerpt || "No excerpt available" }}</p>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ title }} - My Site</title>
+</head>
+<body>
+  <main>
+    <h1>{{ title }}</h1>
+    <p>By {{ author }} on {{ date }}</p>
+    <div class="content">
+      {{ content }}
+    </div>
+  </main>
+</body>
+</html>
 ```
 
 ## Context and Scope

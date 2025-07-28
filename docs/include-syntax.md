@@ -1,12 +1,12 @@
 # Include System Documentation
 
-dompile supports powerful include functionality using Apache SSI-style syntax. This document covers all include types and usage patterns.
+dompile supports two include systems: **Apache SSI-style comments** (recommended) and **DOM mode elements** (for advanced use cases). This document covers both syntaxes and when to use each.
 
 ## Include Syntax Types
 
-### Comment-Based Includes (Primary)
+### Comment-Based Includes (Recommended)
 
-The main include syntax uses HTML comments with Apache SSI directives:
+**Primary include syntax** using Apache SSI comments. This is the recommended approach for most users as it's compatible with web server SSI implementations.
 
 ```html
 <!--#include virtual="/path/from/source/root.html" -->
@@ -22,7 +22,7 @@ Virtual includes use paths relative to the **source root directory**:
 <!--#include virtual="/.components/header.html" -->
 
 <!-- Nested directory structure -->
-<!--#include virtual="/layouts/blog/sidebar.html" -->
+<!--#include virtual="/.layouts/blog/sidebar.html" -->
 
 <!-- Cross-directory includes -->
 <!--#include virtual="/shared/navigation.html" -->
@@ -41,8 +41,8 @@ File includes use paths relative to the **current file's directory**:
 <!-- From src/pages/about.html, includes src/pages/sidebar.html -->
 <!--#include file="sidebar.html" -->
 
-<!-- From src/blog/post.html, includes src/components/header.html -->
-<!--#include file="../components/header.html" -->
+<!-- From src/blog/post.html, includes src/.components/header.html -->
+<!--#include file="../.components/header.html" -->
 
 <!-- Deeply nested relative path -->
 <!--#include file="../../shared/footer.html" -->
@@ -53,24 +53,46 @@ File includes use paths relative to the **current file's directory**:
 - Use `../` to navigate up directories
 - Use `./` for current directory (optional)
 
-### Element-Based Includes (Experimental)
+### Element-Based Includes (DOM Mode Only)
 
-Modern HTML element syntax for includes:
+**Secondary syntax** using HTML elements. Only available when using DOM mode processing with `data-layout` attributes.
 
 ```html
-<!-- Basic include element -->
+<!-- Basic include element - only works in DOM mode pages with data-layout -->
 <include src="/.components/header.html"></include>
 
-<!-- With fallback content -->
-<include src="/.components/optional.html">
-  <p>Fallback content if include file not found</p>
-</include>
+<!-- With data attributes for token replacement -->
+<include src="/.components/card.html" 
+         data-title="My Card"
+         data-content="Card description"></include>
 
 <!-- Self-closing -->
 <include src="/.components/footer.html" />
 ```
 
-**Note:** Element-based includes are experimental and may change in future versions.
+**When to use DOM mode includes:**
+- Pages with `data-layout` attributes (DOM mode processing)
+- When you need token replacement with `data-*` attributes
+- For component-style includes with parameters
+
+**Limitations:**
+- Only supported in DOM mode (pages using `data-layout`)
+- Token replacement limited to `data-token` attributes in components
+- Not compatible with traditional Apache SSI implementations
+
+## Usage Recommendations
+
+### Use SSI Comments When:
+- Building traditional static sites
+- Need Apache web server compatibility  
+- Working with markdown files
+- Want simple, universal include syntax
+
+### Use DOM Elements When:
+- Using DOM mode with layouts and slots
+- Need component parameterization
+- Building component-based architectures
+- Want modern HTML element syntax
 
 ## Include Features
 

@@ -140,10 +140,11 @@ Pages contain exactly:
 
 ```html
 <div data-layout="base">
+  <template data-slot="title">My Card Page</template>
+  
   <p>This goes to the layout's main slot</p>
-  <!--#include virtual="/card.html" -->
+  <!--#include virtual="/.components/card.html" -->
 </div>
-<template data-slot="title">My Card Page</template>
 ```
 
 **Output:** Complete HTML page with card component inside layout structure.
@@ -155,10 +156,8 @@ Pages contain exactly:
     <title>My Card Page</title>
   </head>
   <body>
-    <div data-layout="base">
-      <div class="card">Card</div>
-      <p>This goes to the layout's main slot</p>
-    </div>
+    <div class="card">Card</div>
+    <p>This goes to the layout's main slot</p>
   </body>
 </html>
 ```
