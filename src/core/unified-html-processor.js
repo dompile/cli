@@ -8,6 +8,7 @@ import fs from "fs/promises";
 import path from "path";
 import { JSDOM } from "jsdom";
 import { processIncludes } from "./include-processor.js";
+import { processDOMMode, shouldUseDOMMode } from "./dom-processor.js";
 import { logger } from "../utils/logger.js";
 import { isPathWithinDirectory } from "../utils/path-resolver.js";
 import {
@@ -58,15 +59,31 @@ export async function processHtmlUnified(
       dependencyTracker
     );
 
-    // Step 2: Check for DOM templating syntax (template extends, slots)
-    // or the need for a default layout
-    if (
+    // Step 2: Check if we should use DOM mode processing (handles <include> elements, layouts, and slots)
+    if (shouldUseDOMMode(processedContent)) {
+      logger.debug(
+        `Processing with DOM Mode for: ${path.relative(sourceRoot, filePath)}`
+      );
+      
+      // Use DOM processor which handles <include> elements, layouts, and slots all together
+      processedContent = await processDOMMode(
+        processedContent,
+        filePath,
+        sourceRoot,
+        {
+          layoutsDir: processingConfig.layoutsDir,
+          componentsDir: processingConfig.componentsDir,
+          defaultLayout: processingConfig.defaultLayout
+        }
+      );
+    } else if (
       hasDOMTemplating(processedContent) ||
       !processedContent.includes("<html")
     ) {
       logger.debug(
         `Processing DOM templating for: ${path.relative(sourceRoot, filePath)}`
       );
+      // Fallback to original DOM templating for layouts/slots only
       processedContent = await processDOMTemplating(
         processedContent,
         filePath,
@@ -370,12 +387,27 @@ function processStandaloneSlots(htmlContent) {
  * @returns {Object} Complete configuration object
  */
 export function getUnifiedConfig(userConfig = {}) {
-  return {
+  let config = {
     componentsDir: userConfig.components || ".components",
-    layoutsDir: userConfig.layouts || ".layouts",
+    layoutsDir: userConfig.layouts || ".layouts", 
     defaultLayout: "default.html",
     ...userConfig,
   };
+  
+  // Ensure componentsDir and layoutsDir are absolute paths if they don't start with '.'
+  if (config.componentsDir && !path.isAbsolute(config.componentsDir) && !config.componentsDir.startsWith('.')) {
+    config.componentsDir = path.resolve(config.componentsDir);
+  }
+  
+  if (config.layoutsDir && !path.isAbsolute(config.layoutsDir) && !config.layoutsDir.startsWith('.')) {
+    config.layoutsDir = path.resolve(config.layoutsDir);
+  }
+  
+  // Also set components and layouts for compatibility with isPartialFile
+  config.components = config.componentsDir;
+  config.layouts = config.layoutsDir;
+  
+  return config;
 }
 
 /**

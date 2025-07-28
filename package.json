@@ -20,7 +20,7 @@
     "serve": "node bin/cli.js serve --source example/dist --port 3000",
     "example": "npm run build && npm run serve",
     "build": "node bin/cli.js build --source example/src --output example/dist",
-    "build:advanced": "node ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/custom_components/ -l example/advanced/src/site_layouts/"
+    "build:advanced": "rm -rf example/advanced/dist && node ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/custom_components/ -l example/advanced/src/site_layouts/"
   },
   "keywords": [
     "static-site-generator",

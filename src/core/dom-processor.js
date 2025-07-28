@@ -69,17 +69,24 @@ async function detectLayout(document, sourceRoot, config) {
   for (const element of rootElements) {
     const layoutAttr = element.getAttribute('data-layout');
     if (layoutAttr) {
-      let layoutPath = layoutAttr;
-      let actualSourceRoot = sourceRoot;
+      let layoutPath;
       
-      if (layoutPath.startsWith('/')) {
-        actualSourceRoot = await findActualSourceRoot(sourceRoot, layoutPath.substring(1));
-        layoutPath = path.join(actualSourceRoot, layoutPath.substring(1));
+      if (layoutAttr.startsWith('/')) {
+        // Absolute path relative to source root
+        const relativePath = layoutAttr.substring(1); // Remove leading slash
+        layoutPath = path.join(sourceRoot, relativePath);
       } else {
-        layoutPath = path.join(sourceRoot, config.layoutsDir, layoutPath);
+        // Relative path within layouts directory
+        if (path.isAbsolute(config.layoutsDir)) {
+          // If layoutsDir is an absolute path (from CLI), use it directly
+          layoutPath = path.join(config.layoutsDir, layoutAttr);
+        } else {
+          // If layoutsDir is relative, join with sourceRoot
+          layoutPath = path.join(sourceRoot, config.layoutsDir, layoutAttr);
+        }
       }
       
-      if (!isPathWithinDirectory(layoutPath, actualSourceRoot)) {
+      if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
         throw new Error(`Layout path outside source directory: ${layoutAttr}`);
       }
       
@@ -88,7 +95,14 @@ async function detectLayout(document, sourceRoot, config) {
   }
   
   // Fall back to default layout
-  const defaultLayoutPath = path.join(sourceRoot, config.layoutsDir, config.defaultLayout);
+  let defaultLayoutPath;
+  if (path.isAbsolute(config.layoutsDir)) {
+    // If layoutsDir is an absolute path (from CLI), use it directly
+    defaultLayoutPath = path.join(config.layoutsDir, config.defaultLayout);
+  } else {
+    // If layoutsDir is relative, join with sourceRoot
+    defaultLayoutPath = path.join(sourceRoot, config.layoutsDir, config.defaultLayout);
+  }
   return defaultLayoutPath;
 }
 
@@ -161,40 +175,45 @@ async function processIncludesInHTML(htmlContent, sourceRoot, config) {
   const allStyles = [];
   const allScripts = [];
   
-  const matches = [...htmlContent.matchAll(includeRegex)];
+  // Process includes recursively until no more are found
+  let hasIncludes = true;
+  let depth = 0;
+  const maxDepth = 10; // Prevent infinite recursion
   
-  for (const match of matches) {
-    try {
-      const includeTag = match[0];
-      const attributes = match[1];
-      
-      // Parse attributes
-      const srcMatch = attributes.match(/src=["']([^"']+)["']/);
-      if (!srcMatch) continue;
-      
-      const src = srcMatch[1];
-      const dataAttrs = {};
-      
-      // Extract data attributes
-      const dataMatches = attributes.matchAll(/data-(\w+)=["']([^"']+)["']/g);
-      for (const dataMatch of dataMatches) {
-        dataAttrs[dataMatch[1]] = dataMatch[2];
+  while (hasIncludes && depth < maxDepth) {
+    const matches = [...result.matchAll(includeRegex)];
+    hasIncludes = matches.length > 0;
+    depth++;
+    
+    for (const match of matches) {
+      try {
+        const includeTag = match[0];
+        const attributes = match[1];
+        
+        // Parse src attribute
+        const srcMatch = attributes.match(/src=["']([^"']+)["']/);
+        if (!srcMatch) continue;
+        
+        const src = srcMatch[1];
+        
+        // Load and process component (no data attributes needed since we removed token replacement)
+        const componentResult = await loadAndProcessComponent(src, {}, sourceRoot, config);
+        
+        // Collect styles and scripts
+        allStyles.push(...componentResult.styles);
+        allScripts.push(...componentResult.scripts);
+        
+        // Replace include tag with component content
+        result = result.replace(includeTag, componentResult.content);
+        
+      } catch (error) {
+        logger.error(`Failed to process include: ${error.message}`);
+        result = result.replace(match[0], `<!-- Error: ${error.message} -->`);
       }
-      
-      // Load and process component
-      const componentResult = await loadAndProcessComponent(src, dataAttrs, sourceRoot, config);
-      
-      // Collect styles and scripts
-      allStyles.push(...componentResult.styles);
-      allScripts.push(...componentResult.scripts);
-      
-      // Replace include tag with component content
-      result = result.replace(includeTag, componentResult.content);
-      
-    } catch (error) {
-      logger.error(`Failed to process include: ${error.message}`);
-      result = result.replace(match[0], `<!-- Error: ${error.message} -->`);
     }
+    
+    // Reset regex to find new includes in the updated content
+    includeRegex.lastIndex = 0;
   }
   
   // Clean up any remaining artifacts
@@ -221,41 +240,34 @@ async function processIncludesInHTML(htmlContent, sourceRoot, config) {
 /**
  * Load and process a component
  */
-async function loadAndProcessComponent(src, dataAttrs, sourceRoot, config) {
+async function loadAndProcessComponent(src, unused, sourceRoot, config) {
   // Resolve component path
-  let componentPath = src;
-  let actualSourceRoot = sourceRoot;
+  let componentPath;
   
-  if (componentPath.startsWith('/')) {
-    actualSourceRoot = await findActualSourceRoot(sourceRoot, componentPath.substring(1));
-    componentPath = path.join(actualSourceRoot, componentPath.substring(1));
+  if (src.startsWith('/')) {
+    // Absolute path relative to source root
+    const relativePath = src.substring(1); // Remove leading slash
+    componentPath = path.join(sourceRoot, relativePath);
   } else {
-    actualSourceRoot = await findActualSourceRoot(sourceRoot, path.join(config.componentsDir, componentPath));
-    componentPath = path.join(actualSourceRoot, config.componentsDir, componentPath);
+    // Relative path within components directory
+    if (path.isAbsolute(config.componentsDir)) {
+      // If componentsDir is an absolute path (from CLI), use it directly
+      componentPath = path.join(config.componentsDir, src);
+    } else {
+      // If componentsDir is relative, join with sourceRoot
+      componentPath = path.join(sourceRoot, config.componentsDir, src);
+    }
   }
   
-  if (!isPathWithinDirectory(componentPath, actualSourceRoot)) {
+  if (!isPathWithinDirectory(componentPath, sourceRoot)) {
     throw new Error(`Component path outside source directory: ${src}`);
   }
   
   // Load component
   const componentContent = await fs.readFile(componentPath, 'utf-8');
   
-  // Process token replacement
+  // Just return the component content as-is, without token replacement
   let processedContent = componentContent;
-  for (const [token, value] of Object.entries(dataAttrs)) {
-    // Replace the actual content of elements with data-token
-    // Use a more flexible regex that handles multiline content
-    const elementRegex = new RegExp(`(<[^>]+data-token=["']${token}["'][^>]*>)(.*?)(</[^>]+>)`, 'gs');
-    const beforeReplace = processedContent;
-    processedContent = processedContent.replace(elementRegex, `$1${value}$3`);
-    
-    if (beforeReplace !== processedContent) {
-      logger.debug(`Token replacement for ${token}: ${value} -> content replaced`);
-    } else {
-      logger.debug(`No token replacement for ${token} with value ${value}`);
-    }
-  }
   
   // Extract and remove styles and scripts
   const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
@@ -276,35 +288,13 @@ async function loadAndProcessComponent(src, dataAttrs, sourceRoot, config) {
 }
 
 /**
- * Find actual source root by looking for files
- */
-async function findActualSourceRoot(sourceRoot, relativePath) {
-  const candidates = [
-    sourceRoot,
-    path.dirname(sourceRoot),
-    path.dirname(path.dirname(sourceRoot))
-  ];
-  
-  for (const candidate of candidates) {
-    const testPath = path.join(candidate, relativePath);
-    try {
-      await fs.access(testPath);
-      return candidate;
-    } catch {}
-  }
-  
-  return sourceRoot;
-}
-
-/**
  * Check if DOM mode should be used for a file
  */
 export function shouldUseDOMMode(content) {
   return content.includes('<include ') || 
          content.includes('<slot') || 
          content.includes('data-slot=') ||
-         content.includes('data-layout=') ||
-         content.includes('data-token=');
+         content.includes('data-layout=');
 }
 
 /**

@@ -89,6 +89,15 @@ export async function build(options = {}) {
   const config = { ...DEFAULT_OPTIONS, ...options };
   const startTime = Date.now();
   
+  // Convert relative paths to absolute paths for proper partial file detection
+  if (config.components && !path.isAbsolute(config.components) && !config.components.startsWith('.')) {
+    config.components = path.resolve(config.components);
+  }
+  
+  if (config.layouts && !path.isAbsolute(config.layouts) && !config.layouts.startsWith('.')) {
+    config.layouts = path.resolve(config.layouts);
+  }
+  
   logger.info(`Building site from ${config.source} to ${config.output}`);
   
   try {

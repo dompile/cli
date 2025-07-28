@@ -117,15 +117,25 @@ export function isPartialFile(filePath, config = '.components') {
 /**
  * Check if a file is within a specific directory
  * @param {string} filePath - File path to check
- * @param {string} dirName - Directory name to check against
+ * @param {string} dirPattern - Directory name or absolute path to check against
  * @returns {boolean} True if file is in the directory
  */
-function isFileInDirectory(filePath, dirName) {
+function isFileInDirectory(filePath, dirPattern) {
+  const normalizedFilePath = path.resolve(filePath);
+  
+  // If dirPattern is an absolute path, check if file is within that directory
+  if (path.isAbsolute(dirPattern)) {
+    const normalizedDirPattern = path.resolve(dirPattern);
+    return normalizedFilePath.startsWith(normalizedDirPattern + path.sep) || 
+           normalizedFilePath === normalizedDirPattern;
+  }
+  
+  // If dirPattern is a relative directory name, check if any part of the path matches
   const normalizedPath = path.normalize(filePath);
   const pathParts = normalizedPath.split(path.sep);
   
   // Check if any part of the path matches the directory name
-  return pathParts.includes(dirName);
+  return pathParts.includes(dirPattern);
 }
 
 /**
