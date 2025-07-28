@@ -141,7 +141,6 @@ dompile uses Apache SSI syntax for includes:
 
 ### Layout System
 
-Layouts use token replacement for dynamic content:
 
 - `{{ title }}` - From frontmatter or page data
 - `{{ content }}` - Main content (markdown or HTML)

@@ -23,7 +23,6 @@
 * **One component per file**
 * **No `<template>` or wrapper required**
 * File content is injected **as-is**
-* Use `data-token="..."` for token replacement with `<include />`
 * Components can contain their own `<style>` and `<script>`
 
 ### 🔹 `components/alert.html`
@@ -34,8 +33,6 @@
 </style>
 
 <div class="alert">
-  <strong data-token="title">Title</strong>
-  <p data-token="message">Message</p>
 </div>
 
 <script>
@@ -126,7 +123,6 @@
 | `<template data-slot="x">`       | Injects into `<slot name="x">` in layout                    |
 | Page root content (non-template) | Injects into unnamed `<slot>`                               |
 | `<include />`                    | Injects content of referenced file at position              |
-| `data-token="..."`               | Replaced with value from matching `data-...` on `<include>` |
 
 ---
 
@@ -147,7 +143,6 @@
 6. **Process all `<include />` tags**
 
    * Load referenced component file
-   * Replace all `data-token="X"` with `data-X` from `<include>`
    * Inline `<style>` tags into `<head>` (deduplicated)
    * Append `<script>` tags to end of body (deduplicated)
 7. **Emit HTML to `dist/` or output dir**
@@ -230,7 +225,6 @@ dompile watch
 | No need for template wrappers                | ✅           |
 | Root elements inject into unnamed slot       | ✅           |
 | Named slots via `<template data-slot="...">` | ✅           |
-| Token replacement using `data-token="..."`   | ✅           |
 | Inline styles/scripts inside components      | ✅           |
 | Default layout fallback                      | ✅           |
 | Self-closing `<include />` works like SSI    | ✅           |
@@ -302,8 +296,6 @@ function processIncludes(dom) {
     const fragment = includeDom.body || includeDom;
     const tokens = inc.attributes;
 
-    fragment.querySelectorAll("[data-token]").forEach((el) => {
-      const token = el.getAttribute("data-token");
       const val = tokens[`data-${token}`]?.value;
       if (val) el.textContent = val;
     });

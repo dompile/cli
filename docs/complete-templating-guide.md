@@ -1015,5 +1015,4 @@ title: "My Post"
 - [Getting Started Guide](getting-started.md)
 - [Include Syntax Documentation](include-syntax.md)
 - [Template Elements in Markdown](template-elements-in-markdown.md)
-- [Token Replacement](token-replacement.md)
 - [CLI Reference](cli-reference.md)

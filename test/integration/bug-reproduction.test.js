@@ -30,8 +30,8 @@ test('DOM Mode include processing bug reproduction', async () => {
   await fs.writeFile(
     path.join(componentsDir, 'alert.html'),
     `<div class="alert">
-  <strong data-token="title">Title</strong>
-  <p data-token="message">Message</p>
+  <strong>Title</strong>
+  <p>Message</p>
 </div>`
   );
 

@@ -182,4 +182,3 @@ Product description and details go here.
 
 - [Layout System Documentation](layouts-slots-templates.md)
 - [Include System Documentation](include-syntax.md)
-- [Token Replacement Documentation](token-replacement.md)

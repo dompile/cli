@@ -47,8 +47,8 @@ describe('DOM Mode Include Processing', () => {
 </style>
 
 <div class="alert">
-  <strong data-token="title">Title</strong>
-  <p data-token="message">Message</p>
+  <strong>Title</strong>
+  <p>Message</p>
 </div>`
     );
 
@@ -70,8 +70,8 @@ describe('DOM Mode Include Processing', () => {
 </style>
 
 <div class="card">
-  <h3 data-token="title">Card Title</h3>
-  <p data-token="content">Card content goes here.</p>
+  <h3>Card Title</h3>
+  <p>Card content goes here.</p>
 </div>`
     );
 
@@ -154,7 +154,7 @@ describe('DOM Mode Include Processing', () => {
 
   <include src="/custom_components/card.html"
            data-title="🎯 Features"
-           data-content="DOM Mode supports layouts, components, and token replacement." />
+           data-content="DOM Mode supports layouts and components." />
 
   <include src="/custom_components/card.html"
            data-title="⚡ Performance"
