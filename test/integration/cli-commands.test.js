@@ -10,7 +10,7 @@ import path from 'path';
 import { spawn } from 'child_process';
 import { createTempDirectory, cleanupTempDirectory, createTestStructure } from '../fixtures/temp-helper.js';
 
-const cliPath = path.resolve('/home/founder3/code/github/dompile/cli/bin/cli.js');
+const cliPath = path.resolve(process.cwd(), 'bin/cli.js');
 
 describe('CLI Commands and Options', () => {
   let tempDir;
