@@ -17,7 +17,7 @@ describe('build-process integration', () => {
   
   
   beforeEach(async () => {
-    const testFixturesDir = path.join(__dirname, '../fixtures/integration');
+    const testFixturesDir = path.join(__dirname, '../fixtures/integration-test-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
     // Create test directories
     sourceDir = path.join(testFixturesDir, 'src');
     outputDir = path.join(testFixturesDir, 'dist');
@@ -108,14 +108,16 @@ describe('build-process integration', () => {
   
   afterEach(async () => {
     // Clean up test fixtures
+    if (sourceDir) {
+      const testFixturesDir = path.dirname(sourceDir);
+      try {
+        await fs.rm(testFixturesDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
     sourceDir = null;
     outputDir = null;
-    const testFixturesDir = path.join(__dirname, '../fixtures/integration');
-    try {
-      await fs.rm(testFixturesDir, { recursive: true, force: true });
-    } catch (error) {
-      // Ignore cleanup errors
-    }
   });
   
   it('should build complete site with components and head injection', async () => {

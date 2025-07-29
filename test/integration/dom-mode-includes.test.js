@@ -14,13 +14,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe('DOM Mode Include Processing', () => {
-  const testDir = path.join(__dirname, '../test-temp/dom-mode-includes');
-  const sourceDir = path.join(testDir, 'src');
-  const outputDir = path.join(testDir, 'dist');
-  const componentsDir = path.join(sourceDir, 'custom_components');
-  const layoutsDir = path.join(sourceDir, 'site_layouts');
+  let testDir = null;
+  let sourceDir = null;
+  let outputDir = null;
+  let componentsDir = null;
+  let layoutsDir = null;
 
   beforeEach(async () => {
+    // Create unique test directories for each test
+    testDir = path.join(__dirname, '../test-temp/dom-mode-includes-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+    sourceDir = path.join(testDir, 'src');
+    outputDir = path.join(testDir, 'dist');
+    componentsDir = path.join(sourceDir, 'custom_components');
+    layoutsDir = path.join(sourceDir, 'site_layouts');
+
     // Clean up and create test directories
     await fs.rm(testDir, { recursive: true, force: true });
     await fs.mkdir(testDir, { recursive: true });
@@ -178,7 +185,18 @@ describe('DOM Mode Include Processing', () => {
   });
 
   afterEach(async () => {
-    await fs.rm(testDir, { recursive: true, force: true });
+    if (testDir) {
+      try {
+        await fs.rm(testDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+      testDir = null;
+      sourceDir = null;
+      outputDir = null;
+      componentsDir = null;
+      layoutsDir = null;
+    }
   });
 
   test('should process <include> elements and include component content', async () => {

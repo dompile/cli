@@ -10,13 +10,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testFixturesDir = path.join(__dirname, '../fixtures/minification');
 
 describe('enhanced HTML minification', () => {
-  let sourceDir;
-  let outputDir;
+  let sourceDir = null;
+  let outputDir = null;
   
   beforeEach(async () => {
+    const testFixturesDir = path.join(__dirname, '../fixtures/minification-test-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
     // Create test directories
     sourceDir = path.join(testFixturesDir, 'src');
     outputDir = path.join(testFixturesDir, 'dist');
@@ -26,11 +26,16 @@ describe('enhanced HTML minification', () => {
   
   afterEach(async () => {
     // Clean up
-    try {
-      await fs.rm(testFixturesDir, { recursive: true, force: true });
-    } catch (error) {
-      // Ignore cleanup errors
+    if (sourceDir) {
+      const testFixturesDir = path.dirname(sourceDir);
+      try {
+        await fs.rm(testFixturesDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
     }
+    sourceDir = null;
+    outputDir = null;
   });
   
   it('should minify HTML with CSS and JavaScript', async () => {

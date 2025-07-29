@@ -101,14 +101,26 @@ export function isPartialFile(filePath, config = '.components') {
     return true;
   }
   
-  // Check if in components directory
+  // Check if in configured components directory
   if (isFileInDirectory(filePath, componentsDir)) {
     return true;
   }
   
-  // Check if in layouts directory
+  // Check if in configured layouts directory
   if (isFileInDirectory(filePath, layoutsDir)) {
     return true;
+  }
+  
+  // Also check for common standard directory names that should be treated as partials
+  const commonPartialDirs = [
+    'layouts', 'components', '.components', '.layouts',
+    'includes', 'partials', 'templates'
+  ];
+  
+  for (const dirName of commonPartialDirs) {
+    if (isFileInDirectory(filePath, dirName)) {
+      return true;
+    }
   }
   
   return false;

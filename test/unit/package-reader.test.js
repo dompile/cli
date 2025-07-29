@@ -8,18 +8,26 @@ import assert from 'node:assert';
 import fs from 'fs/promises';
 import path from 'path';
 import { readPackageJson, findPackageJson, getBaseUrlFromPackage } from '../../src/utils/package-reader.js';
-import { createTempDirectory, cleanupTempDirectory, createTestFile } from '../fixtures/temp-helper.js';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('Package.json Reading', () => {
-  let tempDir;
+  let tempDir = null;
 
   beforeEach(async () => {
-    tempDir = await createTempDirectory();
+    // Create an isolated temp directory far from project root to avoid finding project package.json
+    tempDir = path.join('/tmp', 'dompile-test-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
+    await fs.mkdir(tempDir, { recursive: true });
   });
 
   afterEach(async () => {
     if (tempDir) {
-      await cleanupTempDirectory(tempDir);
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
       tempDir = null;
     }
   });
@@ -32,7 +40,7 @@ describe('Package.json Reading', () => {
         homepage: 'https://example.com'
       };
       
-      await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent, null, 2));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent, null, 2));
       
       const result = await readPackageJson(tempDir);
       
@@ -46,7 +54,7 @@ describe('Package.json Reading', () => {
     });
 
     it('should return null for invalid JSON', async () => {
-      await createTestFile(tempDir, 'package.json', '{ invalid json }');
+      await fs.writeFile(path.join(tempDir, 'package.json'), '{ invalid json }');
       
       const result = await readPackageJson(tempDir);
       assert.strictEqual(result, null);
@@ -58,7 +66,7 @@ describe('Package.json Reading', () => {
         version: '1.0.0'
       };
       
-      await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
       
       const result = await readPackageJson(tempDir);
       
@@ -70,7 +78,7 @@ describe('Package.json Reading', () => {
   describe('findPackageJson', () => {
     it('should find package.json in current directory', async () => {
       const packageContent = { name: 'current-dir', homepage: 'https://current.com' };
-      await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
       
       const result = await findPackageJson(tempDir);
       
@@ -83,7 +91,7 @@ describe('Package.json Reading', () => {
       await fs.mkdir(subDir, { recursive: true });
       
       const packageContent = { name: 'parent-dir', homepage: 'https://parent.com' };
-      await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
       
       const result = await findPackageJson(subDir);
       
@@ -99,8 +107,9 @@ describe('Package.json Reading', () => {
       const rootPackage = { name: 'root', homepage: 'https://root.com' };
       const subPackage = { name: 'sub', homepage: 'https://sub.com' };
       
-      await createTestFile(tempDir, 'package.json', JSON.stringify(rootPackage));
-      await createTestFile(path.join(tempDir, 'sub'), 'package.json', JSON.stringify(subPackage));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(rootPackage));
+      await fs.mkdir(path.join(tempDir, 'sub'), { recursive: true });
+      await fs.writeFile(path.join(tempDir, 'sub', 'package.json'), JSON.stringify(subPackage));
       
       const result = await findPackageJson(subDir);
       
@@ -125,7 +134,7 @@ describe('Package.json Reading', () => {
         homepage: 'https://mysite.com'
       };
       
-      await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
       
       const baseUrl = await getBaseUrlFromPackage(tempDir);
       
@@ -144,7 +153,7 @@ describe('Package.json Reading', () => {
         version: '1.0.0'
       };
       
-      await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
       
       const baseUrl = await getBaseUrlFromPackage(tempDir, 'https://fallback.com');
       
@@ -168,7 +177,7 @@ describe('Package.json Reading', () => {
 
       for (const homepage of testCases) {
         const packageContent = { name: 'test', homepage };
-        await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent));
+        await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
         
         const baseUrl = await getBaseUrlFromPackage(tempDir);
         assert.strictEqual(baseUrl, homepage);
@@ -191,7 +200,7 @@ describe('Package.json Reading', () => {
         homepage: 'https://package.example.com'
       };
       
-      await createTestFile(tempDir, 'package.json', JSON.stringify(packageContent));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
       
       // Test precedence: CLI arg > package.json > default
       
@@ -212,11 +221,11 @@ describe('Package.json Reading', () => {
       
       // Root package.json
       const rootPackage = { name: 'monorepo-root', homepage: 'https://root.com' };
-      await createTestFile(tempDir, 'package.json', JSON.stringify(rootPackage));
+      await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(rootPackage));
       
       // Site package.json
       const sitePackage = { name: 'site', homepage: 'https://site.com' };
-      await createTestFile(siteDir, 'package.json', JSON.stringify(sitePackage));
+      await fs.writeFile(path.join(siteDir, 'package.json'), JSON.stringify(sitePackage));
       
       // Should find site-specific homepage
       const baseUrl = await getBaseUrlFromPackage(siteDir);

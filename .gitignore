@@ -80,3 +80,4 @@ CLAUDE.md
 .notes/
 .giv/config
 test/test-temp/
+test/fixtures/*-test-*/
