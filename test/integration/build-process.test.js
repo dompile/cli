@@ -10,13 +10,14 @@ import { fileURLToPath } from 'url';
 import { build } from '../../src/core/file-processor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testFixturesDir = path.join(__dirname, '../fixtures/integration');
 
 describe('build-process integration', () => {
-  let sourceDir;
-  let outputDir;
+  let sourceDir = null;
+  let outputDir = null;
+  
   
   beforeEach(async () => {
+    const testFixturesDir = path.join(__dirname, '../fixtures/integration');
     // Create test directories
     sourceDir = path.join(testFixturesDir, 'src');
     outputDir = path.join(testFixturesDir, 'dist');
@@ -107,6 +108,9 @@ describe('build-process integration', () => {
   
   afterEach(async () => {
     // Clean up test fixtures
+    sourceDir = null;
+    outputDir = null;
+    const testFixturesDir = path.join(__dirname, '../fixtures/integration');
     try {
       await fs.rm(testFixturesDir, { recursive: true, force: true });
     } catch (error) {
