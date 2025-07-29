@@ -15,13 +15,16 @@ Unify is a modern, lightweight static site generator designed for frontend devel
 
 ### Primary Purpose
 
-Transform source HTML/Markdown files with includes, components, and layouts into a complete static website ready for deployment.
+Transform source HTML/Markdown files with includes, and layouts into a complete static website ready for deployment.
 
 ### Key Features
 
 - Apache SSI-style includes (`<!--#include file="header.html" -->`)
 - Modern DOM templating with `<template>`, `<slot>`, and `<include>` elements
 - Markdown processing with YAML frontmatter
+
+### Additional Features
+
 - Live development server with auto-reload
 - Automatic sitemap.xml generation
 - Incremental builds with smart dependency tracking
@@ -52,7 +55,7 @@ unify            # Defaults to build command
 1. Validates source and output directories
 2. Scans source directory for all files (HTML, Markdown, assets)
 3. Processes includes and dependencies
-4. Applies layouts to Markdown files
+4. Applies layouts to HTML and Markdown pages
 5. Processes DOM templating elements
 6. Copies referenced assets to output
 7. Generates sitemap.xml (if enabled)
@@ -141,30 +144,14 @@ unify watch [options]
 - **Purpose:** Specify layouts directory (relative to source or absolute path)
 - **Default:** `.layouts`
 - **Used by:** All commands
-- **Note:** Must be relative to source directory or absolute path with read access
+- **Note:** Must be relative to source directory or absolute path with read access. Does not get copied to output directory.
 
 **`--components, -c <directory>`**
 
 - **Purpose:** Specify components directory (relative to source or absolute path)
 - **Default:** `.components`
 - **Used by:** All commands
-- **Note:** Must be relative to source directory or absolute path with read access
-
-#### Server Options
-
-**`--port, -p <number>`**
-
-- **Purpose:** Development server port
-- **Default:** `3000`
-- **Validation:** Integer between 1-65535
-- **Used by:** `serve` command only
-
-**`--host <hostname>`**
-
-- **Purpose:** Development server host
-- **Default:** `localhost`
-- **Used by:** `serve` command only
-- **Examples:** `0.0.0.0` for external access
+- **Note:** Must be relative to source directory or absolute path with read access. Does not get copied to output directory.
 
 #### Build Options
 
@@ -184,7 +171,7 @@ unify watch [options]
 
 **`--clean`**
 
-- **Purpose:** Clean output directory before build
+- **Purpose:** Clean output directory before (initial) build
 - **Default:** `false`
 - **Used by:** All commands
 
@@ -192,21 +179,37 @@ unify watch [options]
 
 - **Purpose:** Fail entire build if any single page fails to build
 - **Default:** `false`
-- **Used by:** `build` and `serve` commands
+- **Used by:** `build` command, `watch` and `serve` ignore this option
 - **Behavior:** Exit with code 1 if any file processing fails
 
 **`--no-sitemap`**
 
 - **Purpose:** Disable sitemap.xml generation
 - **Default:** `false` (sitemap enabled by default)
-- **Used by:** `build` and `serve` commands
+- **Used by:** All Commands
 
 **`--minify`**
 
 - **Purpose:** Enable HTML minification for production builds
 - **Default:** `false`
-- **Used by:** `build` and `serve` commands
-- **Behavior:** Removes whitespace and optimizes HTML output
+- **Used by:**  All commands
+- **Behavior:** Removes whitespace and does basic optimization on HTML output
+
+#### Server Options
+
+**`--port, -p <number>`**
+
+- **Purpose:** Development server port
+- **Default:** `3000`
+- **Validation:** Integer between 1-65535
+- **Used by:** `serve` command only
+
+**`--host <hostname>`**
+
+- **Purpose:** Development server host
+- **Default:** `localhost`
+- **Used by:** `serve` command only
+- **Examples:** `0.0.0.0` for external access
 
 #### Global Options
 
@@ -232,13 +235,14 @@ unify watch [options]
 
 #### HTML Files (`.html`)
 
-- **Processing:** Include resolution, DOM templating, asset tracking
+- **Processing:** Include resolution, layout application, asset tracking
 - **Output:** Processed HTML with includes resolved
-- **Partials:** Files in `.components/` directory are treated as partials (not directly copied to output)
+- **Components:** Files in `.components/` directory are treated as partials (not directly copied to output)
+- **Layout Support:** Automatic layout or based on `data-layout` property on the pages root element
 
 #### Markdown Files (`.md`)
 
-- **Processing:** YAML frontmatter extraction, Markdown to HTML conversion with table support and code highlighting, layout application, include resolution, DOM templating if HTML is included in file
+- **Processing:** YAML frontmatter extraction, Markdown to HTML conversion with table support and code highlighting,  include resolution, layout application, DOM templating if HTML is included in file
 - **Output:** HTML files with same name
 - **Layout Support:** Automatic layout or based on frontmatter `layout` property
 
@@ -286,11 +290,19 @@ unify watch [options]
 - Leading `/` optional but recommended
 - Case-insensitive
 
-**Template and Slot System:**
+**Slot Element:**
 
 ```html
 <slot name="content">Default content here</slot>
 ```
+
+- Added to layout files as content placeholders
+  - Each layout is required to have exactly one unnamed slot that works as the primary content placeholder
+- Slot can optionally provide default content
+- Slot can optionally provide a name attribute
+  - Pages can override the content by providing templates that target the slot
+
+**Template Element:**
 
 ```html
 <template target="content">
@@ -300,6 +312,9 @@ unify watch [options]
 </template>
 ```
 
+- Contained in pages to provide content to layout slots
+- No template element is needed on the page to provide content to the layout's default slot
+
 ### Layout System
 
 #### Page Files
@@ -307,8 +322,12 @@ unify watch [options]
 - Located in the source directory (defaults: `src`)
 - Can be HTML or Markdown files
 - HTML files should contain one root content element
-- Markdown files can include frontmatter
-- Pages may contain any number of `<template>`, `<include>`, `<script>`, or `<style>` tags in their root
+  - This element can be any valid HTML element (ie: `<div>`, `<article>`, `<section>`, etc.)
+  - This element can provide a `data-layout` attribute to specify a layout
+  - This element _can_ be a template element with no target attribute to denote it replaces the layout's default slot
+- Markdown files can include frontmatter to specify a layout
+- Pages may contain any number of  `<include>`, `<script>`, `<style>`, or `<template>` tags in their root
+  - May contain only one `<template>` element without a `target` attribute per page
 
 #### Layout Files
 
@@ -322,7 +341,7 @@ unify watch [options]
 
 #### Layout Application
 
-- If a `default.html` file exists in the layouts directory, it is automatically applied to all pages, unless they already contain an `<html>` element in their content.
+- If a `default.html` file exists in the layouts directory, it is automatically applied to all pages, unless they already contain an `<html>` element in their content or the specify a different layout to use.
 - HTML pages can use a `data-layout="custom"` attribute
 - Markdown pages can specify `layout: custom` frontmatter property to specify a layout
 
@@ -597,26 +616,3 @@ project/
 - ✅ Graceful handling of missing includes
 - ✅ Robust error recovery during builds
 - ✅ Cross-platform compatibility
-- ✅ Backwards compatibility for existing projects
-
-
-## Areas Requiring Clarification
-
-The following areas have been clarified and integrated into the main specification:
-
-### Resolved Clarifications
-
-1. **Component Data Binding** - Not currently supported, components use static includes only
-2. **Asset Processing Pipeline** - Assets are copied as-is without modification or concatenation
-3. **Template Inheritance Hierarchy** - Current implementation supports single-level template inheritance
-4. **Live Reload Granularity** - Full page refresh for all changes, no CSS-only reloads
-5. **Error Recovery Strategies** - Continue building other files on failures unless `--perfection` flag used
-6. **Markdown Extensions** - Basic table support and code highlighting via `markdown-it` plugins
-7. **Sitemap Customization** - No current customization options, may add frontmatter-based priority in future
-8. **Production Optimization** - HTML minification supported via `--minify` flag, no CSS/JS optimization
-9. **Internationalization Support** - Handled by developers, no built-in i18n tooling
-10. **Plugin System Architecture** - No current plugin system, potential future `markdown-it` plugin support
-
-### Outstanding Questions
-
-None currently - all major architectural decisions have been clarified.

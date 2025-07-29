@@ -37,6 +37,23 @@ import { logger } from '../utils/logger.js';
 import { getBaseUrlFromPackage } from '../utils/package-reader.js';
 
 /**
+ * Simple HTML minifier that removes unnecessary whitespace and comments
+ * @param {string} html - HTML content to minify
+ * @returns {string} - Minified HTML content
+ */
+function minifyHtml(html) {
+  return html
+    // Remove HTML comments (but preserve conditional comments)
+    .replace(/<!--(?!\s*(?:\[if\s|\[endif|<!\[))[\s\S]*?-->/g, '')
+    // Remove extra whitespace between tags
+    .replace(/>\s+</g, '><')
+    // Collapse whitespace within text content
+    .replace(/\s+/g, ' ')
+    // Remove leading/trailing whitespace
+    .trim();
+}
+
+/**
  * Cache for tracking file modification times for incremental builds
  */
 const fileModificationCache = new Map();
@@ -203,7 +220,8 @@ export async function build(options = {}) {
             layoutContent,
             assetTracker,
             config.prettyUrls,
-            config.layouts
+            config.layouts,
+            config.minify
           );
           processedFiles.push(filePath);
           if (frontmatter) {
@@ -229,6 +247,11 @@ export async function build(options = {}) {
           errorType: error.constructor.name,
           suggestions: error.suggestions || []
         });
+        
+        // If perfection mode is enabled, fail fast on any error
+        if (config.perfection) {
+          throw new BuildError(`Build failed in perfection mode due to error in ${relativePath}: ${error.message}`, results.errors);
+        }
       }
     }
     
@@ -262,6 +285,11 @@ export async function build(options = {}) {
           errorType: error.constructor.name,
           suggestions: error.suggestions || []
         });
+        
+        // If perfection mode is enabled, fail fast on any error
+        if (config.perfection) {
+          throw new BuildError(`Build failed in perfection mode due to error copying asset ${relativePath}: ${error.message}`, results.errors);
+        }
       }
     }
     
@@ -280,6 +308,11 @@ export async function build(options = {}) {
       } catch (error) {
         logger.error(`Error generating sitemap: ${error.message}`);
         results.errors.push({ file: 'sitemap.xml', error: error.message });
+        
+        // If perfection mode is enabled, fail fast on any error
+        if (config.perfection) {
+          throw new BuildError(`Build failed in perfection mode due to sitemap generation error: ${error.message}`, results.errors);
+        }
       }
     }
     
@@ -378,7 +411,7 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
             }
           }
           
-          await processMarkdownFile(filePath, sourceRoot, outputRoot, layoutContent, assets, config.prettyUrls, config.layouts);
+          await processMarkdownFile(filePath, sourceRoot, outputRoot, layoutContent, assets, config.prettyUrls, config.layouts, config.minify);
           results.processed++;
           logger.debug(`Rebuilt Markdown: ${relativePath}`);
         } else {
@@ -618,7 +651,7 @@ function createBasicHtmlStructure(content, title, excerpt) {
  * @param {string} layoutsDir - Layouts directory name
  * @returns {Promise<Object|null>} Frontmatter data or null
  */
-async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutContent, assetTracker, prettyUrls = false, layoutsDir = '.layouts') {
+async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutContent, assetTracker, prettyUrls = false, layoutsDir = '.layouts', minify = false) {
   // Read markdown content
   let markdownContent;
   try {
@@ -688,6 +721,11 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutConte
   const outputPath = getOutputPathWithPrettyUrls(filePath, sourceRoot, outputRoot, prettyUrls);
   await ensureDirectoryExists(path.dirname(outputPath));
   
+  // Apply minification if enabled
+  if (minify) {
+    finalContent = minifyHtml(finalContent);
+  }
+  
   try {
     await fs.writeFile(outputPath, finalContent, 'utf-8');
   } catch (error) {
@@ -735,6 +773,11 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTrack
   // Write to output
   const outputPath = getOutputPath(filePath, sourceRoot, outputRoot);
   await ensureDirectoryExists(path.dirname(outputPath));
+  
+  // Apply minification if enabled
+  if (config.minify) {
+    processedContent = minifyHtml(processedContent);
+  }
   
   try {
     await fs.writeFile(outputPath, processedContent, 'utf-8');

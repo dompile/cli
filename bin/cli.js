@@ -15,13 +15,18 @@ async function main() {
     
     // Handle version and help flags
     if (args.version) {
-      console.log(`dompile v${VERSION}`);
+      console.log(`unify v${VERSION}`);
       process.exit(0);
     }
     
     if (args.help) {
       showHelp();
       process.exit(0);
+    }
+    
+    // Set logging level based on verbose flag
+    if (args.verbose) {
+      logger.setLevel('DEBUG');
     }
     
     // Default to build command if none specified
@@ -101,9 +106,9 @@ async function main() {
 
 function showHelp() {
   console.log(`
-dompile v${VERSION}
+unify v${VERSION}
 
-Usage: dompile [command] [options]
+Usage: unify [command] [options]
 
 Commands:
   build     Build static site from source files (default)
@@ -119,16 +124,21 @@ Options:
   --host            Server host (default: localhost)
   --pretty-urls     Generate pretty URLs (about.md → about/index.html)
   --base-url        Base URL for sitemap.xml (default: https://example.com)
+  --clean           Clean output directory before build
+  --no-sitemap      Disable sitemap.xml generation
+  --perfection      Fail entire build if any single page fails to build
+  --minify          Enable HTML minification for production builds
+  --verbose         Enable debug level messages in console output
   --help, -h        Show this help message
   --version, -v     Show version number
 
 Examples:
-  dompile                                 # Build with defaults (src → dist)
-  dompile build                           # Explicit build command
-  dompile serve                           # Serve with live reload on port 3000
-  dompile build --pretty-urls
-  dompile build --base-url https://mysite.com
-  dompile serve --port 8080
+  unify                                   # Build with defaults (src → dist)
+  unify build                             # Explicit build command
+  unify serve                             # Serve with live reload on port 3000
+  unify build --pretty-urls
+  unify build --base-url https://mysite.com
+  unify serve --port 8080
 `);
 }
 

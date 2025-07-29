@@ -1,12 +1,12 @@
 /**
- * Custom error classes for dompile
+ * Custom error classes for unify
  * Provides specific error types with actionable guidance for different failure scenarios
  */
 
 /**
- * Base error class for dompile errors
+ * Base error class for unify errors
  */
-export class DompileError extends Error {
+export class UnifyError extends Error {
   constructor(message, filePath = null, lineNumber = null, suggestions = []) {
     super(message);
     this.name = this.constructor.name;
@@ -67,7 +67,7 @@ export class DompileError extends Error {
 /**
  * Error thrown when an include file is not found
  */
-export class IncludeNotFoundError extends DompileError {
+export class IncludeNotFoundError extends UnifyError {
   constructor(includePath, parentFile, searchPaths = [], componentsDir = '.components') {
     const suggestions = [
       `Verify the file exists: ${includePath}`,
@@ -93,7 +93,7 @@ export class IncludeNotFoundError extends DompileError {
 /**
  * Error thrown when a circular dependency is detected in includes
  */
-export class CircularDependencyError extends DompileError {
+export class CircularDependencyError extends UnifyError {
   constructor(filePath, dependencyChain) {
     const chain = dependencyChain.join(' → ');
     const suggestions = [
@@ -110,7 +110,7 @@ export class CircularDependencyError extends DompileError {
 /**
  * Error thrown when a path escapes the source directory (security)
  */
-export class PathTraversalError extends DompileError {
+export class PathTraversalError extends UnifyError {
   constructor(attemptedPath, sourceRoot) {
     const suggestions = [
       'Use relative paths within your source directory',
@@ -136,7 +136,7 @@ export class PathTraversalError extends DompileError {
 /**
  * Error thrown when include directive syntax is malformed
  */
-export class MalformedDirectiveError extends DompileError {
+export class MalformedDirectiveError extends UnifyError {
   constructor(directive, filePath, lineNumber) {
     const suggestions = [
       'Use correct syntax: <!--#include file="path.html" --> or <!--#include virtual="/path.html" -->',
@@ -153,7 +153,7 @@ export class MalformedDirectiveError extends DompileError {
 /**
  * Error thrown when maximum include depth is exceeded
  */
-export class MaxDepthExceededError extends DompileError {
+export class MaxDepthExceededError extends UnifyError {
   constructor(filePath, depth, maxDepth) {
     const suggestions = [
       `Reduce the depth of nested includes to ${maxDepth} or fewer levels`,
@@ -177,7 +177,7 @@ export class MaxDepthExceededError extends DompileError {
 /**
  * Error thrown when file system operations fail
  */
-export class FileSystemError extends DompileError {
+export class FileSystemError extends UnifyError {
   constructor(operation, filePath, originalError) {
     const suggestions = [];
     
@@ -209,7 +209,7 @@ export class FileSystemError extends DompileError {
 /**
  * Error thrown when CLI arguments are invalid
  */
-export class InvalidArgumentError extends DompileError {
+export class InvalidArgumentError extends UnifyError {
   constructor(argument, value, reason) {
     const suggestions = [
       `Check the ${argument} value: ${value}`,
@@ -227,7 +227,7 @@ export class InvalidArgumentError extends DompileError {
 /**
  * Error thrown when build process fails
  */
-export class BuildError extends DompileError {
+export class BuildError extends UnifyError {
   constructor(message, errors = []) {
     const suggestions = [];
     
@@ -256,7 +256,7 @@ export class BuildError extends DompileError {
 /**
  * Error thrown when development server fails to start
  */
-export class ServerError extends DompileError {
+export class ServerError extends UnifyError {
   constructor(message, port = null) {
     const suggestions = [];
     
@@ -278,7 +278,7 @@ export class ServerError extends DompileError {
 /**
  * Error thrown when layout files are not found or invalid
  */
-export class LayoutError extends DompileError {
+export class LayoutError extends UnifyError {
   constructor(layoutPath, reason, alternatives = []) {
     const suggestions = [
       `Create the layout file: ${layoutPath}`,
@@ -301,7 +301,7 @@ export class LayoutError extends DompileError {
 /**
  * Error thrown when component files have issues
  */
-export class ComponentError extends DompileError {
+export class ComponentError extends UnifyError {
   constructor(componentPath, reason, parentFile = null) {
     const suggestions = [
       `Check the component file: ${componentPath}`,
@@ -319,3 +319,6 @@ export class ComponentError extends DompileError {
     this.parentFile = parentFile;
   }
 }
+
+// Backwards compatibility alias
+export const DompileError = UnifyError;

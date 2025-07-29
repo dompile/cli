@@ -17,6 +17,14 @@ class Logger {
       LOG_LEVELS.INFO;
   }
   
+  setLevel(level) {
+    if (typeof level === 'string') {
+      this.level = LOG_LEVELS[level.toUpperCase()] ?? LOG_LEVELS.INFO;
+    } else if (typeof level === 'number') {
+      this.level = level;
+    }
+  }
+  
   debug(...args) {
     if (this.level <= LOG_LEVELS.DEBUG) {
       console.debug('🐛', ...args);

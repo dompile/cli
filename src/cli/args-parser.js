@@ -17,6 +17,9 @@ export function parseArgs(argv) {
     baseUrl: "https://example.com",
     clean: false,
     sitemap: true,
+    perfection: false,
+    minify: false,
+    verbose: false,
     help: false,
     version: false,
   };
@@ -133,6 +136,21 @@ export function parseArgs(argv) {
     
     if (arg === '--no-sitemap') {
       args.sitemap = false;
+      continue;
+    }
+    
+    if (arg === '--perfection') {
+      args.perfection = true;
+      continue;
+    }
+    
+    if (arg === '--minify') {
+      args.minify = true;
+      continue;
+    }
+    
+    if (arg === '--verbose') {
+      args.verbose = true;
       continue;
     }
     

@@ -23,7 +23,9 @@ export async function watch(options = {}) {
     includes: 'includes',
     head: null,
     clean: true,
-    ...options
+    ...options,
+    // Watch mode should not use perfection flag (per spec)
+    perfection: false
   };
 
   // Initial build
