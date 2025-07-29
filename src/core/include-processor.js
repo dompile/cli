@@ -1,5 +1,5 @@
 /**
- * HTML Include Processor for dompile
+ * HTML Include Processor for unify
  * Handles expansion of Apache SSI-style include directives
  */
 
@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { resolveIncludePath } from '../utils/path-resolver.js';
 import { 
-  DompileError,
+  UnifyError,
   IncludeNotFoundError, 
   CircularDependencyError,
   FileSystemError,

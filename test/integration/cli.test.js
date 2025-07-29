@@ -70,13 +70,13 @@ describe('CLI integration', () => {
   it('should show version with --version flag', async () => {
     const result = await runCLI(['--version']);
     assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('dompile v0.5.2'));
+    assert(result.stdout.includes('unify v0.5.2'));
   });
   
   it('should show help with --help flag', async () => {
     const result = await runCLI(['--help']);
     assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Usage: dompile'));
+    assert(result.stdout.includes('Usage: unify'));
     assert(result.stdout.includes('Commands:'));
     assert(result.stdout.includes('build'));
     assert(result.stdout.includes('watch'));

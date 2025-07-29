@@ -1,5 +1,5 @@
 /**
- * DOM Mode Processor v2 for dompile
+ * DOM Mode Processor v2 for unify
  * String-based approach to handle slot replacement properly
  */
 

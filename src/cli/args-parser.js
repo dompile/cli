@@ -1,6 +1,6 @@
-import { DompileError } from "../utils/errors.js";
+import { UnifyError } from "../utils/errors.js";
 /**
- * Command-line argument parser for dompile
+ * Command-line argument parser for unify
  * Handles parsing of CLI arguments and options
  */
 
@@ -35,7 +35,7 @@ export function parseArgs(argv) {
         continue;
       } else {
         // Command found after options, treat as unknown option
-        throw new DompileError(
+        throw new UnifyError(
           `Unknown option: ${arg}`,
           null,
           null,
@@ -51,7 +51,7 @@ export function parseArgs(argv) {
     // Check for unknown commands (first non-option argument)
     if (!arg.startsWith('-') && !args.command && i === 0) {
       if (arg !== 'build' && arg !== 'watch' && arg !== 'serve') {
-        throw new DompileError(
+        throw new UnifyError(
           `Unknown command: ${arg}`,
           null,
           null,
@@ -156,8 +156,8 @@ export function parseArgs(argv) {
     
     // Unknown arguments
     if (arg.startsWith('-')) {
-      // Use DompileError for consistent CLI exit code
-      throw new DompileError(
+      // Use UnifyError for consistent CLI exit code
+      throw new UnifyError(
         `Unknown option: ${arg}`,
         null,
         null,
@@ -169,7 +169,7 @@ export function parseArgs(argv) {
       );
     } else {
       // Non-option argument that's not a command
-      throw new DompileError(
+      throw new UnifyError(
         `Unknown option: ${arg}`,
         null,
         null,

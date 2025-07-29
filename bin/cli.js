@@ -70,7 +70,7 @@ async function main() {
         break;
         
       default:
-        throw new (await import('../src/utils/errors.js')).DompileError(
+        throw new (await import('../src/utils/errors.js')).UnifyError(
           `Unknown command: ${args.command}`,
           null,
           null,

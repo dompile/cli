@@ -1,5 +1,5 @@
 /**
- * Markdown Processing System for dompile
+ * Markdown Processing System for unify
  * Handles conversion of Markdown files to HTML with frontmatter support
  */
 

@@ -1,5 +1,5 @@
 /**
- * Simple logging utility for dompile
+ * Simple logging utility for unify
  * Provides consistent logging across the application
  */
 

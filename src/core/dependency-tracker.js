@@ -1,5 +1,5 @@
 /**
- * Dependency Tracking System for dompile
+ * Dependency Tracking System for unify
  * Tracks include relationships for selective rebuilds
  */
 

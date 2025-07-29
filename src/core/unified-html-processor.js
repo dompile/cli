@@ -1,5 +1,5 @@
 /**
- * Unified HTML Processor for dompile
+ * Unified HTML Processor for unify
  * Handles both SSI-style includes (<!--#include -->) and DOM templating (<template>, <slot>)
  * in a single processing pipeline for consistency and simplicity.
  */

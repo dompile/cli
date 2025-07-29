@@ -1,5 +1,5 @@
 /**
- * Sitemap Generation for dompile
+ * Sitemap Generation for unify
  * Auto-generates XML sitemap for SEO and search engines
  */
 

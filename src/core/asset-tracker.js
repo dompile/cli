@@ -1,5 +1,5 @@
 /**
- * Asset Reference Tracker for dompile
+ * Asset Reference Tracker for unify
  * Tracks which assets are actually referenced in HTML content
  */
 

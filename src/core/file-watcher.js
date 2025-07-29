@@ -1,5 +1,5 @@
 /**
- * File watching system for dompile
+ * File watching system for unify
  * Watches source files and rebuilds on changes
  */
 

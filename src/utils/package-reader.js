@@ -1,5 +1,5 @@
 /**
- * Package.json reading utilities for dompile
+ * Package.json reading utilities for unify
  * Extracts configuration like homepage URL for sitemap generation
  */
 

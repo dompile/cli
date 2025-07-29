@@ -1,5 +1,5 @@
 /**
- * Path resolution utilities for dompile
+ * Path resolution utilities for unify
  * Handles secure path resolution and validation
  */
 
