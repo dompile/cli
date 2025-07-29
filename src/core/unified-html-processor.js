@@ -297,37 +297,56 @@ function extractSlotData(htmlContent) {
   const dom = new JSDOM(htmlContent, { contentType: "text/html" });
   const document = dom.window.document;
 
-  // Find template elements with data-slot attributes
-  const templateElements = document.querySelectorAll("template[data-slot]");
+  // Find template elements with data-slot attributes (legacy support)
+  const legacyTemplateElements = document.querySelectorAll("template[data-slot]");
   
-  templateElements.forEach((templateEl) => {
+  legacyTemplateElements.forEach((templateEl) => {
     const slotName = templateEl.getAttribute("data-slot");
     if (slotName) {
       slots[slotName] = templateEl.innerHTML;
     }
   });
 
-  // Extract default content from the page (everything not in template elements)
-  const bodyElement = document.body || document.documentElement;
-  if (bodyElement) {
-    // Clone the body to avoid modifying the original
-    const bodyClone = bodyElement.cloneNode(true);
-    
-    // Remove all template elements from the clone
-    const templatesInClone = bodyClone.querySelectorAll("template");
-    templatesInClone.forEach(template => template.remove());
-    
-    // Remove script and style elements  
-    const scriptsInClone = bodyClone.querySelectorAll("script");
-    scriptsInClone.forEach(script => script.remove());
-    
-    const stylesInClone = bodyClone.querySelectorAll("style");
-    stylesInClone.forEach(style => style.remove());
-    
-    // Get the remaining content as default slot
-    const defaultContent = bodyClone.innerHTML.trim();
-    if (defaultContent) {
-      slots["default"] = defaultContent;
+  // Find template elements with target attributes (spec-compliant)
+  const targetTemplateElements = document.querySelectorAll("template[target]");
+  
+  targetTemplateElements.forEach((templateEl) => {
+    const targetName = templateEl.getAttribute("target");
+    if (targetName) {
+      slots[targetName] = templateEl.innerHTML;
+    }
+  });
+
+  // Find template elements without target attribute for default slot
+  const defaultTemplateElements = document.querySelectorAll("template:not([target]):not([data-slot])");
+  
+  if (defaultTemplateElements.length > 0) {
+    // Use the first template without target as default content
+    const defaultTemplate = defaultTemplateElements[0];
+    slots["default"] = defaultTemplate.innerHTML;
+  } else {
+    // Extract default content from the page (everything not in template elements)
+    const bodyElement = document.body || document.documentElement;
+    if (bodyElement) {
+      // Clone the body to avoid modifying the original
+      const bodyClone = bodyElement.cloneNode(true);
+      
+      // Remove all template elements from the clone
+      const templatesInClone = bodyClone.querySelectorAll("template");
+      templatesInClone.forEach(template => template.remove());
+      
+      // Remove script and style elements  
+      const scriptsInClone = bodyClone.querySelectorAll("script");
+      scriptsInClone.forEach(script => script.remove());
+      
+      const stylesInClone = bodyClone.querySelectorAll("style");
+      stylesInClone.forEach(style => style.remove());
+      
+      // Get the remaining content as default slot
+      const defaultContent = bodyClone.innerHTML.trim();
+      if (defaultContent) {
+        slots["default"] = defaultContent;
+      }
     }
   }
 

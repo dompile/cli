@@ -12,9 +12,16 @@ const LOG_LEVELS = {
 
 class Logger {
   constructor() {
-    this.level = process.env.LOG_LEVEL ? 
-      LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] ?? LOG_LEVELS.INFO : 
-      LOG_LEVELS.INFO;
+    // Support both UNIFY_DEBUG (spec-compliant) and DEBUG (generic) environment variables
+    const debugEnabled = process.env.UNIFY_DEBUG || process.env.DEBUG;
+    
+    if (debugEnabled) {
+      this.level = LOG_LEVELS.DEBUG;
+    } else {
+      this.level = process.env.LOG_LEVEL ? 
+        LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] ?? LOG_LEVELS.INFO : 
+        LOG_LEVELS.INFO;
+    }
   }
   
   setLevel(level) {
@@ -27,7 +34,7 @@ class Logger {
   
   debug(...args) {
     if (this.level <= LOG_LEVELS.DEBUG) {
-      console.debug('🐛', ...args);
+      console.debug('🪲', ...args);
     }
   }
   

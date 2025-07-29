@@ -222,7 +222,7 @@ unify watch [options]
 **`--version, -v`**
 
 - **Purpose:** Display version number
-- **Format:** `dompile v{version}`
+- **Format:** `unify v{version}`
 - **Exit:** Code 0 after displaying version
 
 **`--verbose`**
@@ -275,7 +275,6 @@ unify watch [options]
 - Path relative to current file's directory
 - Supports `../` for parent directories
 - Case-sensitive
-- Only enabled if `--apache-mode` option is provided
 - Not recommended
 
 #### DOM Elements (Advanced)
@@ -567,9 +566,9 @@ project/
 
 ### Package Managers
 
-- npm global installation: `npm install -g @dompile/cli`
-- npx usage: `npx @dompile/cli`
-- Package registry: `@dompile/cli`
+- npm global installation: `npm install -g @unify/cli`
+- npx usage: `npx @unify/cli`
+- Package registry: `@unify/cli`
 
 ### Development Tools
 

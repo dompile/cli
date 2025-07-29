@@ -20,10 +20,8 @@ export class UnifyError extends Error {
       this.message = `${message} in ${location}`;
     }
     
-    // Add suggestions to message if provided
-    if (this.suggestions.length > 0) {
-      this.message += '\n\nSuggestions:\n' + this.suggestions.map(s => `  • ${s}`).join('\n');
-    }
+    // Don't add suggestions to message here - let formatForCLI() handle it
+    // This prevents duplication when both constructor and formatForCLI() add suggestions
   }
   
   /**

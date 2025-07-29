@@ -153,29 +153,42 @@ async function detectLayout(document, sourceRoot, config) {
 function extractSlotData(document) {
   const slots = {};
   
-  // Extract named slots
-  const slotTemplates = document.querySelectorAll('template[data-slot]');
-  slotTemplates.forEach(template => {
+  // Extract named slots with data-slot attribute (legacy support)
+  const legacySlotTemplates = document.querySelectorAll('template[data-slot]');
+  legacySlotTemplates.forEach(template => {
     const slotName = template.getAttribute('data-slot');
     slots[slotName] = template.innerHTML;
   });
   
-  // Extract default slot content (everything not in a template)
-  const body = document.body || document.documentElement;
-  const defaultContent = [];
+  // Extract named slots with target attribute (spec-compliant)
+  const targetTemplates = document.querySelectorAll('template[target]');
+  targetTemplates.forEach(template => {
+    const targetName = template.getAttribute('target');
+    slots[targetName] = template.innerHTML;
+  });
   
-  // Clone the body and remove template elements
-  const bodyClone = body.cloneNode(true);
-  const templates = bodyClone.querySelectorAll('template[data-slot]');
-  templates.forEach(template => template.remove());
-  
-  // Also remove the data-layout attribute from the root element
-  const rootElement = bodyClone.querySelector('[data-layout]');
-  if (rootElement) {
-    rootElement.removeAttribute('data-layout');
+  // Extract default slot content from template without target attribute
+  const defaultTemplates = document.querySelectorAll('template:not([target]):not([data-slot])');
+  if (defaultTemplates.length > 0) {
+    // Use the first template without target as default content
+    slots['default'] = defaultTemplates[0].innerHTML;
+  } else {
+    // Extract default slot content (everything not in a template)
+    const body = document.body || document.documentElement;
+    
+    // Clone the body and remove template elements
+    const bodyClone = body.cloneNode(true);
+    const allTemplates = bodyClone.querySelectorAll('template');
+    allTemplates.forEach(template => template.remove());
+    
+    // Also remove the data-layout attribute from the root element
+    const rootElement = bodyClone.querySelector('[data-layout]');
+    if (rootElement) {
+      rootElement.removeAttribute('data-layout');
+    }
+    
+    slots['default'] = bodyClone.innerHTML;
   }
-  
-  slots['default'] = bodyClone.innerHTML;
   
   return slots;
 }

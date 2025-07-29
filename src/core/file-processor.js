@@ -37,18 +37,49 @@ import { logger } from '../utils/logger.js';
 import { getBaseUrlFromPackage } from '../utils/package-reader.js';
 
 /**
- * Simple HTML minifier that removes unnecessary whitespace and comments
+ * Enhanced HTML minifier that removes unnecessary whitespace, comments, and optimizes attributes
  * @param {string} html - HTML content to minify
  * @returns {string} - Minified HTML content
  */
 function minifyHtml(html) {
   return html
-    // Remove HTML comments (but preserve conditional comments)
-    .replace(/<!--(?!\s*(?:\[if\s|\[endif|<!\[))[\s\S]*?-->/g, '')
+    // Remove HTML comments (but preserve conditional comments and live reload script)
+    .replace(/<!--(?!\s*(?:\[if\s|\[endif|<!\[|.*live reload))[\s\S]*?-->/g, '')
     // Remove extra whitespace between tags
     .replace(/>\s+</g, '><')
-    // Collapse whitespace within text content
+    // Remove whitespace around equal signs in attributes
+    .replace(/\s*=\s*/g, '=')
+    // Remove unnecessary quotes from attributes (but keep if they contain spaces or special chars)
+    .replace(/=["']([a-zA-Z0-9\-_\.]+)["']/g, '=$1')
+    // Remove empty attributes (except for specific ones that need to be preserved)
+    .replace(/\s+(class|id|data-[\w-]+)=""/g, '')
+    // Collapse multiple whitespace within text content to single space
     .replace(/\s+/g, ' ')
+    // Remove whitespace at start/end of tags
+    .replace(/\s+>/g, '>')
+    .replace(/<\s+/g, '<')
+    // Remove unnecessary whitespace in CSS and JavaScript
+    .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => {
+      const minifiedCss = css
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove CSS comments
+        .replace(/\s*{\s*/g, '{')          // Remove whitespace around braces
+        .replace(/\s*}\s*/g, '}')
+        .replace(/\s*;\s*/g, ';')          // Remove whitespace around semicolons
+        .replace(/\s*:\s*/g, ':')          // Remove whitespace around colons
+        .replace(/\s+/g, ' ')              // Collapse whitespace
+        .trim();
+      return match.replace(css, minifiedCss);
+    })
+    .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (match, js) => {
+      // Basic JavaScript minification (preserve functionality)
+      const minifiedJs = js
+        .replace(/\/\*[\s\S]*?\*\//g, '')   // Remove block comments
+        .replace(/\/\/[^\r\n]*/g, '')       // Remove line comments (but preserve line structure)
+        .replace(/\s*([{}();,=])\s*/g, '$1') // Remove whitespace around punctuation
+        .replace(/\s+/g, ' ')               // Collapse whitespace
+        .trim();
+      return match.replace(js, minifiedJs);
+    })
     // Remove leading/trailing whitespace
     .trim();
 }
