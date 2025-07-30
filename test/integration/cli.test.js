@@ -5,12 +5,9 @@
 import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
-import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
+import { runCLI } from '../test-utils.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testFixturesDir = path.join(__dirname, '../fixtures/cli');
-const cliPath = path.resolve(__dirname, '../../bin/cli.js');
+const testFixturesDir = path.join(import.meta.dir, '../fixtures/cli');
 
 describe('CLI integration', () => {
   let sourceDir;
@@ -68,13 +65,13 @@ describe('CLI integration', () => {
   
   it('should show version with --version flag', async () => {
     const result = await runCLI(['--version']);
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
     expect(result.stdout.includes('0.6.0')).toBeTruthy();
   });
   
   it('should show help with --help flag', async () => {
     const result = await runCLI(['--help']);
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
     expect(result.stdout.includes('Usage: unify')).toBeTruthy();
     expect(result.stdout.includes('Commands:')).toBeTruthy();
     expect(result.stdout.includes('build')).toBeTruthy();
@@ -83,7 +80,7 @@ describe('CLI integration', () => {
   
   it('should run build when no command is provided', async () => {
     const result = await runCLI([], { cwd: testFixturesDir });
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
     expect(result.stdout.includes('Building static site')).toBeTruthy();
     expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
 
@@ -104,7 +101,7 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
     expect(result.stdout.includes('Building static site')).toBeTruthy();
     expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
@@ -125,7 +122,7 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    expect(result.exitCode).toBe(1);
+    expect(result.code).toBe(1);
     expect(result.stderr.includes('Source directory not found')).toBeTruthy();
   });
   
@@ -142,7 +139,7 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
     const allOutput = result.stdout + result.stderr;
     expect(allOutput.includes('Include not found') || allOutput.includes('Include file not found')).toBeTruthy();
   });
@@ -153,14 +150,14 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    expect(result.exitCode).toBe(1);
+    expect(result.code).toBe(1);
     expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   
   it('should handle unknown commands', async () => {
     const result = await runCLI(['unknown-command']);
     
-    expect(result.exitCode).toBe(1);
+    expect(result.code).toBe(1);
     expect(result.stderr.includes('Unknown command')).toBeTruthy();
   });
   
@@ -170,7 +167,7 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    expect(result.exitCode).toBe(1);
+    expect(result.code).toBe(1);
     expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   
@@ -181,7 +178,7 @@ describe('CLI integration', () => {
       '-o', outputDir
     ]);
     
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
     expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output
@@ -219,7 +216,7 @@ describe('CLI integration', () => {
     // Change to test directory and run with defaults
     const result = await runCLI(['build'], { cwd: testDir });
     
-    expect(result.exitCode).toBe(0);
+    expect(result.code).toBe(0);
     expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output in default dist directory
@@ -231,64 +228,3 @@ describe('CLI integration', () => {
  
 });
 
-/**
- * Helper function to run CLI commands
- */
-function runCLI(args, options = {}) {
-  return new Promise((resolve) => {
-    const child = spawn('bun', [cliPath, ...args], {
-      stdio: 'pipe',
-      ...options
-    });
-    
-    let stdout = '';
-    let stderr = '';
-    
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-    
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-    
-    let resolved = false;
-    
-    child.on('close', (exitCode) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timeoutId);
-        resolve({
-          exitCode,
-          stdout,
-          stderr
-        });
-      }
-    });
-    
-    child.on('error', (error) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timeoutId);
-        resolve({
-          exitCode: -1,
-          stdout,
-          stderr: stderr + '\nProcess error: ' + error.message
-        });
-      }
-    });
-    
-    // Prevent hanging tests
-    const timeoutId = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        child.kill('SIGKILL');
-        resolve({
-          exitCode: -1,
-          stdout,
-          stderr: stderr + '\nTest timeout after 5000ms'
-        });
-      }
-    }, 5000);
-  });
-}

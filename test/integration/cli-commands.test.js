@@ -6,10 +6,8 @@
 import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
-import { spawn } from 'child_process';
+import { runCLI } from '../test-utils.js';
 import { createTempDirectory, cleanupTempDirectory, createTestStructure } from '../fixtures/temp-helper.js';
-
-const cliPath = path.resolve(process.cwd(), 'bin/cli.js');
 
 describe('CLI Commands and Options', () => {
   let tempDir;
@@ -35,7 +33,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, ['build']);
+      const result = await runCLIInDir(tempDir, ['build']);
       
       expect(result.code).toBe(0);
       
@@ -56,7 +54,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', customSource,
         '--output', customOutput
@@ -77,7 +75,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '-s', path.join(tempDir, 'content'),
         '-o', outputDir,
@@ -99,7 +97,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', sourceDir,
         '--output', outputDir,
@@ -121,7 +119,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', sourceDir,
         '--output', outputDir,
@@ -148,7 +146,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', sourceDir,
         '--output', outputDir,
@@ -171,7 +169,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', sourceDir,
         '--output', outputDir,
@@ -194,10 +192,10 @@ describe('CLI Commands and Options', () => {
       await createTestStructure(tempDir, structure);
 
       // First build the site
-      await runCLI(tempDir, ['build', '--source', sourceDir, '--output', outputDir]);
+      await runCLIInDir(tempDir, ['build', '--source', sourceDir, '--output', outputDir]);
 
       // Start server (will timeout after short period)
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'serve',
         '--source', outputDir,
         '--port', '3001'
@@ -214,9 +212,9 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      await runCLI(tempDir, ['build', '--source', sourceDir, '--output', outputDir]);
+      await runCLIInDir(tempDir, ['build', '--source', sourceDir, '--output', outputDir]);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'serve',
         '--source', outputDir,
         '--port', '8080'
@@ -232,9 +230,9 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      await runCLI(tempDir, ['build', '--source', sourceDir, '--output', outputDir]);
+      await runCLIInDir(tempDir, ['build', '--source', sourceDir, '--output', outputDir]);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'serve',
         '--source', outputDir,
         '-p', '9000'
@@ -252,7 +250,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'watch',
         '--source', sourceDir,
         '--output', outputDir
@@ -267,32 +265,32 @@ describe('CLI Commands and Options', () => {
 
   describe('Help and Version', () => {
     it('should show help with --help', async () => {
-      const result = await runCLI(tempDir, ['--help']);
+      const result = await runCLIInDir(tempDir, ['--help']);
       
       expect(result.stdout.includes('Usage') || result.stdout.includes('Commands') ||
              result.stdout.includes('build') || result.stdout.includes('serve')).toBeTruthy();
     });
 
     it('should show help with -h', async () => {
-      const result = await runCLI(tempDir, ['-h']);
+      const result = await runCLIInDir(tempDir, ['-h']);
       
       expect(result.stdout.includes('Usage') || result.stdout.includes('Commands')).toBeTruthy();
     });
 
     it('should show version with --version', async () => {
-      const result = await runCLI(tempDir, ['--version']);
+      const result = await runCLIInDir(tempDir, ['--version']);
       
       expect(result.stdout.match(/\d+\.\d+\.\d+/) || result.stderr.match(/\d+\.\d+\.\d+/)).toBeTruthy();
     });
 
     it('should show version with -v', async () => {
-      const result = await runCLI(tempDir, ['-v']);
+      const result = await runCLIInDir(tempDir, ['-v']);
       
       expect(result.stdout.match(/\d+\.\d+\.\d+/) || result.stderr.match(/\d+\.\d+\.\d+/)).toBeTruthy();
     });
 
     it('should show help for specific commands', async () => {
-      const result = await runCLI(tempDir, ['build', '--help']);
+      const result = await runCLIInDir(tempDir, ['build', '--help']);
       
       expect(result.stdout.includes('build') || result.stdout.includes('source') ||
              result.stdout.includes('output')).toBeTruthy();
@@ -307,7 +305,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         '--source', sourceDir,
         '--output', outputDir
       ]);
@@ -325,7 +323,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         '--source', sourceDir,
         '--output', outputDir,
         '--pretty-urls'
@@ -337,26 +335,26 @@ describe('CLI Commands and Options', () => {
 
   describe('Error Handling', () => {
     it('should handle unknown commands', async () => {
-      const result = await runCLI(tempDir, ['unknown-command']);
+      const result = await runCLIInDir(tempDir, ['unknown-command']);
       
       expect(result.code).not.toBe(0);
       expect(result.stderr.includes('Unknown') || result.stderr.includes('Invalid')).toBeTruthy();
     });
 
     it('should handle unknown options', async () => {
-      const result = await runCLI(tempDir, ['build', '--unknown-option']);
+      const result = await runCLIInDir(tempDir, ['build', '--unknown-option']);
       
       expect(result.code).not.toBe(0);
     });
 
     it('should handle missing required values', async () => {
-      const result = await runCLI(tempDir, ['build', '--source']);
+      const result = await runCLIInDir(tempDir, ['build', '--source']);
       
       expect(result.code).not.toBe(0);
     });
 
     it('should handle invalid source directory', async () => {
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', '/nonexistent/directory',
         '--output', outputDir
@@ -373,7 +371,7 @@ describe('CLI Commands and Options', () => {
       await createTestStructure(tempDir, structure);
 
       // Try to output to system directory (should fail gracefully)
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', sourceDir,
         '--output', '/root/forbidden'
@@ -393,7 +391,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', sourceDir,
         '--output', outputDir
@@ -412,7 +410,7 @@ describe('CLI Commands and Options', () => {
       const customSource = path.join(tempDir, 'custom-source');
       const customOutput = path.join(tempDir, 'custom-output');
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '--source', customSource,
         '--output', customOutput
@@ -434,7 +432,7 @@ describe('CLI Commands and Options', () => {
 
       await createTestStructure(tempDir, structure);
 
-      const result = await runCLI(tempDir, [
+      const result = await runCLIInDir(tempDir, [
         'build',
         '-s', path.join(tempDir, 'content'),
         '--output', outputDir,
@@ -454,14 +452,14 @@ describe('CLI Commands and Options', () => {
       await createTestStructure(tempDir, structure);
 
       // Test flags before command
-      const result1 = await runCLI(tempDir, [
+      const result1 = await runCLIInDir(tempDir, [
         '--source', sourceDir,
         '--output', outputDir,
         'build'
       ]);
 
       // Test flags after command
-      const result2 = await runCLI(tempDir, [
+      const result2 = await runCLIInDir(tempDir, [
         'build',
         '--source', sourceDir,
         '--output', outputDir
@@ -474,40 +472,11 @@ describe('CLI Commands and Options', () => {
 });
 
 /**
- * Helper function to run CLI command
+ * Helper function to run CLI command with working directory
  */
-async function runCLI(workingDir, args, timeout = 10000) {
-  return new Promise((resolve) => {
-    const child = spawn('bun', [cliPath, ...args], {
-      cwd: workingDir,
-      stdio: 'pipe'
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('close', (code) => {
-      resolve({ code, stdout, stderr });
-    });
-
-    // Set timeout
-    const timer = setTimeout(() => {
-      child.kill();
-      resolve({ code: -1, stdout, stderr: stderr + '\nTimeout' });
-    }, timeout);
-
-    child.on('close', () => {
-      clearTimeout(timer);
-    });
-  });
+async function runCLIInDir(workingDir, args) {
+  const { runCLI: importedRunCLI } = await import('../test-utils.js');
+  return await importedRunCLI(args, { cwd: workingDir });
 }
 
 /**

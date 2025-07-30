@@ -6,10 +6,10 @@
 
 import fs from "fs/promises";
 import path from "path";
-import { JSDOM } from "jsdom";
 import { processIncludes } from "./include-processor.js";
 import { logger } from "../utils/logger.js";
 import { isPathWithinDirectory, resolveIncludePath } from "../utils/path-resolver.js";
+import { hasFeature } from "../utils/runtime-detector.js";
 import {
   ComponentError,
   LayoutError,
@@ -108,6 +108,12 @@ export async function processHtmlUnified(
  * @returns {Promise<string>} Processed HTML content
  */
 async function processIncludesWithHTMLRewriter(htmlContent, filePath, sourceRoot, config = {}) {
+  // Check if HTMLRewriter is available, fallback to string replacement
+  if (!hasFeature('htmlRewriter')) {
+    logger.debug('HTMLRewriter not available, falling back to string replacement');
+    return await processIncludesWithStringReplacement(htmlContent, filePath, sourceRoot, config);
+  }
+  
   const rewriter = new HTMLRewriter();
   
   // Handle SSI-style includes
@@ -273,6 +279,12 @@ function resolveIncludePathInternal(type, includePath, currentFile, sourceRoot) 
  * @returns {string} Optimized HTML
  */
 async function optimizeHtmlContent(html) {
+  // Check if HTMLRewriter is available
+  if (!hasFeature('htmlRewriter')) {
+    logger.debug('HTMLRewriter not available, skipping HTML optimization');
+    return html;
+  }
+  
   const rewriter = new HTMLRewriter();
 
   // Remove unnecessary whitespace (basic optimization)
@@ -342,14 +354,10 @@ async function processDOMMode(pageContent, pagePath, sourceRoot, config = {}) {
   };
   
   try {
-    // Parse the page HTML
-    const dom = new JSDOM(pageContent, { contentType: "text/html" });
-    const document = dom.window.document;
-    
-    // Detect layout from root element
+    // Detect layout from HTML content using regex-based parsing
     let layoutPath;
     try {
-      layoutPath = await detectLayout(document, sourceRoot, domConfig);
+      layoutPath = await detectLayoutFromHTML(pageContent, sourceRoot, domConfig);
       logger.debug(`Using layout: ${layoutPath}`);
     } catch (error) {
       // Graceful degradation: if layout cannot be found, return content wrapped in basic HTML
@@ -383,8 +391,8 @@ ${pageContent}
 </html>`;
     }
     
-    // Extract slot content from page
-    const slotData = extractSlotData(document);
+    // Extract slot content from page HTML using regex-based parsing
+    const slotData = extractSlotDataFromHTML(pageContent);
     
     // Apply slots to layout using string replacement
     let processedHTML = applySlots(layoutContent, slotData);
@@ -401,52 +409,47 @@ ${pageContent}
 }
 
 /**
- * Detect which layout to use for a page
+ * Detect which layout to use for a page using regex-based HTML parsing
  */
-async function detectLayout(document, sourceRoot, config) {
-  const rootElements = [
-    document.documentElement,
-    document.body,
-    document.querySelector('[data-layout]')
-  ].filter(Boolean);
+async function detectLayoutFromHTML(htmlContent, sourceRoot, config) {
+  // Look for data-layout attribute in HTML content
+  const layoutMatch = htmlContent.match(/data-layout=["']([^"']+)["']/i);
   
-  for (const element of rootElements) {
-    const layoutAttr = element.getAttribute('data-layout');
-    if (layoutAttr) {
-      let layoutPath;
+  if (layoutMatch) {
+    const layoutAttr = layoutMatch[1];
+    let layoutPath;
+    
+    if (layoutAttr.startsWith('/')) {
+      // Absolute path relative to source root
+      const relativePath = layoutAttr.substring(1); // Remove leading slash
+      layoutPath = path.join(sourceRoot, relativePath);
       
-      if (layoutAttr.startsWith('/')) {
-        // Absolute path relative to source root
-        const relativePath = layoutAttr.substring(1); // Remove leading slash
-        layoutPath = path.join(sourceRoot, relativePath);
+      // Security check - must be within source root for absolute paths
+      if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
+        throw new Error(`Layout path outside source directory: ${layoutAttr}`);
+      }
+    } else {
+      // Relative path within layouts directory
+      if (path.isAbsolute(config.layoutsDir)) {
+        // If layoutsDir is an absolute path (from CLI), use it directly
+        layoutPath = path.join(config.layoutsDir, layoutAttr);
         
-        // Security check - must be within source root for absolute paths
+        // Security check - must be within the configured layouts directory
+        if (!isPathWithinDirectory(layoutPath, config.layoutsDir)) {
+          throw new Error(`Layout path outside layouts directory: ${layoutAttr}`);
+        }
+      } else {
+        // If layoutsDir is relative, join with sourceRoot
+        layoutPath = path.join(sourceRoot, config.layoutsDir, layoutAttr);
+        
+        // Security check - must be within source root for relative paths
         if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
           throw new Error(`Layout path outside source directory: ${layoutAttr}`);
         }
-      } else {
-        // Relative path within layouts directory
-        if (path.isAbsolute(config.layoutsDir)) {
-          // If layoutsDir is an absolute path (from CLI), use it directly
-          layoutPath = path.join(config.layoutsDir, layoutAttr);
-          
-          // Security check - must be within the configured layouts directory
-          if (!isPathWithinDirectory(layoutPath, config.layoutsDir)) {
-            throw new Error(`Layout path outside layouts directory: ${layoutAttr}`);
-          }
-        } else {
-          // If layoutsDir is relative, join with sourceRoot
-          layoutPath = path.join(sourceRoot, config.layoutsDir, layoutAttr);
-          
-          // Security check - must be within source root for relative paths
-          if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
-            throw new Error(`Layout path outside source directory: ${layoutAttr}`);
-          }
-        }
       }
-      
-      return layoutPath;
     }
+    
+    return layoutPath;
   }
   
   // Fall back to default layout
@@ -631,55 +634,59 @@ function hasDOMTemplating(content) {
 }
 
 /**
- * Extract slot content from HTML document (consolidated from both processors)
- * @param {Document} document - DOM document to extract slots from
+ * Extract slot content from HTML using regex-based parsing (consolidated from both processors)
+ * @param {string} htmlContent - HTML content to extract slots from
  * @returns {Object} Object with slot names as keys and content as values
  */
-function extractSlotData(document) {
+function extractSlotDataFromHTML(htmlContent) {
   const slots = {};
   
   // Extract named slots with data-slot attribute (legacy support)
-  const legacySlotTemplates = document.querySelectorAll('template[data-slot]');
-  legacySlotTemplates.forEach(template => {
-    const slotName = template.getAttribute('data-slot');
-    slots[slotName] = template.innerHTML;
-  });
+  const dataSlotRegex = /<template[^>]+data-slot=["']([^"']+)["'][^>]*>([\s\S]*?)<\/template>/gi;
+  let match;
+  while ((match = dataSlotRegex.exec(htmlContent)) !== null) {
+    const slotName = match[1];
+    const content = match[2];
+    slots[slotName] = content;
+  }
   
   // Extract named slots with target attribute (spec-compliant)
-  const targetTemplates = document.querySelectorAll('template[target]');
-  targetTemplates.forEach(template => {
-    const targetName = template.getAttribute('target');
-    slots[targetName] = template.innerHTML;
-  });
+  const targetRegex = /<template[^>]+target=["']([^"']+)["'][^>]*>([\s\S]*?)<\/template>/gi;
+  while ((match = targetRegex.exec(htmlContent)) !== null) {
+    const targetName = match[1];
+    const content = match[2];
+    slots[targetName] = content;
+  }
   
-  // Extract default slot content from template without target attribute
-  const defaultTemplates = document.querySelectorAll('template:not([target]):not([data-slot])');
-  if (defaultTemplates.length > 0) {
-    // Use the first template without target as default content
-    slots['default'] = defaultTemplates[0].innerHTML;
+  // Extract default slot content from template without target or data-slot attributes
+  const defaultTemplateRegex = /<template(?!\s+(?:target|data-slot)=)[^>]*>([\s\S]*?)<\/template>/gi;
+  match = defaultTemplateRegex.exec(htmlContent);
+  if (match) {
+    slots['default'] = match[1];
   } else {
     // Extract default slot content (everything not in a template)
-    const body = document.body || document.documentElement;
+    let defaultContent = htmlContent;
     
-    // Clone the body and remove template elements
-    const bodyClone = body.cloneNode(true);
-    const allTemplates = bodyClone.querySelectorAll('template');
-    allTemplates.forEach(template => template.remove());
+    // Remove all template elements
+    defaultContent = defaultContent.replace(/<template[^>]*>[\s\S]*?<\/template>/gi, '');
     
-    // Remove script and style elements  
-    const scriptsInClone = bodyClone.querySelectorAll("script");
-    scriptsInClone.forEach(script => script.remove());
+    // Remove script and style elements
+    defaultContent = defaultContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    defaultContent = defaultContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
     
-    const stylesInClone = bodyClone.querySelectorAll("style");
-    stylesInClone.forEach(style => style.remove());
+    // Remove data-layout attribute
+    defaultContent = defaultContent.replace(/\s*data-layout=["'][^"']*["']/gi, '');
     
-    // Also remove the data-layout attribute from the root element
-    const rootElement = bodyClone.querySelector('[data-layout]');
-    if (rootElement) {
-      rootElement.removeAttribute('data-layout');
+    // Remove html, head, body tags if present to extract just content
+    defaultContent = defaultContent.replace(/<\/?(?:html|head|body)[^>]*>/gi, '');
+    
+    // Remove the outer wrapper div/element if it exists (e.g., <div data-layout="...">)
+    const wrapperMatch = defaultContent.match(/^<[^>]*>([\s\S]*)<\/[^>]*>$/);
+    if (wrapperMatch) {
+      defaultContent = wrapperMatch[1];
     }
     
-    const defaultContent = bodyClone.innerHTML.trim();
+    defaultContent = defaultContent.trim();
     if (defaultContent) {
       slots['default'] = defaultContent;
     }
@@ -751,14 +758,10 @@ function applySlots(layoutContent, slotData) {
  */
 async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
   try {
-    // Parse the HTML content
-    const dom = new JSDOM(htmlContent, { contentType: "text/html" });
-    const document = dom.window.document;
-
-    // Check for layout attribute on any element
-    const layoutElement = document.querySelector("[data-layout]");
-    if (layoutElement) {
-      const layoutAttr = layoutElement.getAttribute("data-layout");
+    // Check for layout attribute using regex parsing
+    const layoutMatch = htmlContent.match(/data-layout=["']([^"']+)["']/i);
+    if (layoutMatch) {
+      const layoutAttr = layoutMatch[1];
       try {
         return await processLayoutAttribute(
           htmlContent,
@@ -776,12 +779,8 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
       }
     }
 
-    // Check for root element, other than head or html. If no html tag exists,
-    // apply the default layout
-    if (
-      !document.documentElement ||
-      document.documentElement.tagName.toLowerCase() !== "html"
-    ) {
+    // Check if no html tag exists, apply the default layout
+    if (!htmlContent.includes("<html")) {
       // If no html tag, we assume a default layout is needed
       let defaultLayoutPath;
       if (path.isAbsolute(config.layoutsDir)) {
@@ -905,12 +904,8 @@ async function processLayoutAttribute(
     null // No dependency tracker needed for layout processing
   );
 
-  // Parse page content for slot extraction
-  const dom = new JSDOM(pageContent, { contentType: "text/html" });
-  const document = dom.window.document;
-  
-  // Extract slot data from page content and apply to layout
-  const slotData = extractSlotData(document);
+  // Extract slot data from page content using regex-based parsing and apply to layout
+  const slotData = extractSlotDataFromHTML(pageContent);
   return applySlots(layoutContent, slotData);
 }
 
@@ -987,6 +982,12 @@ export async function extractHtmlMetadata(htmlContent) {
     keywords: [],
     openGraph: {}
   };
+
+  // Check if HTMLRewriter is available
+  if (!hasFeature('htmlRewriter')) {
+    logger.debug('HTMLRewriter not available, skipping HTML metadata extraction');
+    return metadata;
+  }
 
   const rewriter = new HTMLRewriter();
 

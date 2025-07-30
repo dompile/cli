@@ -90,7 +90,7 @@ async function main() {
     }
 
     // Show stack trace in debug mode or for unexpected errors
-    if (process.env.DEBUG || (!error.suggestions && !error.formatForCLI)) {
+    if (Bun.env.DEBUG || (!error.suggestions && !error.formatForCLI)) {
       console.error('\n🔍 Stack trace:');
       console.error(error.stack);
     }

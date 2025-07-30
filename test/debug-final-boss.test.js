@@ -5,7 +5,7 @@
 import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
-import { spawn } from 'child_process';
+import { runCLI } from './test-utils.js';
 import { createTempDirectory, cleanupTempDirectory, createTestStructure } from './fixtures/temp-helper.js';
 
 describe('Final Boss Debug', () => {
@@ -89,33 +89,11 @@ describe('Final Boss Debug', () => {
 });
 
 async function runBuild(workingDir, sourceDir, outputDir) {
-  return new Promise((resolve) => {
-    const args = [
-      'node',
-      path.join(process.cwd(), 'bin/cli.js'),
-      'build',
-      '--source', sourceDir,
-      '--output', outputDir
-    ];
+  const args = [
+    'build',
+    '--source', sourceDir,
+    '--output', outputDir
+  ];
 
-    const child = spawn(args[0], args.slice(1), {
-      cwd: workingDir,
-      stdio: 'pipe'
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('close', (code) => {
-      resolve({ code, stdout, stderr });
-    });
-  });
+  return await runCLI(args, { cwd: workingDir });
 }

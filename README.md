@@ -39,26 +39,17 @@ unify build --pretty-urls --base-url https://mysite.com
 unify serve --port 8080
 ```
 
-## 🏎️ Performance Comparison
+## 🏎️ Bun-Native Performance
 
-When running on Bun, unify automatically uses native APIs for significant performance improvements:
+unify is built exclusively for Bun and uses native APIs for maximum performance:
 
-| Feature | Node.js | Bun | Performance Gain |
-|---------|---------|-----|------------------|
-| HTML Processing | jsdom | HTMLRewriter | **3-5x faster** |
-| File Watching | chokidar | fs.watch | **2x faster startup** |
-| Dev Server | Node.js http | Bun.serve | **4-6x faster requests** |
-| Build Caching | Manual | Bun.hash | **10x faster hashing** |
-| Cold Start | ~2000ms | ~800ms | **2.5x faster** |
-
-### Migration Guide
-
-Already using Node.js? See our [migration guide](docs/migration-guide.md) for step-by-step instructions to upgrade to Bun.
-
-- ✅ Zero config changes needed
-- ✅ Full backward compatibility
-- ✅ Gradual migration options
-- ✅ CI/CD pipeline updates
+| Feature | Implementation | Performance |
+|---------|----------------|-------------|
+| HTML Processing | HTMLRewriter | **Ultra-fast DOM processing** |
+| File Watching | fs.watch | **Native file system events** |
+| Dev Server | Bun.serve | **High-performance HTTP server** |
+| Build Caching | Bun.hash | **Native cryptographic hashing** |
+| Cold Start | Bun native | **~800ms startup time** |
 
 ## 📁 Quick Example
 

@@ -204,9 +204,9 @@ async function main() {
       const stats = await fs.stat(executablePath);
       const size = formatFileSize(stats.size);
       
-      // Validate executable (skip Windows validation on non-Windows)
+      // Validate executable (skip Windows validation on non-Windows platforms)
       let isValid = true;
-      if (target.platform !== 'win32' || process.platform === 'win32') {
+      if (target.platform !== 'win32') {
         isValid = await validateExecutable(executablePath);
       }
       

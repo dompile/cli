@@ -204,7 +204,7 @@ describe('template target attribute', () => {
     expect(result.includes('<title>Multi-Template Page</title>')).toBeTruthy();
     expect(result.includes('<a href="/">Home</a>')).toBeTruthy();
     expect(result.includes('<a href="/about">About</a>')).toBeTruthy();
-    expect(result.includes('<p>© 2024 Test Site</p>')).toBeTruthy();
+    expect(result.includes('<p>&copy; 2024 Test Site</p>')).toBeTruthy(); // Test for HTML entity, not decoded symbol
     expect(result.includes('<h1>Main Content</h1>')).toBeTruthy();
     
     // Verify all template elements are removed

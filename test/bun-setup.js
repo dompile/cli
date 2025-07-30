@@ -12,9 +12,9 @@ import { hasFeature, getRuntimeInfo } from '../src/utils/runtime-detector.js';
 // Global test configuration
 const TEST_CONFIG = {
   timeout: 10000, // 10 seconds
-  tempDir: path.join(process.cwd(), 'test', 'temp'),
-  fixturesDir: path.join(process.cwd(), 'test', 'fixtures'),
-  verbose: process.env.TEST_VERBOSE === 'true'
+  tempDir: path.join(import.meta.dir, 'temp'),
+  fixturesDir: path.join(import.meta.dir, 'fixtures'),
+  verbose: Bun.env.TEST_VERBOSE === 'true'
 };
 
 // Track created temp directories for cleanup

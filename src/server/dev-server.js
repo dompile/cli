@@ -233,7 +233,7 @@ export class DevServer {
     if (pathname === '/api/info' && method === 'GET') {
       return new Response(JSON.stringify({
         server: 'Unify Dev Server',
-        version: process.version || 'unknown',
+        version: Bun.version,
         config: {
           port: this.config.port,
           outputDir: this.config.outputDir,
@@ -307,23 +307,18 @@ export class DevServer {
   }
 
   /**
-   * Open browser to the server URL
+   * Open browser to the server URL using Bun subprocess
    */
   async openBrowser(url) {
     try {
-      const { spawn } = await import('child_process');
-      const platform = process.platform;
+      // Use Bun's subprocess API
+      const proc = Bun.spawn(['open', url], {
+        stdio: ['ignore', 'ignore', 'ignore'],
+        detached: true
+      });
       
-      let command;
-      if (platform === 'darwin') {
-        command = 'open';
-      } else if (platform === 'win32') {
-        command = 'start';
-      } else {
-        command = 'xdg-open';
-      }
-      
-      spawn(command, [url], { detached: true, stdio: 'ignore' });
+      // Don't wait for the process to complete
+      proc.unref();
       logger.info(`Opened browser to ${url}`);
     } catch (error) {
       logger.warn('Could not open browser:', error.message);
