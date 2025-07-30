@@ -8,7 +8,7 @@ import fs from "fs/promises";
 import path from "path";
 import { processIncludes } from "./include-processor.js";
 import { logger } from "../utils/logger.js";
-import { isPathWithinDirectory, resolveIncludePath } from "../utils/path-resolver.js";
+import { isPathWithinDirectory, resolveIncludePath, resolveResourcePath } from "../utils/path-resolver.js";
 import { hasFeature } from "../utils/runtime-detector.js";
 import {
   ComponentError,
@@ -51,7 +51,7 @@ export async function processHtmlUnified(
       dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
     }
     
-    // Process includes with string replacement (more reliable than HTMLRewriter for this case)
+    // Process includes with the main include processor
     let processedContent = await processIncludesWithStringReplacement(
       htmlContent,
       filePath,
@@ -96,69 +96,6 @@ export async function processHtmlUnified(
       )}: ${error.message}`
     );
     throw error; // Re-throw with original error details
-  }
-}
-
-/**
- * Process HTML includes using HTMLRewriter
- * @param {string} htmlContent - HTML content to process
- * @param {string} filePath - Path to the HTML file
- * @param {string} sourceRoot - Source root directory
- * @param {Object} config - Processing configuration
- * @returns {Promise<string>} Processed HTML content
- */
-async function processIncludesWithHTMLRewriter(htmlContent, filePath, sourceRoot, config = {}) {
-  // Check if HTMLRewriter is available, fallback to string replacement
-  if (!hasFeature('htmlRewriter')) {
-    logger.debug('HTMLRewriter not available, falling back to string replacement');
-    return await processIncludesWithStringReplacement(htmlContent, filePath, sourceRoot, config);
-  }
-  
-  const rewriter = new HTMLRewriter();
-  
-  // Handle SSI-style includes
-  rewriter.on('*', {
-    comments(comment) {
-      const commentText = comment.text;
-      const includeMatch = commentText.match(/^#include\s+(virtual|file)="([^"]+)"\s*$/);
-      
-      if (includeMatch) {
-        const [, type, includePath] = includeMatch;
-        processIncludeDirective(comment, type, includePath, filePath, sourceRoot, config);
-      }
-    }
-  });
-
-  // Handle modern DOM includes
-  rewriter.on('include', {
-    async element(element) {
-      const src = element.getAttribute('src');
-      if (src) {
-        await processIncludeElement(element, src, filePath, sourceRoot, config);
-      }
-    }
-  });
-
-  // Process slots for layout system
-  rewriter.on('slot', {
-    element(element) {
-      const name = element.getAttribute('name');
-      if (name) {
-        element.replace(`<!-- slot:${name} -->`, { html: true });
-      }
-    }
-  });
-
-  // Transform the HTML
-  try {
-    const response = new Response(htmlContent, {
-      headers: { 'Content-Type': 'text/html' }
-    });
-    const transformedResponse = rewriter.transform(response);
-    return await transformedResponse.text();
-  } catch (error) {
-    logger.error(`HTMLRewriter transformation failed: ${error.message}`);
-    throw error;
   }
 }
 
@@ -237,7 +174,7 @@ async function processIncludeDirective(comment, type, includePath, filePath, sou
     const includeContent = await fs.readFile(resolvedPath, 'utf-8');
     
     // Recursively process nested includes in the included content
-    const processedContent = await processIncludesWithHTMLRewriter(includeContent, resolvedPath, sourceRoot, config);
+    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
     
     comment.replace(processedContent, { html: true });
     logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
@@ -256,7 +193,7 @@ async function processIncludeElement(element, src, filePath, sourceRoot, config)
     const includeContent = await fs.readFile(resolvedPath, 'utf-8');
     
     // Recursively process nested includes in the included content
-    const processedContent = await processIncludesWithHTMLRewriter(includeContent, resolvedPath, sourceRoot, config);
+    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
     
     element.setInnerContent(processedContent, { html: true });
     logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
@@ -403,7 +340,11 @@ ${pageContent}
     return processedHTML;
     
   } catch (error) {
-    logger.error(`DOM processing failed for ${pagePath}: ${error.message}`);
+    if (error.formatForCLI) {
+      logger.error(error.formatForCLI());
+    } else {
+      logger.error(`DOM processing failed for ${pagePath}: ${error.message}`);
+    }
     throw new FileSystemError('dom-process', pagePath, error);
   }
 }
@@ -417,39 +358,7 @@ async function detectLayoutFromHTML(htmlContent, sourceRoot, config) {
   
   if (layoutMatch) {
     const layoutAttr = layoutMatch[1];
-    let layoutPath;
-    
-    if (layoutAttr.startsWith('/')) {
-      // Absolute path relative to source root
-      const relativePath = layoutAttr.substring(1); // Remove leading slash
-      layoutPath = path.join(sourceRoot, relativePath);
-      
-      // Security check - must be within source root for absolute paths
-      if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
-        throw new Error(`Layout path outside source directory: ${layoutAttr}`);
-      }
-    } else {
-      // Relative path within layouts directory
-      if (path.isAbsolute(config.layoutsDir)) {
-        // If layoutsDir is an absolute path (from CLI), use it directly
-        layoutPath = path.join(config.layoutsDir, layoutAttr);
-        
-        // Security check - must be within the configured layouts directory
-        if (!isPathWithinDirectory(layoutPath, config.layoutsDir)) {
-          throw new Error(`Layout path outside layouts directory: ${layoutAttr}`);
-        }
-      } else {
-        // If layoutsDir is relative, join with sourceRoot
-        layoutPath = path.join(sourceRoot, config.layoutsDir, layoutAttr);
-        
-        // Security check - must be within source root for relative paths
-        if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
-          throw new Error(`Layout path outside source directory: ${layoutAttr}`);
-        }
-      }
-    }
-    
-    return layoutPath;
+    return resolveResourcePath(layoutAttr, sourceRoot, config.layoutsDir, 'layout');
   }
   
   // Fall back to default layout
@@ -515,7 +424,11 @@ async function processIncludesInHTML(htmlContent, sourceRoot, config) {
         result = result.replace(includeTag, componentResult.content);
         
       } catch (error) {
-        logger.error(`Failed to process include: ${error.message}`);
+        if (error.formatForCLI) {
+          logger.error(error.formatForCLI());
+        } else {
+          logger.error(`Failed to process include: ${error.message}`);
+        }
         result = result.replace(match[0], `<!-- Error: ${error.message} -->`);
       }
     }
@@ -550,26 +463,7 @@ async function processIncludesInHTML(htmlContent, sourceRoot, config) {
  */
 async function loadAndProcessComponent(src, unused, sourceRoot, config) {
   // Resolve component path
-  let componentPath;
-  
-  if (src.startsWith('/')) {
-    // Absolute path relative to source root
-    const relativePath = src.substring(1); // Remove leading slash
-    componentPath = path.join(sourceRoot, relativePath);
-  } else {
-    // Relative path within components directory
-    if (path.isAbsolute(config.componentsDir)) {
-      // If componentsDir is an absolute path (from CLI), use it directly
-      componentPath = path.join(config.componentsDir, src);
-    } else {
-      // If componentsDir is relative, join with sourceRoot
-      componentPath = path.join(sourceRoot, config.componentsDir, src);
-    }
-  }
-  
-  if (!isPathWithinDirectory(componentPath, sourceRoot)) {
-    throw new Error(`Component path outside source directory: ${src}`);
-  }
+  const componentPath = resolveResourcePath(src, sourceRoot, config.componentsDir, 'component');
   
   // Load component
   const componentContent = await fs.readFile(componentPath, 'utf-8');

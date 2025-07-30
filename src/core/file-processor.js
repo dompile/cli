@@ -347,7 +347,12 @@ export async function build(options = {}) {
         const sitemapContent = generateSitemap(enhancedPageInfo, baseUrl);
         await writeSitemap(sitemapContent, outputRoot);
       } catch (error) {
-        logger.error(`Error generating sitemap: ${error.message}`);
+        // Use enhanced error formatting if available
+        if (error.formatForCLI) {
+          logger.error(error.formatForCLI());
+        } else {
+          logger.error(`Error generating sitemap: ${error.message}`);
+        }
         results.errors.push({ file: 'sitemap.xml', error: error.message });
         
         // If perfection mode is enabled, fail fast on any error
@@ -394,7 +399,11 @@ export async function build(options = {}) {
     };
     
   } catch (error) {
-    logger.error('Build failed:', error.message);
+    if (error.formatForCLI) {
+      logger.error(error.formatForCLI());
+    } else {
+      logger.error('Build failed:', error.message);
+    }
     throw error;
   }
 }
@@ -402,11 +411,12 @@ export async function build(options = {}) {
 /**
  * Perform incremental build - only rebuild files that have changed
  * @param {Object} options - Build configuration options
- * @param {string} changedFile - Specific file that changed (optional)
  * @param {DependencyTracker} dependencyTracker - Existing dependency tracker
+ * @param {AssetTracker} assetTracker - Existing asset tracker
+ * @param {string} changedFile - Specific file that changed (optional)
  * @returns {Promise<Object>} Build results
  */
-export async function incrementalBuild(options = {}, changedFile = null, dependencyTracker = null, assetTracker = null) {
+export async function incrementalBuild(options = {}, dependencyTracker = null, assetTracker = null, changedFile = null) {
   const config = { ...DEFAULT_OPTIONS, ...options };
   const startTime = Date.now();
   
@@ -479,7 +489,7 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
         fileModificationCache.set(filePath, stats.mtime.getTime());
         
       } catch (error) {
-        logger.error(`Error processing ${filePath}: ${error.message}`);
+        logger.error(error.formatForCLI ? error.formatForCLI() : `Error processing ${filePath}: ${error.message}`);
         results.errors.push({ file: filePath, error: error.message });
       }
     }
@@ -501,7 +511,11 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
     };
     
   } catch (error) {
-    logger.error('Incremental build failed:', error.message);
+    if (error.formatForCLI) {
+      logger.error(error.formatForCLI());
+    } else {
+      logger.error('Incremental build failed:', error.message);
+    }
     throw error;
   }
 }
@@ -940,71 +954,3 @@ async function ensureDirectoryExists(dirPath) {
   }
 }
 
-/**
- * Get MIME type for file extension
- * @param {string} filePath - File path
- * @returns {string} MIME type
- */
-export function getMimeType(filePath) {
-  const ext = getFileExtension(filePath);
-  
-  const mimeTypes = {
-    '.html': 'text/html; charset=utf-8',
-    '.css': 'text/css; charset=utf-8',
-    '.js': 'application/javascript; charset=utf-8',
-    '.json': 'application/json; charset=utf-8',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon',
-    '.ttf': 'font/ttf',
-    '.woff': 'font/woff',
-    '.woff2': 'font/woff2',
-    '.pdf': 'application/pdf',
-    '.txt': 'text/plain; charset=utf-8',
-    '.xml': 'application/xml; charset=utf-8'
-  };
-  
-  return mimeTypes[ext] || 'application/octet-stream';
-}
-
-/**
- * Check if file should be processed as HTML
- * @param {string} filePath - File path to check
- * @returns {boolean} True if file should be processed
- */
-export function shouldProcessFile(filePath, includesDir = 'includes') {
-  return isHtmlFile(filePath) && !isPartialFile(filePath, includesDir);
-}
-
-/**
- * Get build statistics
- * @param {string} sourceRoot - Source root directory
- * @returns {Promise<Object>} Build statistics
- */
-export async function getBuildStats(sourceRoot) {
-  const files = await scanDirectory(sourceRoot);
-  
-  const stats = {
-    total: files.length,
-    html: 0,
-    partials: 0,
-    assets: 0
-  };
-  
-  for (const filePath of files) {
-    if (isHtmlFile(filePath)) {
-      if (isPartialFile(filePath)) {
-        stats.partials++;
-      } else {
-        stats.html++;
-      }
-    } else {
-      stats.assets++;
-    }
-  }
-  
-  return stats;
-}

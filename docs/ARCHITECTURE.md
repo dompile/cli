@@ -60,7 +60,6 @@ src/
 
 ├── server/
 │   ├── dev-server.js         # Development HTTP server
-│   ├── live-reload.js        # Server-Sent Events for live reload
 
 ├── utils/
 │   ├── path-resolver.js      # Path resolution utilities

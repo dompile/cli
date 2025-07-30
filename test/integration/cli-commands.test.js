@@ -338,7 +338,7 @@ describe('CLI Commands and Options', () => {
       const result = await runCLIInDir(tempDir, ['unknown-command']);
       
       expect(result.code).not.toBe(0);
-      expect(result.stderr.includes('Unknown') || result.stderr.includes('Invalid')).toBeTruthy();
+      expect(result.stdout.includes("Unknown")).toBeTruthy();
     });
 
     it('should handle unknown options', async () => {

@@ -1,5 +1,5 @@
 /**
- * Markdown Processing System for unify
+ * Markdown Processing System for Unify
  * Handles conversion of Markdown files to HTML with frontmatter support
  */
 
@@ -67,7 +67,7 @@ export function processMarkdown(markdownContent, filePath) {
     };
     
   } catch (error) {
-    logger.error(`Error processing markdown file ${filePath}: ${error.message}`);
+    logger.error(error.formatForCLI ? error.formatForCLI() : `Error processing markdown file ${filePath}: ${error.message}`);
     throw error;
   }
 }

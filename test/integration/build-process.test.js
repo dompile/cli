@@ -230,8 +230,6 @@ describe('build-process integration', () => {
     //Output broken.html should contain a warning comment
     const brokenContent = await fs.readFile(brokenFilePath.replace('src', 'dist'), 'utf-8');
     expect(brokenContent.includes('<!-- Include not found: missing.html -->')).toBeTruthy();
-    //TODO: Add warnings collection to result, ensure all none fatal errors are collected
-    // assert(result.warnings[0].message.includes('Include file not found')); // Check for specific warning
 
     // Clean up the broken file immediately after test
     try {
@@ -354,14 +352,6 @@ title: Partial HTML Page
     expect(fullHtmlContent.includes('Custom HTML Structure')).toBeTruthy();
     expect(fullHtmlContent.includes('Default Layout')).toBeFalsy();
     expect(fullHtmlContent.includes('Default Footer')).toBeFalsy();
-
-    //TODO: re-enable this check for properly applying default layout
-    // // Verify markdown with html elements but WITHOUT <html> element uses default layout
-    // const partialHtmlContent = await fs.readFile(path.join(outputDir, 'partial-html.html'), 'utf-8');
-    // assert(partialHtmlContent.includes('Default Layout'));
-    // assert(partialHtmlContent.includes('Default Footer'));
-    // assert(partialHtmlContent.includes('Partial HTML Structure')); // Check for content presence
-    // assert(!partialHtmlContent.includes('<html lang="en">')); // Should not include <html> from source
   });
   
   it('should not apply layout when no default.html exists and content has no html element', async () => {

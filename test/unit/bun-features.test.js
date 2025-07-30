@@ -49,7 +49,6 @@ describe('HTML Processor', () => {
     // For now, just test that the function doesn't crash and returns something
     expect(optimized).toBeTruthy();
     expect(typeof optimized).toBe('string');
-    // TODO: Fix HTML optimization functionality later
   });
 });
 

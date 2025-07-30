@@ -39,7 +39,7 @@ export class FileWatcher {
       try {
         callback(...args);
       } catch (error) {
-        logger.error(`Error in ${eventType} callback:`, error.message);
+        logger.error(error.formatForCLI ? error.formatForCLI() : `Error in ${eventType} callback: ${error.message}`);
       }
     });
   }
@@ -81,7 +81,11 @@ export class FileWatcher {
       
       return this;
     } catch (error) {
-      logger.error('Failed to start file watcher:', error.message);
+      if (error.formatForCLI) {
+        logger.error(error.formatForCLI());
+      } else {
+        logger.error('Failed to start file watcher:', error.message);
+      }
       throw error;
     }
   }
@@ -107,7 +111,11 @@ export class FileWatcher {
       this.processWatchEvents(watcher, config);
       
     } catch (error) {
-      logger.error(`Failed to watch directory ${sourcePath}:`, error.message);
+      if (error.formatForCLI) {
+        logger.error(error.formatForCLI());
+      } else {
+        logger.error(`Failed to watch directory ${sourcePath}:`, error.message);
+      }
       throw error;
     }
   }
@@ -126,7 +134,7 @@ export class FileWatcher {
       }
     } catch (error) {
       if (this.isWatching) {
-        logger.error('Error processing watch events:', error.message);
+        logger.error(error.formatForCLI ? error.formatForCLI() : `Error processing watch events: ${error.message}`);
         // Attempt to restart watcher
         setTimeout(() => {
           if (this.isWatching) {
@@ -226,7 +234,11 @@ export class FileWatcher {
       await incrementalBuild(config, this.dependencyTracker, this.assetTracker);
       logger.success('Incremental build completed');
     } catch (error) {
-      logger.error('Incremental build failed:', error.message);
+      if (error.formatForCLI) {
+        logger.error(error.formatForCLI());
+      } else {
+        logger.error('Incremental build failed:', error.message);
+      }
       
       // Fallback to full rebuild
       try {
@@ -236,7 +248,11 @@ export class FileWatcher {
         this.assetTracker = result.assetTracker;
         logger.success('Full rebuild completed');
       } catch (rebuildError) {
-        logger.error('Full rebuild also failed:', rebuildError.message);
+        if (rebuildError.formatForCLI) {
+          logger.error(rebuildError.formatForCLI());
+        } else {
+          logger.error('Full rebuild also failed:', rebuildError.message);
+        }
       }
     }
   }
@@ -299,15 +315,6 @@ export class FileWatcher {
 }
 
 /**
- * Factory function for creating and starting a file watcher
- */
-export async function createFileWatcher(options = {}) {
-  const watcher = new FileWatcher();
-  await watcher.startWatching(options);
-  return watcher;
-}
-
-/**
  * Start watching files and rebuild on changes
  * @param {Object} options - Watch configuration options
  * @param {string} [options.source='src'] - Source directory path
@@ -318,6 +325,8 @@ export async function createFileWatcher(options = {}) {
  */
 export async function watch(options = {}) {
   logger.info('Using native file watcher');
-  return await createFileWatcher(options);
+  const watcher = new FileWatcher();
+  await watcher.startWatching(options);
+  return watcher;
 }
 

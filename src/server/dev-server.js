@@ -3,7 +3,6 @@
  * Uses Bun.serve for high-performance HTTP serving
  */
 
-import fs from 'fs/promises';
 import path from 'path';
 import { logger } from '../utils/logger.js';
 
@@ -55,7 +54,11 @@ export class DevServer {
 
       return this;
     } catch (error) {
-      logger.error('Failed to start development server:', error.message);
+      if (error.formatForCLI) {
+        logger.error(error.formatForCLI());
+      } else {
+        logger.error('Failed to start development server:', error.message);
+      }
       throw error;
     }
   }
@@ -82,7 +85,7 @@ export class DevServer {
       return await this.serveStaticFile(pathname);
       
     } catch (error) {
-      logger.error(`Request error for ${pathname}:`, error.message);
+      logger.error(error.formatForCLI ? error.formatForCLI() : `Request error for ${pathname}: ${error.message}`);
       return new Response('Internal Server Error', { status: 500 });
     }
   }
@@ -147,7 +150,7 @@ export class DevServer {
       return new Response('Not Found', { status: 404 });
       
     } catch (error) {
-      logger.error(`Error serving ${resolvedPath}:`, error.message);
+      logger.error(error.formatForCLI ? error.formatForCLI() : `Error serving ${resolvedPath}: ${error.message}`);
       return new Response('Internal Server Error', { status: 500 });
     }
   }
@@ -302,7 +305,7 @@ export class DevServer {
    * Handle server errors
    */
   handleError(error) {
-    logger.error('Server error:', error.message);
+    logger.error(error.formatForCLI ? error.formatForCLI() : `Server error: ${error.message}`);
     return new Response('Server Error', { status: 500 });
   }
 
@@ -350,7 +353,7 @@ export class DevServer {
       this.isRunning = false;
       logger.info('Development server stopped');
     } catch (error) {
-      logger.error('Error stopping server:', error.message);
+      logger.error(error.formatForCLI ? error.formatForCLI() : `Error stopping server: ${error.message}`);
     }
   }
 
@@ -364,25 +367,4 @@ export class DevServer {
       connectedClients: this.sseClients.size
     };
   }
-}
-
-/**
- * Factory function to create development server
- * @param {Object} options - Server configuration options
- * @returns {Promise<DevServer>} Server instance
- */
-export async function createDevServer(options = {}) {
-  logger.info('Using development server');
-  const server = new DevServer();
-  await server.start(options);
-  return server;
-}
-
-/**
- * Start development server (legacy function for backward compatibility)
- * @param {Object} options - Server configuration options
- * @returns {Promise<DevServer>} Server instance
- */
-export async function startDevServer(options = {}) {
-  return createDevServer(options);
 }

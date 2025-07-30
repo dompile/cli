@@ -4,7 +4,6 @@ import { parseArgs } from '../src/cli/args-parser.js';
 import { build } from '../src/core/file-processor.js';
 import { watch } from '../src/core/file-watcher.js';
 import { DevServer } from '../src/server/dev-server.js';
-import { liveReload } from '../src/server/live-reload.js';
 import { logger } from '../src/utils/logger.js';
 import { BUILD_INFO, getVersionInfo, logRuntimeInfo } from '../src/utils/build-constants.js';
 
@@ -14,7 +13,8 @@ async function main() {
     
     // Handle version and help flags
     if (args.version) {
-      console.log(getVersionInfo());
+      const info = getVersionInfo();
+      console.log(`unify v${info.version}`);
       process.exit(0);
     }
     
@@ -50,19 +50,16 @@ async function main() {
         
       case 'serve':
         logger.info('Starting development server with live reload...');
-        const server = new DevServer(args);
-        
-        // Enable live reload
-        liveReload.setEnabled(true);
+        const server = new DevServer();
         
         // Start server
-        await server.start();
+        await server.start(args);
         
         // Start file watcher with live reload callback
         const watchConfig = {
           ...args,
           onReload: (eventType, filePath) => {
-            liveReload.notifyReload(eventType, filePath);
+            server.broadcastReload();
           }
         };
         
