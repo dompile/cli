@@ -37,6 +37,7 @@ export async function processHtmlUnified(
     componentsDir: ".components",
     layoutsDir: ".layouts",
     defaultLayout: "default.html",
+    optimize: config.minify || config.optimize,
     ...config,
   };
 
@@ -50,8 +51,8 @@ export async function processHtmlUnified(
       dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
     }
     
-    // Process includes with HTMLRewriter
-    let processedContent = await processIncludesWithHTMLRewriter(
+    // Process includes with string replacement (more reliable than HTMLRewriter for this case)
+    let processedContent = await processIncludesWithStringReplacement(
       htmlContent,
       filePath,
       sourceRoot,
@@ -80,7 +81,10 @@ export async function processHtmlUnified(
     
     // Apply HTML optimization if enabled
     if (processingConfig.optimize !== false) {
+      logger.debug(`Optimizing HTML content, optimize=${processingConfig.optimize}`);
       processedContent = await optimizeHtmlContent(processedContent);
+    } else {
+      logger.debug(`Skipping HTML optimization, optimize=${processingConfig.optimize}`);
     }
     
     return processedContent;
@@ -141,11 +145,81 @@ async function processIncludesWithHTMLRewriter(htmlContent, filePath, sourceRoot
 
   // Transform the HTML
   try {
-    return rewriter.transform(htmlContent);
+    const response = new Response(htmlContent, {
+      headers: { 'Content-Type': 'text/html' }
+    });
+    const transformedResponse = rewriter.transform(response);
+    return await transformedResponse.text();
   } catch (error) {
     logger.error(`HTMLRewriter transformation failed: ${error.message}`);
     throw error;
   }
+}
+
+/**
+ * Process includes using string replacement (more reliable for async operations)
+ */
+async function processIncludesWithStringReplacement(htmlContent, filePath, sourceRoot, config = {}) {
+  let processedContent = htmlContent;
+  
+  // Process SSI-style includes
+  const includeRegex = /<!--\s*#include\s+(virtual|file)="([^"]+)"\s*-->/g;
+  let match;
+  const processedIncludes = new Set();
+  
+  while ((match = includeRegex.exec(htmlContent)) !== null) {
+    const [fullMatch, type, includePath] = match;
+    const includeKey = `${type}:${includePath}`;
+    
+    if (processedIncludes.has(includeKey)) {
+      continue; // Avoid processing the same include multiple times
+    }
+    processedIncludes.add(includeKey);
+    
+    try {
+      const resolvedPath = resolveIncludePathInternal(type, includePath, filePath, sourceRoot);
+      const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+      
+      // Recursively process nested includes
+      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
+      
+      // Replace all occurrences of this include
+      processedContent = processedContent.replace(new RegExp(escapeRegExp(fullMatch), 'g'), nestedProcessedContent);
+      logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
+    } catch (error) {
+      logger.warn(`Include not found: ${includePath} in ${filePath}`);
+      processedContent = processedContent.replace(new RegExp(escapeRegExp(fullMatch), 'g'), `<!-- Include not found: ${includePath} -->`);
+    }
+  }
+  
+  // Process modern DOM includes
+  const domIncludeRegex = /<include\s+src="([^"]+)"[^>]*><\/include>/g;
+  while ((match = domIncludeRegex.exec(htmlContent)) !== null) {
+    const [fullMatch, src] = match;
+    
+    try {
+      const resolvedPath = resolveIncludePathInternal('file', src, filePath, sourceRoot);
+      const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+      
+      // Recursively process nested includes
+      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
+      
+      processedContent = processedContent.replace(fullMatch, nestedProcessedContent);
+      logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
+    } catch (error) {
+      logger.warn(`Include element not found: ${src} in ${filePath}`);
+      processedContent = processedContent.replace(fullMatch, `<!-- Include not found: ${src} -->`);
+    }
+  }
+  
+  return processedContent;
+}
+
+/**
+ * Escape special regex characters
+ */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -231,7 +305,11 @@ async function optimizeHtmlContent(html) {
     }
   });
 
-  return rewriter.transform(html);
+  const response = new Response(html, {
+    headers: { 'Content-Type': 'text/html' }
+  });
+  const transformedResponse = rewriter.transform(response);
+  return await transformedResponse.text();
 }
 
 /**
@@ -938,7 +1016,10 @@ export async function extractHtmlMetadata(htmlContent) {
   });
 
   // Transform to trigger handlers (we don't need the output)
-  rewriter.transform(htmlContent);
+  const response = new Response(htmlContent, {
+    headers: { 'Content-Type': 'text/html' }
+  });
+  rewriter.transform(response);
   
   return metadata;
 }

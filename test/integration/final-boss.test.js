@@ -275,7 +275,7 @@ async function runCLI(args, options = {}) {
   const cliPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../../bin/cli.js');
   
   return new Promise((resolve) => {
-    const child = spawn('node', [cliPath, ...args], {
+    const child = spawn('bun', [cliPath, ...args], {
       cwd: options.cwd || process.cwd(),
       stdio: 'pipe'
     });

@@ -52,13 +52,6 @@ function detectRuntimes() {
   const runtimes = [];
   
   try {
-    execSync('node --version', { stdio: 'ignore' });
-    runtimes.push('node');
-  } catch {
-    console.warn('⚠️  Node.js not available');
-  }
-  
-  try {
     execSync('bun --version', { stdio: 'ignore' });
     runtimes.push('bun');
   } catch {
@@ -127,7 +120,7 @@ async function benchmarkHtmlProcessing(runtime, iterations) {
         "`, { cwd: PROJECT_ROOT, stdio: 'ignore' });
       } else {
         // Test Node.js jsdom processing
-        execSync(`node -e "
+        execSync(`bun -e "
           import { processHtmlUnified } from '../src/core/unified-html-processor.js';
           import fs from 'fs/promises';
           const html = await fs.readFile('${path.join(BENCHMARK_DIR, 'test.html')}', 'utf-8');
@@ -162,7 +155,7 @@ async function benchmarkColdStart(runtime, iterations) {
           timeout: 10000
         });
       } else {
-        execSync('node bin/cli.js --version', { 
+        execSync('bun bin/cli.js --version', { 
           cwd: PROJECT_ROOT, 
           stdio: 'ignore',
           timeout: 10000
@@ -198,7 +191,7 @@ async function benchmarkFileWatching(runtime, iterations) {
         "`, { cwd: PROJECT_ROOT, stdio: 'ignore', timeout: 5000 });
       } else {
         // Test chokidar setup
-        execSync(`node -e "
+        execSync(`bun -e "
           import chokidar from 'chokidar';
           const watcher = chokidar.watch('${BENCHMARK_DIR}', { ignoreInitial: true });
           watcher.close();

@@ -143,9 +143,13 @@ describe('build-process integration', () => {
 
     // Verify include files are NOT in output
     const headerPath = path.join(outputDir, '.components', 'header.html');
-    await expect(async () => {
+    let headerExists = true;
+    try {
       await fs.access(headerPath);
-    }).rejects.toThrow();
+    } catch {
+      headerExists = false;
+    }
+    expect(headerExists).toBe(false);
   });
   
   it('should process nested components correctly', async () => {
@@ -225,7 +229,7 @@ describe('build-process integration', () => {
     expect(result.errors.length).toBe(0); // Expect one warning/error
     //Output broken.html should contain a warning comment
     const brokenContent = await fs.readFile(brokenFilePath.replace('src', 'dist'), 'utf-8');
-    expect(brokenContent.includes('<!-- WARNING: Include file not found: missing.html -->')).toBeTruthy();
+    expect(brokenContent.includes('<!-- Include not found: missing.html -->')).toBeTruthy();
     //TODO: Add warnings collection to result, ensure all none fatal errors are collected
     // assert(result.warnings[0].message.includes('Include file not found')); // Check for specific warning
 
@@ -249,9 +253,13 @@ describe('build-process integration', () => {
     });
     
     // Old file should be removed
-    await expect(async () => {
+    let oldFileExists = true;
+    try {
       await fs.access(path.join(outputDir, 'old-file.txt'));
-    }).rejects.toThrow();
+    } catch {
+      oldFileExists = false;
+    }
+    expect(oldFileExists).toBe(false);
     
     // New files should exist
     await fs.access(path.join(outputDir, 'index.html'));

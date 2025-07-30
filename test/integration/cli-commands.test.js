@@ -478,7 +478,7 @@ describe('CLI Commands and Options', () => {
  */
 async function runCLI(workingDir, args, timeout = 10000) {
   return new Promise((resolve) => {
-    const child = spawn('node', [cliPath, ...args], {
+    const child = spawn('bun', [cliPath, ...args], {
       cwd: workingDir,
       stdio: 'pipe'
     });
