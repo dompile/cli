@@ -7,7 +7,7 @@ import { beforeAll, beforeEach, afterEach, afterAll } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { logger } from '../src/utils/logger.js';
-import { runtime } from '../src/utils/runtime-detector.js';
+import { hasFeature, getRuntimeInfo } from '../src/utils/runtime-detector.js';
 
 // Global test configuration
 const TEST_CONFIG = {
@@ -34,8 +34,9 @@ beforeAll(async () => {
   await fs.mkdir(TEST_CONFIG.tempDir, { recursive: true });
   
   // Log runtime info
-  console.log(`   Runtime: ${runtime.isBun ? 'Bun' : 'Node.js'}`);
-  console.log(`   Features: HTMLRewriter=${runtime.hasFeature('htmlRewriter')}, fs.watch=${runtime.hasFeature('fsWatch')}`);
+  const runtimeInfo = getRuntimeInfo();
+  console.log(`   Runtime: ${runtimeInfo.name} (${runtimeInfo.version})`);
+  console.log(`   Features: HTMLRewriter=${hasFeature('htmlRewriter')}, fs.watch=${hasFeature('fsWatch')}`);
   
   console.log('✅ Test environment ready');
 });
@@ -166,7 +167,7 @@ async function copyDirectory(src, dest) {
  * @param {boolean} expected - Expected availability
  */
 export function assertRuntimeFeature(feature, expected = true) {
-  const available = runtime.hasFeature(feature);
+  const available = hasFeature(feature);
   if (available !== expected) {
     throw new Error(`Runtime feature "${feature}" expected to be ${expected ? 'available' : 'unavailable'} but was ${available ? 'available' : 'unavailable'}`);
   }
@@ -178,7 +179,7 @@ export function assertRuntimeFeature(feature, expected = true) {
  * @param {string} reason - Skip reason
  */
 export function skipIfFeatureUnavailable(feature, reason = null) {
-  if (!runtime.hasFeature(feature)) {
+  if (!hasFeature(feature)) {
     const message = reason || `Feature "${feature}" not available in current runtime`;
     console.log(`⏭️ Skipping test: ${message}`);
     return true;
@@ -192,9 +193,9 @@ export function skipIfFeatureUnavailable(feature, reason = null) {
  * @returns {boolean} True if test should be skipped
  */
 export function runOnlyOn(runtimeName) {
-  const currentRuntime = runtime.isBun ? 'bun' : 'node';
-  if (currentRuntime !== runtimeName) {
-    console.log(`⏭️ Skipping test: Only runs on ${runtimeName}, current runtime is ${currentRuntime}`);
+  const runtimeInfo = getRuntimeInfo();
+  if (runtimeInfo.name !== runtimeName) {
+    console.log(`⏭️ Skipping test: Only runs on ${runtimeName}, current runtime is ${runtimeInfo.name}`);
     return true;
   }
   return false;
@@ -206,8 +207,8 @@ export function runOnlyOn(runtimeName) {
  * @returns {boolean} True if test should be skipped
  */
 export function skipOn(runtimeName) {
-  const currentRuntime = runtime.isBun ? 'bun' : 'node';
-  if (currentRuntime === runtimeName) {
+  const runtimeInfo = getRuntimeInfo();
+  if (runtimeInfo.name === runtimeName) {
     console.log(`⏭️ Skipping test: Skipped on ${runtimeName}`);
     return true;
   }

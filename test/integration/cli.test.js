@@ -69,7 +69,7 @@ describe('CLI integration', () => {
   it('should show version with --version flag', async () => {
     const result = await runCLI(['--version']);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.includes('unify v0.5.2')).toBeTruthy();
+    expect(result.stdout.includes('0.6.0')).toBeTruthy();
   });
   
   it('should show help with --help flag', async () => {
@@ -235,7 +235,7 @@ describe('CLI integration', () => {
  */
 function runCLI(args, options = {}) {
   return new Promise((resolve) => {
-    const child = spawn('node', [cliPath, ...args], {
+    const child = spawn('bun', [cliPath, ...args], {
       stdio: 'pipe',
       ...options
     });

@@ -1,6 +1,6 @@
 # Docker Usage Guide
 
-dompile provides three different Docker container options for different use cases. This guide explains when to use each container type and how to deploy them.
+unify provides three different Docker container options for different use cases. This guide explains when to use each container type and how to deploy them.
 
 ## Container Types Overview
 
@@ -34,14 +34,14 @@ dompile provides three different Docker container options for different use case
 
 ```bash
 # Build your site first (locally or in CI)
-dompile build --source src --output dist
+unify build --source src --output dist
 
 # Serve with Apache container
 docker run -d \
   --name my-site \
   -p 8080:8080 \
   -v $(pwd)/dist:/var/www/html:ro \
-  dompile:apache
+  unify:apache
 ```
 
 #### Production Deployment
@@ -53,7 +53,7 @@ docker run -d \
   --restart unless-stopped \
   -p 80:8080 \
   -v /path/to/built/site:/var/www/html:ro \
-  dompile:apache
+  unify:apache
 ```
 
 #### Custom Apache Configuration
@@ -65,7 +65,7 @@ docker run -d \
   -p 8080:8080 \
   -v $(pwd)/dist:/var/www/html:ro \
   -v $(pwd)/custom-apache.conf:/etc/apache2/sites-available/000-default.conf:ro \
-  dompile:apache
+  unify:apache
 ```
 
 ### Apache Container Features
@@ -104,7 +104,7 @@ docker run -d \
   --name auto-build-site \
   -p 80:80 \
   -v $(pwd)/src:/site:ro \
-  dompile:nginx
+  unify:nginx
 ```
 
 #### Production with Health Checks
@@ -118,7 +118,7 @@ docker run -d \
   --health-interval=30s \
   -p 80:80 \
   -v $(pwd)/src:/site:ro \
-  dompile:nginx
+  unify:nginx
 ```
 
 #### Development with Live Rebuild
@@ -130,7 +130,7 @@ docker run -d \
   -p 3000:80 \
   -v $(pwd)/src:/site \
   -e NODE_ENV=development \
-  dompile:nginx
+  unify:nginx
 ```
 
 ### Nginx Container Features
@@ -139,7 +139,7 @@ docker run -d \
 - **Source Mount**: `/site` (your source files)
 - **Output**: `/var/www/html` (automatically generated)
 - **Health Check**: Built-in HTTP health monitoring
-- **Auto-Build**: Runs dompile build automatically
+- **Auto-Build**: Runs unify build automatically
 - **Environment**: Supports `NODE_ENV` for development mode
 
 ## CLI Container (`Dockerfile.cli`)
@@ -149,13 +149,13 @@ docker run -d \
 - **CI/CD pipelines** for building static sites
 - **Development environments** without local Node.js
 - **Build automation** in containerized workflows
-- **Testing** dompile in isolated environments
+- **Testing** unify in isolated environments
 - **Cross-platform development** with consistent tooling
 
 ### Benefits of CLI Container
 
-- **Minimal**: Just Node.js and dompile CLI
-- **Flexible**: Run any dompile command
+- **Minimal**: Just Node.js and unify CLI
+- **Flexible**: Run any unify command
 - **Consistent**: Same environment across all platforms
 - **CI-friendly**: Perfect for automated builds
 - **Development**: No local Node.js installation required
@@ -169,7 +169,7 @@ docker run -d \
 docker run --rm \
   -v $(pwd):/workspace \
   -w /workspace \
-  dompile:cli \
+  unify:cli \
   build --source src --output dist --pretty-urls
 ```
 
@@ -181,7 +181,7 @@ docker run --rm \
   -p 3000:3000 \
   -v $(pwd):/workspace \
   -w /workspace \
-  dompile:cli \
+  unify:cli \
   serve --source src --host 0.0.0.0
 ```
 
@@ -192,7 +192,7 @@ docker run --rm \
 docker run --rm \
   -v $(pwd):/workspace \
   -w /workspace \
-  dompile:cli \
+  unify:cli \
   watch --source src --output dist
 ```
 
@@ -203,7 +203,7 @@ docker run --rm \
 docker run --rm \
   -v $(pwd):/workspace \
   -w /workspace \
-  dompile:cli \
+  unify:cli \
   build \
     --source content \
     --output public \
@@ -216,10 +216,10 @@ docker run --rm \
 ### CLI Container Features
 
 - **Base Image**: Node.js LTS
-- **Global Install**: dompile available globally
+- **Global Install**: unify available globally
 - **Working Directory**: Configurable (use `-w` flag)
 - **Volume Mount**: Mount your project directory
-- **Command Override**: Run any dompile command
+- **Command Override**: Run any unify command
 
 ## Docker Compose Examples
 
@@ -230,7 +230,7 @@ version: '3.8'
 services:
   # Build service (runs once)
   builder:
-    image: dompile:cli
+    image: unify:cli
     volumes:
       - ./src:/workspace
       - site-dist:/workspace/dist
@@ -239,7 +239,7 @@ services:
     
   # Serve with Apache
   web:
-    image: dompile:apache
+    image: unify:apache
     ports:
       - "80:8080"
     volumes:
@@ -259,7 +259,7 @@ version: '3.8'
 services:
   # All-in-one development
   dev:
-    image: dompile:nginx
+    image: unify:nginx
     ports:
       - "3000:80"
     volumes:
@@ -276,7 +276,7 @@ version: '3.8'
 services:
   # Site 1
   site1:
-    image: dompile:nginx
+    image: unify:nginx
     ports:
       - "8080:80"
     volumes:
@@ -286,7 +286,7 @@ services:
       
   # Site 2  
   site2:
-    image: dompile:nginx
+    image: unify:nginx
     ports:
       - "8081:80"
     volumes:
@@ -337,7 +337,7 @@ chmod -R 755 src/
 
 **Port conflicts**: Use different port mappings
 ```bash
-docker run -p 8080:80 dompile:nginx  # Instead of default 80:80
+docker run -p 8080:80 unify:nginx  # Instead of default 80:80
 ```
 
 **File watching not working**: Ensure volume is mounted as writable

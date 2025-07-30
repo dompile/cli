@@ -1,54 +1,46 @@
 /**
- * Bun runtime utilities
- * Provides capability checks for Bun-specific features
+ * Feature detection utilities
+ * Checks for availability of specific features
  */
 
-export const runtime = {
-  isBun: true, // This codebase now requires Bun
-  
-  get name() {
-    return 'bun';
-  },
-  
-  get version() {
-    return Bun.version;
-  },
-
-  hasFeature(feature) {
-    switch (feature) {
-      case 'htmlRewriter':
-        return typeof HTMLRewriter !== 'undefined';
-      case 'bunServe':
-        return typeof Bun.serve !== 'undefined';
-      case 'bunHash':
-        return typeof Bun.hash !== 'undefined';
-      case 'fsWatch':
-        return true; // Bun supports fs.watch
-      default:
-        return false;
-    }
-  }
-};
-
-export function ensureBunFeature(feature) {
-  if (!runtime.hasFeature(feature)) {
-    throw new Error(`${feature} is not available in this Bun runtime`);
-  }
-}
-
-export function getOptimalImplementation(feature) {
+/**
+ * Check if a specific feature is available
+ * @param {string} feature - Feature to check
+ * @returns {boolean} True if feature is available
+ */
+export function hasFeature(feature) {
   switch (feature) {
-    case 'htmlProcessing':
-      return 'HTMLRewriter';
-    case 'fileWatching':
-      return 'fs.watch';
-    case 'httpServer':
-      return 'Bun.serve';
-    case 'hashing':
-      return 'Bun.hash';
+    case 'htmlRewriter':
+      return typeof HTMLRewriter !== 'undefined';
+    case 'serve':
+      return typeof Bun.serve !== 'undefined';
+    case 'hash':
+      return typeof Bun.CryptoHasher !== 'undefined';
+    case 'fsWatch':
+      return true;
     default:
-      return 'unknown';
+      return false;
   }
 }
 
-export default runtime;
+/**
+ * Ensure a feature is available, throw if not
+ * @param {string} feature - Feature to ensure
+ * @throws {Error} If feature is not available
+ */
+export function ensureFeature(feature) {
+  if (!hasFeature(feature)) {
+    throw new Error(`Feature '${feature}' is not available in this runtime`);
+  }
+}
+
+/**
+ * Get runtime information
+ * @returns {Object} Runtime information
+ */
+export function getRuntimeInfo() {
+  return {
+    name: 'bun',
+    version: Bun.version
+  };
+}

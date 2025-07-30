@@ -1,26 +1,23 @@
 /**
- * Bun-specific feature tests
- * Tests Bun native API implementations
+ * Feature tests
+ * Tests native API implementations
  */
 
-import { runtime, hasFeature } from '../../src/utils/runtime-detector.js';
+import { hasFeature } from '../../src/utils/runtime-detector.js';
 import { 
   createTempDir, 
   createTempFile, 
   skipIfFeatureUnavailable, 
-  runOnlyOn, 
-  assertRuntimeFeature 
+  assertRuntimeFeature,
+  runOnlyOn
 } from '../bun-setup.js';
 
 import { describe, it, expect } from 'bun:test';
 
-describe('Bun HTML Processor', () => {
-  it('should be available when running on Bun', async () => {
-    if (runOnlyOn('bun')) return;
-    
-    const { BunHtmlProcessor } = await import('../src/core/bun-html-processor.js');
-    const processor = new BunHtmlProcessor();
-    expect(processor).toBeTruthy();
+describe('HTML Processor', () => {
+  it('should be available', async () => {
+    const { processHtmlUnified } = await import('../../src/core/unified-html-processor.js');
+    expect(processHtmlUnified).toBeTruthy();
   });
 
   it('should process HTML includes with HTMLRewriter', async () => {
@@ -33,11 +30,10 @@ describe('Bun HTML Processor', () => {
       tempDir
     );
     
-    const { BunHtmlProcessor } = await import('../src/core/bun-html-processor.js');
-    const processor = new BunHtmlProcessor();
+    const { processHtmlUnified } = await import('../../src/core/unified-html-processor.js');
     
     const content = await import('fs/promises').then(fs => fs.readFile(mainFile, 'utf-8'));
-    const processed = await processor.processIncludes(content, mainFile, tempDir);
+    const processed = await processHtmlUnified(content, mainFile, tempDir, null);
     
     expect(processed).toContain('<h1>Header Content</h1>');
   });
@@ -45,11 +41,13 @@ describe('Bun HTML Processor', () => {
   it('should optimize HTML when enabled', async () => {
     if (skipIfFeatureUnavailable('htmlRewriter')) return;
     
-    const { BunHtmlProcessor } = await import('../src/core/bun-html-processor.js');
-    const processor = new BunHtmlProcessor();
+    const { processHtmlUnified } = await import('../../src/core/unified-html-processor.js');
     
     const html = '<div class="">  <p>   Test   </p>  </div>';
-    const optimized = await processor.optimizeHtml(html);
+    const tempDir = await createTempDir('html-opt-test');
+    const optimized = await processHtmlUnified(html, 'test.html', tempDir, null, { 
+      minify: true
+    });
     
     // Should remove empty class attributes and normalize whitespace
     expect(optimized).toContain('<div><p> Test </p></div>');
@@ -60,8 +58,8 @@ describe('Bun File Watcher', () => {
   it('should be available when running on Bun', async () => {
     if (runOnlyOn('bun')) return;
     
-    const { BunFileWatcher } = await import('../src/core/bun-file-watcher.js');
-    const watcher = new BunFileWatcher();
+    const { FileWatcher } = await import('../../src/core/file-watcher.js');
+    const watcher = new FileWatcher();
     expect(watcher).toBeTruthy();
   });
 
@@ -71,8 +69,8 @@ describe('Bun File Watcher', () => {
     const tempDir = await createTempDir('watch-test');
     await createTempFile('index.html', '<html><body>Test</body></html>', tempDir);
     
-    const { BunFileWatcher } = await import('../src/core/bun-file-watcher.js');
-    const watcher = new BunFileWatcher();
+    const { FileWatcher } = await import('../../src/core/file-watcher.js');
+    const watcher = new FileWatcher();
     
     // Start watching (won't actually build, just test setup)
     const config = {
@@ -82,7 +80,7 @@ describe('Bun File Watcher', () => {
     };
     
     // Test that watcher initializes without error
-    expect(() => new BunFileWatcher()).not.toThrow?.() || true;
+    expect(() => new FileWatcher()).not.toThrow?.() || true;
     
     // Clean up
     await watcher.stopWatching?.() || Promise.resolve();
@@ -93,16 +91,16 @@ describe('Bun Dev Server', () => {
   it('should be available when running on Bun', async () => {
     if (runOnlyOn('bun')) return;
     
-    const { BunDevServer } = await import('../src/server/bun-dev-server.js');
-    const server = new BunDevServer();
+    const { DevServer } = await import('../../src/server/dev-server.js');
+    const server = new DevServer();
     expect(server).toBeTruthy();
   });
 
   it('should handle requests with native routing', async () => {
     if (skipIfFeatureUnavailable('serve')) return;
     
-    const { BunDevServer } = await import('../src/server/bun-dev-server.js');
-    const server = new BunDevServer();
+    const { DevServer } = await import('../../src/server/dev-server.js');
+    const server = new DevServer();
     
     // Test request handling method exists
     expect(typeof server.handleRequest).toBe('function');
@@ -124,8 +122,8 @@ describe('Bun Build Cache', () => {
   it('should be available when running on Bun', async () => {
     if (runOnlyOn('bun')) return;
     
-    const { BunBuildCache } = await import('../src/core/bun-build-cache.js');
-    const cache = new BunBuildCache();
+    const { BuildCache } = await import('../../src/core/build-cache.js');
+    const cache = new BuildCache();
     expect(cache).toBeTruthy();
   });
 
@@ -134,8 +132,8 @@ describe('Bun Build Cache', () => {
     
     const tempFile = await createTempFile('test.txt', 'Hello, Bun!');
     
-    const { BunBuildCache } = await import('../src/core/bun-build-cache.js');
-    const cache = new BunBuildCache();
+    const { BuildCache } = await import('../../src/core/build-cache.js');
+    const cache = new BuildCache();
     await cache.initialize();
     
     const hash1 = await cache.hashFile(tempFile);
@@ -151,8 +149,8 @@ describe('Bun Build Cache', () => {
     
     const tempFile = await createTempFile('change-test.txt', 'Original content');
     
-    const { BunBuildCache } = await import('../src/core/bun-build-cache.js');
-    const cache = new BunBuildCache();
+    const { BuildCache } = await import('../../src/core/build-cache.js');
+    const cache = new BuildCache();
     await cache.initialize();
     
     // Initial hash
@@ -175,21 +173,18 @@ describe('Bun Build Cache', () => {
 
 describe('Runtime Detection', () => {
   it('should correctly identify current runtime', () => {
-    assertRuntimeFeature('runtime', true);
+    assertRuntimeFeature('htmlRewriter', true);
     
-    if (runtime.isBun) {
-      expect(hasFeature('htmlRewriter')).toBeTruthy();
-      expect(hasFeature('hash')).toBeTruthy();
-      expect(hasFeature('serve')).toBeTruthy();
-    } else {
-      expect(hasFeature('htmlRewriter')).toBeFalsy();
-      expect(hasFeature('hash')).toBeFalsy();
-    }
+    // Since we're now Bun-only, all features should be available
+    expect(hasFeature('htmlRewriter')).toBeTruthy();
+    expect(hasFeature('hash')).toBeTruthy();
+    expect(hasFeature('serve')).toBeTruthy();
   });
 
-  it('should provide feature compatibility info', () => {
-    const features = runtime.getOptimalImplementation('htmlProcessing');
-    expect(features).toBeTruthy();
-    expect(typeof features.processor).toBe('string');
+  it('should provide runtime info', async () => {
+    const { getRuntimeInfo } = await import('../../src/utils/runtime-detector.js');
+    const runtimeInfo = getRuntimeInfo();
+    expect(runtimeInfo.name).toBe('bun');
+    expect(runtimeInfo.version).toBeTruthy();
   });
 });

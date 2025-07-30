@@ -1,7 +1,7 @@
 /**
  * Unified HTML Processor for unify
  * Handles both SSI-style includes (<!--#include -->) and DOM templating (<template>, <slot>)
- * in a single processing pipeline for consistency and simplicity.
+ * using HTMLRewriter for high-performance processing.
  */
 
 import fs from "fs/promises";
@@ -9,28 +9,16 @@ import path from "path";
 import { JSDOM } from "jsdom";
 import { processIncludes } from "./include-processor.js";
 import { logger } from "../utils/logger.js";
-import { isPathWithinDirectory } from "../utils/path-resolver.js";
-import { runtime } from "../utils/runtime-detector.js";
+import { isPathWithinDirectory, resolveIncludePath } from "../utils/path-resolver.js";
 import {
   ComponentError,
   LayoutError,
   FileSystemError,
 } from "../utils/errors.js";
 
-// Import Bun HTML processor when available
-let BunHtmlProcessor;
-if (runtime.isBun) {
-  try {
-    const { BunHtmlProcessor: BunProcessor } = await import('./bun-html-processor.js');
-    BunHtmlProcessor = BunProcessor;
-  } catch (error) {
-    logger.warn('BunHtmlProcessor not available, falling back to JSDOM');
-  }
-}
-
 /**
  * Process HTML content with unified support for both SSI includes and DOM templating
- * Uses Bun HTMLRewriter when available, falls back to JSDOM for Node.js
+ * Uses HTMLRewriter for high-performance processing
  * @param {string} htmlContent - Raw HTML content to process
  * @param {string} filePath - Path to the HTML file being processed
  * @param {string} sourceRoot - Source root directory
@@ -53,81 +41,25 @@ export async function processHtmlUnified(
   };
 
   try {
-    // Use Bun HTMLRewriter if available for better performance
-    if (runtime.isBun && BunHtmlProcessor) {
-      logger.debug(
-        `Using Bun HTMLRewriter for: ${path.relative(sourceRoot, filePath)}`
-      );
-      
-      const bunProcessor = new BunHtmlProcessor();
-      
-      // Track dependencies before processing
-      if (dependencyTracker) {
-        dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
-      }
-      
-      // Process includes with HTMLRewriter
-      let processedContent = await bunProcessor.processIncludes(
-        htmlContent,
-        filePath,
-        sourceRoot,
-        processingConfig
-      );
-      
-      // Handle layouts and slots if needed
-      if (shouldUseDOMMode(processedContent)) {
-        processedContent = await processDOMMode(
-          processedContent,
-          filePath,
-          sourceRoot,
-          processingConfig
-        );
-      } else if (
-        hasDOMTemplating(processedContent) ||
-        !processedContent.includes("<html")
-      ) {
-        processedContent = await processDOMTemplating(
-          processedContent,
-          filePath,
-          sourceRoot,
-          processingConfig
-        );
-      }
-      
-      // Apply HTML optimization if enabled
-      if (processingConfig.optimize !== false) {
-        processedContent = await bunProcessor.optimizeHtml(processedContent);
-      }
-      
-      return processedContent;
-    }
-
-    // Fallback to original JSDOM processing for Node.js
     logger.debug(
-      `Processing SSI includes for: ${path.relative(sourceRoot, filePath)}`
+      `Using HTMLRewriter for: ${path.relative(sourceRoot, filePath)}`
     );
-
+    
     // Track dependencies before processing
     if (dependencyTracker) {
       dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
     }
-
-    let processedContent = await processIncludes(
+    
+    // Process includes with HTMLRewriter
+    let processedContent = await processIncludesWithHTMLRewriter(
       htmlContent,
       filePath,
       sourceRoot,
-      new Set(),
-      0,
-      dependencyTracker
+      processingConfig
     );
-
-    // Step 2: Check if we should use DOM mode processing (handles <include> elements, layouts, and slots)
+    
+    // Handle layouts and slots if needed
     if (shouldUseDOMMode(processedContent)) {
-      logger.debug(
-        `Processing with DOM Mode for: ${path.relative(sourceRoot, filePath)}`
-      );
-      
-      // Use integrated DOM processing which handles <include> elements, layouts, and slots all together
       processedContent = await processDOMMode(
         processedContent,
         filePath,
@@ -138,10 +70,6 @@ export async function processHtmlUnified(
       hasDOMTemplating(processedContent) ||
       !processedContent.includes("<html")
     ) {
-      logger.debug(
-        `Processing DOM templating for: ${path.relative(sourceRoot, filePath)}`
-      );
-      // Fallback to original DOM templating for layouts/slots only
       processedContent = await processDOMTemplating(
         processedContent,
         filePath,
@@ -149,7 +77,12 @@ export async function processHtmlUnified(
         processingConfig
       );
     }
-
+    
+    // Apply HTML optimization if enabled
+    if (processingConfig.optimize !== false) {
+      processedContent = await optimizeHtmlContent(processedContent);
+    }
+    
     return processedContent;
   } catch (error) {
     logger.error(
@@ -160,6 +93,145 @@ export async function processHtmlUnified(
     );
     throw error; // Re-throw with original error details
   }
+}
+
+/**
+ * Process HTML includes using HTMLRewriter
+ * @param {string} htmlContent - HTML content to process
+ * @param {string} filePath - Path to the HTML file
+ * @param {string} sourceRoot - Source root directory
+ * @param {Object} config - Processing configuration
+ * @returns {Promise<string>} Processed HTML content
+ */
+async function processIncludesWithHTMLRewriter(htmlContent, filePath, sourceRoot, config = {}) {
+  const rewriter = new HTMLRewriter();
+  
+  // Handle SSI-style includes
+  rewriter.on('*', {
+    comments(comment) {
+      const commentText = comment.text;
+      const includeMatch = commentText.match(/^#include\s+(virtual|file)="([^"]+)"\s*$/);
+      
+      if (includeMatch) {
+        const [, type, includePath] = includeMatch;
+        processIncludeDirective(comment, type, includePath, filePath, sourceRoot, config);
+      }
+    }
+  });
+
+  // Handle modern DOM includes
+  rewriter.on('include', {
+    async element(element) {
+      const src = element.getAttribute('src');
+      if (src) {
+        await processIncludeElement(element, src, filePath, sourceRoot, config);
+      }
+    }
+  });
+
+  // Process slots for layout system
+  rewriter.on('slot', {
+    element(element) {
+      const name = element.getAttribute('name');
+      if (name) {
+        element.replace(`<!-- slot:${name} -->`, { html: true });
+      }
+    }
+  });
+
+  // Transform the HTML
+  try {
+    return rewriter.transform(htmlContent);
+  } catch (error) {
+    logger.error(`HTMLRewriter transformation failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Process SSI include directive
+ */
+async function processIncludeDirective(comment, type, includePath, filePath, sourceRoot, config) {
+  try {
+    const resolvedPath = resolveIncludePathInternal(type, includePath, filePath, sourceRoot);
+    const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+    
+    // Recursively process nested includes in the included content
+    const processedContent = await processIncludesWithHTMLRewriter(includeContent, resolvedPath, sourceRoot, config);
+    
+    comment.replace(processedContent, { html: true });
+    logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
+  } catch (error) {
+    logger.warn(`Include not found: ${includePath} in ${filePath}`);
+    comment.replace(`<!-- Include not found: ${includePath} -->`, { html: true });
+  }
+}
+
+/**
+ * Process modern include element
+ */
+async function processIncludeElement(element, src, filePath, sourceRoot, config) {
+  try {
+    const resolvedPath = resolveIncludePathInternal('file', src, filePath, sourceRoot);
+    const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+    
+    // Recursively process nested includes in the included content
+    const processedContent = await processIncludesWithHTMLRewriter(includeContent, resolvedPath, sourceRoot, config);
+    
+    element.setInnerContent(processedContent, { html: true });
+    logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
+  } catch (error) {
+    logger.warn(`Include element not found: ${src} in ${filePath}`);
+    element.setInnerContent(`<!-- Include not found: ${src} -->`, { html: true });
+  }
+}
+
+/**
+ * Resolve include path based on type
+ */
+function resolveIncludePathInternal(type, includePath, currentFile, sourceRoot) {
+  return resolveIncludePath(type, includePath, currentFile, sourceRoot);
+}
+
+/**
+ * Optimize HTML content with HTMLRewriter
+ * @param {string} html - HTML content to optimize
+ * @returns {string} Optimized HTML
+ */
+async function optimizeHtmlContent(html) {
+  const rewriter = new HTMLRewriter();
+
+  // Remove unnecessary whitespace (basic optimization)
+  rewriter.on('*', {
+    text(text) {
+      if (text.lastInTextNode) {
+        // Collapse multiple whitespace into single space
+        const optimized = text.text.replace(/\s+/g, ' ');
+        if (optimized !== text.text) {
+          text.replace(optimized);
+        }
+      }
+    }
+  });
+
+  // Optimize attributes (remove empty ones)
+  rewriter.on('*', {
+    element(element) {
+      // Remove empty class attributes
+      const classAttr = element.getAttribute('class');
+      if (classAttr === '') {
+        element.removeAttribute('class');
+      }
+      
+      // Remove empty id attributes
+      const idAttr = element.getAttribute('id');
+      if (idAttr === '') {
+        element.removeAttribute('id');
+      }
+    }
+  });
+
+  return rewriter.transform(html);
 }
 
 /**
@@ -817,36 +889,56 @@ export function shouldUseUnifiedProcessing(htmlContent) {
 }
 
 /**
- * Optimize HTML content using Bun HTMLRewriter when available
+ * Optimize HTML content using HTMLRewriter
  * @param {string} htmlContent - HTML content to optimize
  * @returns {Promise<string>} Optimized HTML content
  */
 export async function optimizeHtml(htmlContent) {
-  if (runtime.isBun && BunHtmlProcessor) {
-    const bunProcessor = new BunHtmlProcessor();
-    return await bunProcessor.optimizeHtml(htmlContent);
-  }
-  
-  // No optimization available on Node.js
-  return htmlContent;
+  return await optimizeHtmlContent(htmlContent);
 }
 
 /**
- * Extract metadata from HTML using Bun HTMLRewriter when available
+ * Extract metadata from HTML using HTMLRewriter
  * @param {string} htmlContent - HTML content to analyze
  * @returns {Promise<Object>} Extracted metadata
  */
 export async function extractHtmlMetadata(htmlContent) {
-  if (runtime.isBun && BunHtmlProcessor) {
-    const bunProcessor = new BunHtmlProcessor();
-    return await bunProcessor.extractMetadata(htmlContent);
-  }
-  
-  // Basic fallback for Node.js
-  return {
+  const metadata = {
     title: '',
     description: '',
     keywords: [],
     openGraph: {}
   };
+
+  const rewriter = new HTMLRewriter();
+
+  // Extract title
+  rewriter.on('title', {
+    text(text) {
+      metadata.title += text.text;
+    }
+  });
+
+  // Extract meta tags
+  rewriter.on('meta', {
+    element(element) {
+      const name = element.getAttribute('name');
+      const property = element.getAttribute('property');
+      const content = element.getAttribute('content');
+
+      if (name === 'description' && content) {
+        metadata.description = content;
+      } else if (name === 'keywords' && content) {
+        metadata.keywords = content.split(',').map(k => k.trim());
+      } else if (property && property.startsWith('og:') && content) {
+        const ogKey = property.replace('og:', '');
+        metadata.openGraph[ogKey] = content;
+      }
+    }
+  });
+
+  // Transform to trigger handlers (we don't need the output)
+  rewriter.transform(htmlContent);
+  
+  return metadata;
 }

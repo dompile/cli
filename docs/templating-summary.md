@@ -34,7 +34,7 @@ A concise overview of dompile's four templating features.
 
    <div id="home-content">
      <h1>Welcome home!</h1>
-     <include virtual=".components/getting-started.html" />
+     <include src=".components/getting-started.html" />
    </div>
    <style>
      #home-content {

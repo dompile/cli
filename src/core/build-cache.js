@@ -1,19 +1,14 @@
 /**
- * Bun Build Cache for Unify CLI
+ * Build Cache for Unify CLI
  * Uses Bun's native hashing for efficient file tracking and build caching
  */
 
 import fs from 'fs/promises';
 import path from 'path';
-import { runtime, ensureBunFeature } from '../utils/runtime-detector.js';
 import { logger } from '../utils/logger.js';
 
-export class BunBuildCache {
+export class BuildCache {
   constructor(cacheDir = '.unify-cache') {
-    if (runtime.isBun) {
-      ensureBunFeature('bunHash');
-    }
-    
     this.cacheDir = cacheDir;
     this.hashCache = new Map();
     this.dependencyGraph = new Map();
@@ -46,16 +41,6 @@ export class BunBuildCache {
    * @returns {Promise<string>} File hash
    */
   async hashFile(filePath) {
-    if (!runtime.isBun) {
-      // Fallback for Node.js - use file mtime and size
-      try {
-        const stats = await fs.stat(filePath);
-        return `${stats.mtime.getTime()}-${stats.size}`;
-      } catch (error) {
-        return 'error';
-      }
-    }
-
     try {
       const file = Bun.file(filePath);
       const arrayBuffer = await file.arrayBuffer();
@@ -76,11 +61,6 @@ export class BunBuildCache {
    * @returns {string} Content hash
    */
   hashContent(content) {
-    if (!runtime.isBun) {
-      // Simple fallback for Node.js
-      return content.length.toString() + content.slice(0, 100);
-    }
-
     try {
       const hasher = new Bun.CryptoHasher('sha256');
       hasher.update(content);
@@ -200,8 +180,7 @@ export class BunBuildCache {
       cachedFiles: this.hashCache.size,
       dependencyGraphSize: this.dependencyGraph.size,
       cacheDir: this.cacheDir,
-      runtime: runtime.isBun ? 'Bun' : 'Node.js',
-      hashingMethod: runtime.isBun ? 'Bun.CryptoHasher' : 'fallback'
+      hashingMethod: 'Bun.CryptoHasher'
     };
   }
 
@@ -311,11 +290,10 @@ export class BunBuildCache {
 
 /**
  * Factory function to create build cache instance
- * Uses BunBuildCache when available, provides fallback functionality
  * @param {string} cacheDir - Cache directory path
- * @returns {BunBuildCache} Cache instance
+ * @returns {BuildCache} Cache instance
  */
 export function createBuildCache(cacheDir = '.unify-cache') {
-  const cache = new BunBuildCache(cacheDir);
+  const cache = new BuildCache(cacheDir);
   return cache;
 }

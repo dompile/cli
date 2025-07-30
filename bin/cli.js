@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { parseArgs } from '../src/cli/args-parser.js';
 import { build } from '../src/core/file-processor.js';
@@ -6,7 +6,7 @@ import { watch } from '../src/core/file-watcher.js';
 import { DevServer } from '../src/server/dev-server.js';
 import { liveReload } from '../src/server/live-reload.js';
 import { logger } from '../src/utils/logger.js';
-import { getVersionInfo, logRuntimeInfo } from '../src/utils/build-constants.js';
+import { BUILD_INFO, getVersionInfo, logRuntimeInfo } from '../src/utils/build-constants.js';
 
 async function main() {
   try {
@@ -106,7 +106,7 @@ async function main() {
 
 function showHelp() {
   console.log(`
-unify v${VERSION}
+unify v${BUILD_INFO.version}
 
 Usage: unify [command] [options]
 

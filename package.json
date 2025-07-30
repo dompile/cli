@@ -18,7 +18,7 @@
     "test": "bun test",
     "watch": "bun run bin/cli.js watch --source example/src --output example/dist",
     "serve": "bun run bin/cli.js serve --source example/dist --port 3000",
-    "example": "npm run build && npm run serve",
+    "example": "bun run build && bun run serve",
     "build": "bun run bin/cli.js build --source example/src --output example/dist",
     "build:advanced": "rm -rf example/advanced/dist && bun run ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/custom_components/ -l example/advanced/src/site_layouts/",
     "build:executable": "bun run scripts/build-executables.js",
@@ -56,10 +56,6 @@
   },
   "peerDependencies": {
     "bun": ">=1.2.0"
-  },
-  "optionalDependencies": {
-    "chokidar": "^3.5.3",
-    "jsdom": "^26.1.0"
   },
   "files": [
     "bin/",

@@ -32,8 +32,7 @@ import {
   processHtmlUnified,
   getUnifiedConfig
 } from './unified-html-processor.js';
-import { createBuildCache } from './bun-build-cache.js';
-import { runtime } from '../utils/runtime-detector.js';
+import { createBuildCache } from './build-cache.js';
 import { FileSystemError, BuildError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { getBaseUrlFromPackage } from '../utils/package-reader.js';
@@ -146,7 +145,7 @@ export async function build(options = {}) {
   if (config.cache !== false) {
     buildCache = createBuildCache(config.cacheDir || '.unify-cache');
     await buildCache.initialize();
-    logger.debug(`Build cache initialized (${runtime.isBun ? 'Bun native' : 'fallback'})`);
+    logger.debug('Build cache initialized with Bun native hashing');
   }
   
   try {

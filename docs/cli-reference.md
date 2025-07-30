@@ -164,7 +164,7 @@ unify resolves configuration in this order (highest to lowest priority):
 
 ```bash
 # Production build in CI
-NODE_ENV=production dompile build \
+NODE_ENV=production unify build \
   --source content \
   --output dist \
   --pretty-urls \
@@ -175,7 +175,7 @@ NODE_ENV=production dompile build \
 
 ```bash
 # Development with file watching
-dompile serve --port 3000 --host 0.0.0.0
+unify serve --port 3000 --host 0.0.0.0
 
 # In another terminal, run tests
 npm test
@@ -191,14 +191,14 @@ rsync -av dist/ user@server:/var/www/html/
 docker run --rm \
   -v $(pwd):/workspace \
   -w /workspace \
-  dompile:cli build --pretty-urls
+  unify:cli build --pretty-urls
 
 # Serve with Docker
 docker run --rm \
   -p 3000:3000 \
   -v $(pwd):/workspace \
   -w /workspace \
-  dompile:cli serve --host 0.0.0.0
+  unify:cli serve --host 0.0.0.0
 ```
 
 ## Error Handling
@@ -238,7 +238,7 @@ Suggestions:
 Enable detailed error reporting:
 
 ```bash
-DEBUG=1 dompile build
+DEBUG=1 unify build
 ```
 
 This will show:
@@ -255,10 +255,10 @@ For sites with many files:
 
 ```bash
 # Use specific output directory to avoid conflicts
-dompile build --output /tmp/site-build
+unify build --output /tmp/site-build
 
 # Parallelize with multiple processes (if needed)
-dompile build & dompile build --source src2 --output dist2 &
+unify build & unify build --source src2 --output dist2 &
 ```
 
 ### Development Speed
@@ -267,10 +267,10 @@ Optimize development workflow:
 
 ```bash
 # Use minimal logging for faster builds
-LOG_LEVEL=warn dompile serve
+LOG_LEVEL=warn unify serve
 
 # Serve from faster storage if available
-dompile serve --output /tmp/dev-output
+unify serve --output /tmp/dev-output
 ```
 
 ## Integration Examples
@@ -295,10 +295,10 @@ Add to `package.json`:
 .PHONY: build serve clean
 
 build:
-	dompile build --pretty-urls --base-url $(BASE_URL)
+	unify build --pretty-urls --base-url $(BASE_URL)
 
 serve:
-	dompile serve --port 3000
+	unify serve --port 3000
 
 clean:
 	rm -rf dist
@@ -312,7 +312,7 @@ deploy: build
 ```yaml
 - name: Build site
   run: |
-    dompile build \
+    unify build \
       --pretty-urls \
       --base-url https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
 ```
