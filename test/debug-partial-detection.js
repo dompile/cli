@@ -7,17 +7,18 @@ import path from 'path';
 
 // Test with the advanced example configuration
 const config = {
-  components: path.resolve('/home/founder3/code/github/dompile/cli/example/advanced/src/custom_components/'),
-  layouts: path.resolve('/home/founder3/code/github/dompile/cli/example/advanced/src/site_layouts/')
+  components: path.resolve(process.cwd(), 'example/advanced/src/custom_components/'),
+  layouts: path.resolve(process.cwd(), 'example/advanced/src/site_layouts/')
 };
 
+const baseDir = path.resolve(process.cwd(), 'example/advanced/src');
 const testFiles = [
-  '/home/founder3/code/github/dompile/cli/example/advanced/src/index.html',
-  '/home/founder3/code/github/dompile/cli/example/advanced/src/about.html',
-  '/home/founder3/code/github/dompile/cli/example/advanced/src/custom_components/alert.html',
-  '/home/founder3/code/github/dompile/cli/example/advanced/src/custom_components/card.html',
-  '/home/founder3/code/github/dompile/cli/example/advanced/src/site_layouts/default.html',
-  '/home/founder3/code/github/dompile/cli/example/advanced/src/site_layouts/blog.html'
+  path.join(baseDir, 'index.html'),
+  path.join(baseDir, 'about.html'),
+  path.join(baseDir, 'custom_components/alert.html'),
+  path.join(baseDir, 'custom_components/card.html'),
+  path.join(baseDir, 'site_layouts/default.html'),
+  path.join(baseDir, 'site_layouts/blog.html')
 ];
 
 console.log('=== PARTIAL FILE DETECTION TEST ===');
@@ -27,5 +28,5 @@ console.log('');
 
 for (const filePath of testFiles) {
   const isPartial = isPartialFile(filePath, config);
-  console.log(`${isPartial ? '✓' : '✗'} ${path.relative('/home/founder3/code/github/dompile/cli/example/advanced/src/', filePath)} - ${isPartial ? 'PARTIAL' : 'CONTENT'}`);
+  console.log(`${isPartial ? '✓' : '✗'} ${path.relative(baseDir, filePath)} - ${isPartial ? 'PARTIAL' : 'CONTENT'}`);
 }

@@ -7,11 +7,11 @@ import path from 'path';
 import { isHtmlFile, isPartialFile } from '../src/utils/path-resolver.js';
 import { isMarkdownFile } from '../src/core/markdown-processor.js';
 
-const sourceRoot = '/home/founder3/code/github/dompile/cli/example/advanced/src';
+const sourceRoot = path.resolve(process.cwd(), 'example/advanced/src');
 const config = {
   source: sourceRoot,
-  components: path.resolve('/home/founder3/code/github/dompile/cli/example/advanced/src/custom_components/'),
-  layouts: path.resolve('/home/founder3/code/github/dompile/cli/example/advanced/src/site_layouts/')
+  components: path.resolve(process.cwd(), 'example/advanced/src/custom_components/'),
+  layouts: path.resolve(process.cwd(), 'example/advanced/src/site_layouts/')
 };
 
 // Function to recursively collect all files

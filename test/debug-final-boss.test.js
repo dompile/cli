@@ -93,7 +93,7 @@ async function runBuild(workingDir, sourceDir, outputDir) {
   return new Promise((resolve) => {
     const args = [
       'node',
-      path.join('/home/founder3/code/github/dompile/cli/bin/cli.js'),
+      path.join(process.cwd(), 'bin/cli.js'),
       'build',
       '--source', sourceDir,
       '--output', outputDir
