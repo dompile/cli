@@ -3,8 +3,7 @@
  * Verifies CLI defaults to 'build' when no command specified
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, expect } from 'bun:test';
 import { parseArgs } from '../../src/cli/args-parser.js';
 
 describe('Default Command Behavior', () => {
@@ -13,25 +12,25 @@ describe('Default Command Behavior', () => {
       const args = parseArgs(['--source', 'src', '--output', 'dist']);
       
       // parseArgs should not set command, CLI main should default it
-      assert.strictEqual(args.command, null);
-      assert.strictEqual(args.source, 'src');
-      assert.strictEqual(args.output, 'dist');
+      expect(args.command).toBe(null);
+      expect(args.source).toBe('src');
+      expect(args.output).toBe('dist');
     });
 
     it('should handle empty arguments', () => {
       const args = parseArgs([]);
       
-      assert.strictEqual(args.command, null);
-      assert.strictEqual(args.source, 'src');
-      assert.strictEqual(args.output, 'dist');
+      expect(args.command).toBe(null);
+      expect(args.source).toBe('src');
+      expect(args.output).toBe('dist');
     });
 
     it('should handle flags only', () => {
       const args = parseArgs(['--pretty-urls', '--port', '3000']);
       
-      assert.strictEqual(args.command, null);
-      assert.strictEqual(args.prettyUrls, true);
-      assert.strictEqual(args.port, 3000);
+      expect(args.command).toBe(null);
+      expect(args.prettyUrls).toBe(true);
+      expect(args.port).toBe(3000);
     });
   });
 
@@ -39,38 +38,38 @@ describe('Default Command Behavior', () => {
     it('should parse explicit build command', () => {
       const args = parseArgs(['build', '--source', 'content']);
       
-      assert.strictEqual(args.command, 'build');
-      assert.strictEqual(args.source, 'content');
+      expect(args.command).toBe('build');
+      expect(args.source).toBe('content');
     });
 
     it('should parse serve command', () => {
       const args = parseArgs(['serve', '--port', '8080']);
       
-      assert.strictEqual(args.command, 'serve');
-      assert.strictEqual(args.port, 8080);
+      expect(args.command).toBe('serve');
+      expect(args.port).toBe(8080);
     });
 
     it('should parse watch command', () => {
       const args = parseArgs(['watch', '--source', 'src']);
       
-      assert.strictEqual(args.command, 'watch');
-      assert.strictEqual(args.source, 'src');
+      expect(args.command).toBe('watch');
+      expect(args.source).toBe('src');
     });
   });
 
   describe('Command detection', () => {
     it('should reject unknown commands', () => {
-      assert.throws(() => {
+      expect(() => {
         parseArgs(['invalid-command']);
-      }, /Unknown command: invalid-command/);
+      }).toThrow(/Unknown command: invalid-command/);
     });
 
     it('should handle command at any position', () => {
       // Commands should only be first argument
       // This should be treated as an unknown argument, not a command
-      assert.throws(() => {
+      expect(() => {
         parseArgs(['--source', 'src', 'build']);
-      }, /Unknown option: build/);
+      }).toThrow(/Unknown option: build/);
     });
   });
 
@@ -78,27 +77,27 @@ describe('Default Command Behavior', () => {
     it('should parse help flag without command', () => {
       const args = parseArgs(['--help']);
       
-      assert.strictEqual(args.help, true);
-      assert.strictEqual(args.command, null);
+      expect(args.help).toBe(true);
+      expect(args.command).toBe(null);
     });
 
     it('should parse version flag without command', () => {
       const args = parseArgs(['--version']);
       
-      assert.strictEqual(args.version, true);
-      assert.strictEqual(args.command, null);
+      expect(args.version).toBe(true);
+      expect(args.command).toBe(null);
     });
 
     it('should parse short help flag', () => {
       const args = parseArgs(['-h']);
       
-      assert.strictEqual(args.help, true);
+      expect(args.help).toBe(true);
     });
 
     it('should parse short version flag', () => {
       const args = parseArgs(['-v']);
       
-      assert.strictEqual(args.version, true);
+      expect(args.version).toBe(true);
     });
   });
 });

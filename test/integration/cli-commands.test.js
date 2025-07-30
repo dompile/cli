@@ -3,8 +3,7 @@
  * Tests all CLI commands, arguments, and edge cases
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -38,13 +37,13 @@ describe('CLI Commands and Options', () => {
 
       const result = await runCLI(tempDir, ['build']);
       
-      assert.strictEqual(result.code, 0, `Build failed: ${result.stderr}`);
+      expect(result.code).toBe(0);
       
       const indexExists = await fileExists(path.join(outputDir, 'index.html'));
       const aboutExists = await fileExists(path.join(outputDir, 'about.html'));
       
-      assert(indexExists, 'index.html should exist in output');
-      assert(aboutExists, 'about.html should exist in output');
+      expect(indexExists).toBeTruthy();
+      expect(aboutExists).toBeTruthy();
     });
 
     it('should build with custom source and output directories', async () => {
@@ -63,10 +62,10 @@ describe('CLI Commands and Options', () => {
         '--output', customOutput
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
       
       const indexExists = await fileExists(path.join(customOutput, 'index.html'));
-      assert(indexExists, 'Should build to custom output directory');
+      expect(indexExists).toBeTruthy();
     });
 
     it('should build with short flags', async () => {
@@ -86,10 +85,10 @@ describe('CLI Commands and Options', () => {
         '-c', path.join(tempDir, 'includes')
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
       
       const content = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
-      assert(content.includes('<!DOCTYPE html>'));
+      expect(content.includes('<!DOCTYPE html>')).toBeTruthy();
     });
 
     it('should build with pretty URLs option', async () => {
@@ -107,11 +106,11 @@ describe('CLI Commands and Options', () => {
         '--pretty-urls'
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
       
       // With pretty URLs, about.md should become about/index.html
       const aboutDirExists = await fileExists(path.join(outputDir, 'about', 'index.html'));
-      assert(aboutDirExists, 'Pretty URLs should create about/index.html');
+      expect(aboutDirExists).toBeTruthy();
     });
 
     it('should generate sitemap with custom base URL', async () => {
@@ -129,13 +128,13 @@ describe('CLI Commands and Options', () => {
         '--base-url', 'https://custom.example.com'
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
       
       const sitemapExists = await fileExists(path.join(outputDir, 'sitemap.xml'));
-      assert(sitemapExists, 'Sitemap should be generated');
+      expect(sitemapExists).toBeTruthy();
       
       const sitemapContent = await fs.readFile(path.join(outputDir, 'sitemap.xml'), 'utf-8');
-      assert(sitemapContent.includes('https://custom.example.com'), 'Should use custom base URL');
+      expect(sitemapContent.includes('https://custom.example.com')).toBeTruthy();
     });
 
     it('should clean output directory when specified', async () => {
@@ -156,13 +155,13 @@ describe('CLI Commands and Options', () => {
         '--clean'
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
       
       const oldFileExists = await fileExists(path.join(outputDir, 'old-file.html'));
       const newFileExists = await fileExists(path.join(outputDir, 'index.html'));
       
-      assert(!oldFileExists, 'Old file should be removed with --clean');
-      assert(newFileExists, 'New file should exist');
+      expect(oldFileExists).toBeFalsy();
+      expect(newFileExists).toBeTruthy();
     });
 
     it('should handle no-sitemap option', async () => {
@@ -179,10 +178,10 @@ describe('CLI Commands and Options', () => {
         '--no-sitemap'
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
       
       const sitemapExists = await fileExists(path.join(outputDir, 'sitemap.xml'));
-      assert(!sitemapExists, 'Sitemap should not be generated with --no-sitemap');
+      expect(sitemapExists).toBeFalsy();
     });
   });
 
@@ -205,8 +204,7 @@ describe('CLI Commands and Options', () => {
       ], 2000); // 2 second timeout
 
       // Server should start successfully (will be killed by timeout)
-      assert(result.stdout.includes('3001') || result.stderr.includes('3001'), 
-             'Should mention the port number');
+      expect(result.stdout.includes('3001') || result.stderr.includes('3001')).toBeTruthy();
     });
 
     it('should serve with custom port', async () => {
@@ -224,8 +222,7 @@ describe('CLI Commands and Options', () => {
         '--port', '8080'
       ], 2000);
 
-      assert(result.stdout.includes('8080') || result.stderr.includes('8080'), 
-             'Should use custom port');
+      expect(result.stdout.includes('8080') || result.stderr.includes('8080')).toBeTruthy();
     });
 
     it('should serve with short port flag', async () => {
@@ -243,8 +240,7 @@ describe('CLI Commands and Options', () => {
         '-p', '9000'
       ], 2000);
 
-      assert(result.stdout.includes('9000') || result.stderr.includes('9000'), 
-             'Should use short flag for port');
+      expect(result.stdout.includes('9000') || result.stderr.includes('9000')).toBeTruthy();
     });
   });
 
@@ -263,9 +259,8 @@ describe('CLI Commands and Options', () => {
       ], 3000);
 
       // Watch should start and begin monitoring
-      assert(result.stdout.includes('Watching') || result.stderr.includes('Watching') ||
-             result.stdout.includes('Server') || result.stderr.includes('Server'), 
-             'Should start watching for changes');
+      expect(result.stdout.includes('Watching') || result.stderr.includes('Watching') ||
+             result.stdout.includes('Server') || result.stderr.includes('Server')).toBeTruthy();
     });
 
   });
@@ -274,38 +269,33 @@ describe('CLI Commands and Options', () => {
     it('should show help with --help', async () => {
       const result = await runCLI(tempDir, ['--help']);
       
-      assert(result.stdout.includes('Usage') || result.stdout.includes('Commands') ||
-             result.stdout.includes('build') || result.stdout.includes('serve'), 
-             'Should show help information');
+      expect(result.stdout.includes('Usage') || result.stdout.includes('Commands') ||
+             result.stdout.includes('build') || result.stdout.includes('serve')).toBeTruthy();
     });
 
     it('should show help with -h', async () => {
       const result = await runCLI(tempDir, ['-h']);
       
-      assert(result.stdout.includes('Usage') || result.stdout.includes('Commands'), 
-             'Should show help with short flag');
+      expect(result.stdout.includes('Usage') || result.stdout.includes('Commands')).toBeTruthy();
     });
 
     it('should show version with --version', async () => {
       const result = await runCLI(tempDir, ['--version']);
       
-      assert(result.stdout.match(/\d+\.\d+\.\d+/) || result.stderr.match(/\d+\.\d+\.\d+/), 
-             'Should show version number');
+      expect(result.stdout.match(/\d+\.\d+\.\d+/) || result.stderr.match(/\d+\.\d+\.\d+/)).toBeTruthy();
     });
 
     it('should show version with -v', async () => {
       const result = await runCLI(tempDir, ['-v']);
       
-      assert(result.stdout.match(/\d+\.\d+\.\d+/) || result.stderr.match(/\d+\.\d+\.\d+/), 
-             'Should show version with short flag');
+      expect(result.stdout.match(/\d+\.\d+\.\d+/) || result.stderr.match(/\d+\.\d+\.\d+/)).toBeTruthy();
     });
 
     it('should show help for specific commands', async () => {
       const result = await runCLI(tempDir, ['build', '--help']);
       
-      assert(result.stdout.includes('build') || result.stdout.includes('source') ||
-             result.stdout.includes('output'), 
-             'Should show build command help');
+      expect(result.stdout.includes('build') || result.stdout.includes('source') ||
+             result.stdout.includes('output')).toBeTruthy();
     });
   });
 
@@ -322,10 +312,10 @@ describe('CLI Commands and Options', () => {
         '--output', outputDir
       ]);
 
-      assert.strictEqual(result.code, 0, 'Should successfully run default build command');
+      expect(result.code).toBe(0);
       
       const indexExists = await fileExists(path.join(outputDir, 'index.html'));
-      assert(indexExists, 'Should build files with default command');
+      expect(indexExists).toBeTruthy();
     });
 
     it('should work with only flags and no command', async () => {
@@ -341,7 +331,7 @@ describe('CLI Commands and Options', () => {
         '--pretty-urls'
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
     });
   });
 
@@ -349,21 +339,20 @@ describe('CLI Commands and Options', () => {
     it('should handle unknown commands', async () => {
       const result = await runCLI(tempDir, ['unknown-command']);
       
-      assert.notStrictEqual(result.code, 0, 'Should fail for unknown command');
-      assert(result.stderr.includes('Unknown') || result.stderr.includes('Invalid'), 
-             'Should show error for unknown command');
+      expect(result.code).not.toBe(0);
+      expect(result.stderr.includes('Unknown') || result.stderr.includes('Invalid')).toBeTruthy();
     });
 
     it('should handle unknown options', async () => {
       const result = await runCLI(tempDir, ['build', '--unknown-option']);
       
-      assert.notStrictEqual(result.code, 0, 'Should fail for unknown option');
+      expect(result.code).not.toBe(0);
     });
 
     it('should handle missing required values', async () => {
       const result = await runCLI(tempDir, ['build', '--source']);
       
-      assert.notStrictEqual(result.code, 0, 'Should fail when option value is missing');
+      expect(result.code).not.toBe(0);
     });
 
     it('should handle invalid source directory', async () => {
@@ -373,7 +362,7 @@ describe('CLI Commands and Options', () => {
         '--output', outputDir
       ]);
       
-      assert.notStrictEqual(result.code, 0, 'Should fail for nonexistent source directory');
+      expect(result.code).not.toBe(0);
     });
 
     it('should handle permission errors gracefully', async () => {
@@ -390,10 +379,9 @@ describe('CLI Commands and Options', () => {
         '--output', '/root/forbidden'
       ]);
       
-      assert.notStrictEqual(result.code, 0, 'Should fail for permission errors');
-      assert(result.stderr.includes('Error') || result.stderr.includes('permission') ||
-             result.stderr.includes('EACCES') || result.stderr.includes('ENOENT'), 
-             'Should show appropriate error message');
+      expect(result.code).not.toBe(0);
+      expect(result.stderr.includes('Error') || result.stderr.includes('permission') ||
+             result.stderr.includes('EACCES') || result.stderr.includes('ENOENT')).toBeTruthy();
     });
   });
 
@@ -411,7 +399,7 @@ describe('CLI Commands and Options', () => {
         '--output', outputDir
       ]);
 
-      assert.strictEqual(result.code, 0, 'Should work without config file');
+      expect(result.code).toBe(0);
     });
 
     it('should handle CLI args priority over defaults', async () => {
@@ -430,10 +418,10 @@ describe('CLI Commands and Options', () => {
         '--output', customOutput
       ]);
 
-      assert.strictEqual(result.code, 0);
+      expect(result.code).toBe(0);
       
       const indexExists = await fileExists(path.join(customOutput, 'index.html'));
-      assert(indexExists, 'Should use CLI args over defaults');
+      expect(indexExists).toBeTruthy();
     });
   });
 
@@ -455,7 +443,7 @@ describe('CLI Commands and Options', () => {
         '-p', '3000' // This would be for serve, but testing parsing
       ]);
 
-      assert.strictEqual(result.code, 0, 'Should handle mixed flag formats');
+      expect(result.code).toBe(0);
     });
 
     it('should handle flag order variations', async () => {
@@ -480,8 +468,7 @@ describe('CLI Commands and Options', () => {
       ]);
 
       // At least one should work (depending on implementation)
-      assert(result1.code === 0 || result2.code === 0, 
-             'Should handle flag order variations');
+      expect(result1.code === 0 || result2.code === 0).toBeTruthy();
     });
   });
 });

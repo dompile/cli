@@ -2,8 +2,7 @@
  * Integration tests for CLI functionality
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -69,24 +68,24 @@ describe('CLI integration', () => {
   
   it('should show version with --version flag', async () => {
     const result = await runCLI(['--version']);
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('unify v0.5.2'));
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.includes('unify v0.5.2')).toBeTruthy();
   });
   
   it('should show help with --help flag', async () => {
     const result = await runCLI(['--help']);
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Usage: unify'));
-    assert(result.stdout.includes('Commands:'));
-    assert(result.stdout.includes('build'));
-    assert(result.stdout.includes('watch'));
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.includes('Usage: unify')).toBeTruthy();
+    expect(result.stdout.includes('Commands:')).toBeTruthy();
+    expect(result.stdout.includes('build')).toBeTruthy();
+    expect(result.stdout.includes('watch')).toBeTruthy();
   });
   
   it('should run build when no command is provided', async () => {
     const result = await runCLI([], { cwd: testFixturesDir });
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Building static site'));
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.includes('Building static site')).toBeTruthy();
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
 
     // Verify output files
     await fs.access(path.join(outputDir, 'index.html'));
@@ -94,8 +93,8 @@ describe('CLI integration', () => {
 
     // Verify content processing
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
-    assert(indexContent.includes('<header><h1>CLI Test</h1></header>'));
-    assert(indexContent.includes('<meta charset="UTF-8">'));
+    expect(indexContent.includes('<header><h1>CLI Test</h1></header>')).toBeTruthy();
+    expect(indexContent.includes('<meta charset="UTF-8">')).toBeTruthy();
   });
   
   it('should build site with build command', async () => {
@@ -105,9 +104,9 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Building static site'));
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.includes('Building static site')).toBeTruthy();
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output files
     await fs.access(path.join(outputDir, 'index.html'));
@@ -115,8 +114,8 @@ describe('CLI integration', () => {
     
     // Verify content processing
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
-    assert(indexContent.includes('<header><h1>CLI Test</h1></header>'));
-    assert(indexContent.includes('<meta charset="UTF-8">'));
+    expect(indexContent.includes('<header><h1>CLI Test</h1></header>')).toBeTruthy();
+    expect(indexContent.includes('<meta charset="UTF-8">')).toBeTruthy();
   });
   
   it('should handle build errors gracefully', async () => {
@@ -126,8 +125,8 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Source directory not found'));
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.includes('Source directory not found')).toBeTruthy();
   });
   
   it('should fail build when components are missing', async () => {
@@ -143,8 +142,8 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stderr.includes('Include file not found'));
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr.includes('Include file not found')).toBeTruthy();
   });
   
   it('should validate CLI arguments', async () => {
@@ -153,15 +152,15 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Unknown option'));
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   
   it('should handle unknown commands', async () => {
     const result = await runCLI(['unknown-command']);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Unknown command'));
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.includes('Unknown command')).toBeTruthy();
   });
   
   it('should handle unknown options', async () => {
@@ -170,8 +169,8 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Unknown option'));
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   
   it('should work with short option flags', async () => {
@@ -181,8 +180,8 @@ describe('CLI integration', () => {
       '-o', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output
     await fs.access(path.join(outputDir, 'index.html'));
@@ -219,13 +218,13 @@ describe('CLI integration', () => {
     // Change to test directory and run with defaults
     const result = await runCLI(['build'], { cwd: testDir });
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output in default dist directory
     await fs.access(path.join(defaultDist, 'index.html'));
     const indexContent = await fs.readFile(path.join(defaultDist, 'index.html'), 'utf-8');
-    assert(indexContent.includes('<header><h1>Default Test</h1></header>'));
+    expect(indexContent.includes('<header><h1>Default Test</h1></header>')).toBeTruthy();
   });
   
  

@@ -12,22 +12,7 @@ import {
   assertRuntimeFeature 
 } from '../bun-setup.js';
 
-// Use appropriate test framework
-let describe, it, expect;
-if (runtime.isBun) {
-  ({ describe, it, expect } = await import('bun:test'));
-} else {
-  ({ describe, it } = await import('node:test'));
-  const assert = await import('node:assert');
-  // Create expect-like API for Node.js
-  expect = (actual) => ({
-    toBe: (expected) => assert.strictEqual(actual, expected),
-    toEqual: (expected) => assert.deepStrictEqual(actual, expected),
-    toBeTruthy: () => assert.ok(actual),
-    toBeFalsy: () => assert.ok(!actual),
-    toContain: (expected) => assert.ok(actual.includes(expected))
-  });
-}
+import { describe, it, expect } from 'bun:test';
 
 describe('Bun HTML Processor', () => {
   it('should be available when running on Bun', async () => {

@@ -2,8 +2,7 @@
  * Tests for enhanced HTML minification functionality
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import { build } from '../../src/core/file-processor.js';
 import fs from 'fs/promises';
 import path from 'path';
@@ -94,21 +93,21 @@ describe('enhanced HTML minification', () => {
     // Verify minification effects
     
     // Should not contain multiple consecutive spaces (except in quoted strings)
-    assert(!minifiedContent.includes('    '), 'Should not contain multiple spaces');
+    expect(minifiedContent.includes('    ')).toBeFalsy(); // Should not contain multiple spaces
     
     // Should not contain CSS comments
-    assert(!minifiedContent.includes('/* This is a CSS comment */'), 'Should not contain CSS comments');
+    expect(minifiedContent.includes('/* This is a CSS comment */')).toBeFalsy(); // Should not contain CSS comments
     
     // Should collapse whitespace in CSS rules
-    assert(minifiedContent.includes('margin:0'), 'Should minify CSS spacing around colons');
-    assert(minifiedContent.includes('padding:20px'), 'Should minify CSS spacing');
+    expect(minifiedContent.includes('margin:0')).toBeTruthy(); // Should minify CSS spacing around colons
+    expect(minifiedContent.includes('padding:20px')).toBeTruthy(); // Should minify CSS spacing
     
     
     // Should preserve HTML content (basic check)
-    assert(minifiedContent.includes('<h1>Welcome to Test Page</h1>'), 'Should preserve HTML content');
+    expect(minifiedContent.includes('<h1>Welcome to Test Page</h1>')).toBeTruthy(); // Should preserve HTML content
     
     // Should have some JavaScript content (even if not perfectly minified)
-    assert(minifiedContent.includes('<script>') && minifiedContent.includes('</script>'), 'Should preserve script tags');
+    expect(minifiedContent.includes('<script>') && minifiedContent.includes('</script>')).toBeTruthy(); // Should preserve script tags
     
     // Overall file should be significantly smaller
     const originalSize = htmlContent.length;
@@ -116,7 +115,7 @@ describe('enhanced HTML minification', () => {
     const compressionRatio = (originalSize - minifiedSize) / originalSize;
     
     // Should achieve at least 10% compression
-    assert(compressionRatio > 0.1, `Should achieve significant compression, got ${(compressionRatio * 100).toFixed(1)}%`);
+    expect(compressionRatio).toBeGreaterThan(0.1); // Should achieve significant compression
   });
   
   it('should preserve important HTML attributes and not over-minify', async () => {
@@ -146,15 +145,15 @@ describe('enhanced HTML minification', () => {
     const minifiedContent = await fs.readFile(path.join(outputDir, 'attributes.html'), 'utf-8');
     
     // Should preserve attributes that need quotes (contain spaces or special chars)
-    assert(minifiedContent.includes('data-value="test value"'), 'Should preserve quoted attributes with spaces');
-    assert(minifiedContent.includes('placeholder="Enter text here"'), 'Should preserve quoted attributes');
-    assert(minifiedContent.includes('onclick="alert(\'Hello World!\')"'), 'Should preserve quoted JS attributes');
+    expect(minifiedContent.includes('data-value="test value"')).toBeTruthy(); // Should preserve quoted attributes with spaces
+    expect(minifiedContent.includes('placeholder="Enter text here"')).toBeTruthy(); // Should preserve quoted attributes
+    expect(minifiedContent.includes('onclick="alert(\'Hello World!\')"')).toBeTruthy(); // Should preserve quoted JS attributes
     
     // Should preserve required boolean attributes
-    assert(minifiedContent.includes('required'), 'Should preserve boolean attributes');
+    expect(minifiedContent.includes('required')).toBeTruthy(); // Should preserve boolean attributes
     
     // Should remove unnecessary quotes from simple attributes
-    assert(minifiedContent.includes('type=text') || minifiedContent.includes('type="text"'), 'Should handle type attribute');
+    expect(minifiedContent.includes('type=text') || minifiedContent.includes('type="text"')).toBeTruthy(); // Should handle type attribute
   });
   
   it('should not minify when minify option is false', async () => {
@@ -186,7 +185,7 @@ describe('enhanced HTML minification', () => {
     const outputContent = await fs.readFile(path.join(outputDir, 'no-minify.html'), 'utf-8');
     
     // Should preserve original formatting when minification is disabled
-    assert(outputContent.includes('    margin: 0;'), 'Should preserve CSS whitespace when not minifying');
-    assert(outputContent.includes('</head>\n<body>'), 'Should preserve line breaks when not minifying');
+    expect(outputContent.includes('    margin: 0;')).toBeTruthy(); // Should preserve CSS whitespace when not minifying
+    expect(outputContent.includes('</head>\n<body>')).toBeTruthy(); // Should preserve line breaks when not minifying
   });
 });

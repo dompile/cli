@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 /**
  * Cross-Platform Executable Builder for Unify CLI
- * Creates standalone executables for Linux, macOS, and Windows
+ * Creates standalone executables using Bun's compilation features
  */
 
 import fs from 'fs/promises';
@@ -44,15 +44,16 @@ const TARGETS = [
 ];
 
 /**
- * Detect runtime environment
+ * Verify Bun is available
  */
-function detectRuntime() {
+function verifyBun() {
   try {
-    // Check if Bun is available
     execSync('bun --version', { stdio: 'ignore' });
-    return 'bun';
+    return true;
   } catch {
-    return 'node';
+    console.error('❌ Bun is required to build executables');
+    console.error('   Please install Bun: https://bun.sh/docs/installation');
+    process.exit(1);
   }
 }
 
@@ -88,45 +89,6 @@ async function buildWithBun(target) {
   }
 }
 
-/**
- * Build executable using pkg (Node.js fallback)
- */
-async function buildWithPkg(target) {
-  const outputName = `unify-${target.platform}-${target.arch}${target.extension}`;
-  const outputPath = path.join(DIST_DIR, outputName);
-  
-  console.log(`🔨 Building ${outputName} with pkg...`);
-  
-  try {
-    // Check if pkg is available
-    try {
-      execSync('npx pkg --version', { stdio: 'ignore' });
-    } catch {
-      console.log('📦 Installing pkg...');
-      execSync('npm install -g pkg', { stdio: 'inherit' });
-    }
-    
-    const pkgTarget = `node18-${target.platform}-${target.arch}`;
-    const command = [
-      'npx', 'pkg',
-      BIN_ENTRY,
-      '--target', pkgTarget,
-      '--output', outputPath,
-      '--compress', 'GZip'
-    ].join(' ');
-    
-    execSync(command, { 
-      stdio: 'inherit',
-      cwd: PROJECT_ROOT 
-    });
-    
-    console.log(`✅ Built ${outputName}`);
-    return outputPath;
-  } catch (error) {
-    console.error(`❌ Failed to build ${outputName}:`, error.message);
-    throw error;
-  }
-}
 
 /**
  * Create build constants file
@@ -142,8 +104,8 @@ async function createBuildConstants() {
     version: packageJson.version,
     buildTime: new Date().toISOString(),
     gitCommit: await getGitCommit(),
-    runtime: detectRuntime(),
-    nodeVersion: process.version
+    runtime: 'bun',
+    bunVersion: Bun.version
   };
   
   const constantsContent = `/**
@@ -154,24 +116,15 @@ async function createBuildConstants() {
 export const BUILD_INFO = ${JSON.stringify(buildInfo, null, 2)};
 
 export const RUNTIME_FEATURES = {
-  bun: {
-    htmlRewriter: true,
-    fsWatch: true,
-    serve: true,
-    hash: true,
-    compile: true
-  },
-  node: {
-    htmlRewriter: false,
-    fsWatch: true,
-    serve: true,
-    hash: false,
-    compile: false
-  }
+  htmlRewriter: true,
+  fsWatch: true,
+  serve: true,
+  hash: true,
+  compile: true
 };
 
-export function getRuntimeFeatures(runtime = 'node') {
-  return RUNTIME_FEATURES[runtime] || RUNTIME_FEATURES.node;
+export function getRuntimeFeatures() {
+  return RUNTIME_FEATURES;
 }
 
 export function getBuildInfo() {
@@ -230,8 +183,8 @@ function formatFileSize(bytes) {
  * Main build function
  */
 async function main() {
-  const runtime = detectRuntime();
-  console.log(`🚀 Starting executable build with ${runtime.toUpperCase()}`);
+  verifyBun();
+  console.log(`🚀 Starting executable build with BUN`);
   console.log(`📁 Project root: ${PROJECT_ROOT}`);
   
   // Create dist directory
@@ -245,13 +198,7 @@ async function main() {
   
   for (const target of TARGETS) {
     try {
-      let executablePath;
-      
-      if (runtime === 'bun') {
-        executablePath = await buildWithBun(target);
-      } else {
-        executablePath = await buildWithPkg(target);
-      }
+      const executablePath = await buildWithBun(target);
       
       // Get file size
       const stats = await fs.stat(executablePath);

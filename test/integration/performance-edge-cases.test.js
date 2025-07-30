@@ -3,8 +3,7 @@
  * Tests system limits, performance characteristics, and unusual scenarios
  */
 
-import { describe, it, beforeEach, afterEach } from "node:test";
-import assert from "node:assert";
+import { describe, it, beforeEach, afterEach, expect } from "bun:test";
 import fs from "fs/promises";
 import path from "path";
 import { processIncludes } from "../../src/core/include-processor.js";
@@ -60,12 +59,9 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
 
       const processingTime = Date.now() - startTime;
 
-      assert(result.includes("<footer>Footer content</footer>"));
-      assert(
-        processingTime < 5000,
-        `Processing took too long: ${processingTime}ms`
-      );
-      assert(result.length > 1000000, "Should handle large files");
+      expect(result.includes("<footer>Footer content</footer>")).toBeTruthy();
+      expect(processingTime).toBeLessThan(5000);
+      expect(result.length).toBeGreaterThan(1000000);
     });
 
     it("should handle many small includes efficiently", async () => {
@@ -95,12 +91,9 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
 
       const processingTime = Date.now() - startTime;
 
-      assert(result.includes('<div class="item-0">'));
-      assert(result.includes('<div class="item-99">'));
-      assert(
-        processingTime < 10000,
-        `Many includes took too long: ${processingTime}ms`
-      );
+      expect(result.includes('<div class="item-0">')).toBeTruthy();
+      expect(result.includes('<div class="item-99">')).toBeTruthy();
+      expect(processingTime).toBeLessThan(10000);
     });
 
     it("should handle deep nesting efficiently", async () => {
@@ -135,13 +128,10 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
 
       const processingTime = Date.now() - startTime;
 
-      assert(result.includes("Level 0"));
-      assert(result.includes(`Level ${maxDepth - 1}`));
-      assert(result.includes("Final level reached"));
-      assert(
-        processingTime < 5000,
-        `Deep nesting took too long: ${processingTime}ms`
-      );
+      expect(result.includes("Level 0")).toBeTruthy();
+      expect(result.includes(`Level ${maxDepth - 1}`)).toBeTruthy();
+      expect(result.includes("Final level reached")).toBeTruthy();
+      expect(processingTime).toBeLessThan(5000);
     });
 
     it("should handle large dependency graphs efficiently", async () => {
@@ -188,7 +178,7 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
           dependencyTracker // Pass the dependency tracker
         );
 
-        assert(result.includes(`Page ${page}`));
+        expect(result.includes(`Page ${page}`)).toBeTruthy();
       }
 
       const processingTime = Date.now() - startTime;
@@ -197,12 +187,9 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       const dependencies = dependencyTracker.getPageDependencies(
         path.join(sourceDir, "page-0.html")
       );
-      assert(dependencies.length > 0, "Should track dependencies");
+      expect(dependencies.length).toBeGreaterThan(0);
 
-      assert(
-        processingTime < 15000,
-        `Large dependency graph took too long: ${processingTime}ms`
-      );
+      expect(processingTime).toBeLessThan(15000);
     });
 
     it("should handle memory efficiently with large numbers of files", async () => {
@@ -232,8 +219,8 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
           sourceDir
         );
 
-        assert(result.includes(`Page ${i}`));
-        assert(result.includes("Shared component"));
+        expect(result.includes(`Page ${i}`)).toBeTruthy();
+        expect(result.includes("Shared component")).toBeTruthy();
       }
 
       const memAfter = process.memoryUsage().heapUsed;
@@ -241,14 +228,8 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       const processingTime = Date.now() - startTime;
 
       // Memory increase should be reasonable (less than 100MB for 50 files)
-      assert(
-        memIncrease < 100 * 1024 * 1024,
-        `Memory usage too high: ${memIncrease / 1024 / 1024}MB`
-      );
-      assert(
-        processingTime < 10000,
-        `Memory test took too long: ${processingTime}ms`
-      );
+      expect(memIncrease).toBeLessThan(100 * 1024 * 1024);
+      expect(processingTime).toBeLessThan(10000);
     });
   });
 
@@ -269,7 +250,7 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         sourceDir
       );
 
-      assert(result.includes("<h1>After empty</h1>"));
+      expect(result.includes("<h1>After empty</h1>")).toBeTruthy();
     });
 
     it("should handle binary file includes gracefully", async () => {
@@ -288,7 +269,7 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       );
 
       // Should handle binary gracefully (might include as-is or show error)
-      assert(result.includes("<p>After binary</p>"));
+      expect(result.includes("<p>After binary</p>")).toBeTruthy();
     });
 
     it("should handle very long file paths", async () => {
@@ -307,7 +288,7 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         sourceDir
       );
 
-      assert(result.includes("Long path content"));
+      expect(result.includes("Long path content")).toBeTruthy();
     });
 
     it("should handle files with unusual characters in names", async () => {
@@ -326,8 +307,8 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         sourceDir
       );
 
-      assert(result.includes("Russian content"));
-      assert(result.includes("Chinese content"));
+      expect(result.includes("Russian content")).toBeTruthy();
+      expect(result.includes("Chinese content")).toBeTruthy();
     });
 
     it("should handle files with unicode content", async () => {
@@ -349,10 +330,10 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         sourceDir
       );
 
-      assert(result.includes("🚀"));
-      assert(result.includes("∑"));
-      assert(result.includes("Español"));
-      assert(result.includes('"Smart quotes"'));
+      expect(result.includes("🚀")).toBeTruthy();
+      expect(result.includes("∑")).toBeTruthy();
+      expect(result.includes("Español")).toBeTruthy();
+      expect(result.includes('"Smart quotes"')).toBeTruthy();
     });
 
     it("should handle malformed HTML gracefully", async () => {
@@ -373,8 +354,8 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         sourceDir
       );
 
-      assert(result.includes("Good content"));
-      assert(result.includes("Unclosed paragraph"));
+      expect(result.includes("Good content")).toBeTruthy();
+      expect(result.includes("Unclosed paragraph")).toBeTruthy();
     });
 
     it("should handle concurrent processing safely", async () => {
@@ -403,10 +384,10 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       const results = await Promise.all(promises);
 
       // All should complete successfully
-      assert.strictEqual(results.length, 20);
+      expect(results.length).toBe(20);
       results.forEach((result, i) => {
-        assert(result.includes(`Page ${i}`));
-        assert(result.includes("Shared content"));
+        expect(result.includes(`Page ${i}`)).toBeTruthy();
+        expect(result.includes("Shared content")).toBeTruthy();
       });
     });
 
@@ -428,10 +409,10 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
           path.join(sourceDir, "index.html"),
           sourceDir
         );
-        assert.fail("Should have thrown an error for circular dependency");
+        throw new Error("Should have thrown an error for circular dependency");
       } catch (error) {
         // Should detect circular dependency and stop processing
-        assert(error.message.includes("Circular dependency detected"));
+        expect(error.message.includes("Circular dependency detected")).toBeTruthy();
         return;
       }
     });
@@ -454,9 +435,9 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       );
 
       // Should continue processing with warning comment for missing file
-      assert(result.includes("Existing content"));
-      assert(result.includes("After missing"));
-      assert(result.includes("WARNING: Include file not found"));
+      expect(result.includes("Existing content")).toBeTruthy();
+      expect(result.includes("After missing")).toBeTruthy();
+      expect(result.includes("WARNING: Include file not found")).toBeTruthy();
     });
 
     it("should handle template processing with unusual slot configurations", async () => {
@@ -495,9 +476,9 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         config
       );
 
-      assert(result.includes("Custom content"));
-      assert(result.includes("Custom repeated"));
-      assert(result.includes("Unnamed content"));
+      expect(result.includes("Custom content")).toBeTruthy();
+      expect(result.includes("Custom repeated")).toBeTruthy();
+      expect(result.includes("Unnamed content")).toBeTruthy();
     });
   });
 
@@ -528,8 +509,8 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       );
 
       // Should either complete or fail gracefully
-      assert(typeof result === "string");
-      assert(result.length > 0);
+      expect(typeof result).toBe("string");
+      expect(result.length).toBeGreaterThan(0);
     });
 
     it("should handle files at filesystem limits", async () => {
@@ -550,15 +531,15 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
         );
 
         // If it completes, verify it worked
-        assert(result.includes("Small component"));
-        assert(result.length > 10 * 1024 * 1024);
+        expect(result.includes("Small component")).toBeTruthy();
+        expect(result.length).toBeGreaterThan(10 * 1024 * 1024);
       } catch (error) {
         // If it fails, should be a reasonable error
-        assert(
+        expect(
           error.message.includes("size") ||
             error.message.includes("memory") ||
             error.message.includes("ENOMEM")
-        );
+        ).toBeTruthy();
       }
     });
   });
@@ -586,10 +567,10 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       );
 
       // Should contain good content and error comments
-      assert(result.includes("Content 1"));
-      assert(result.includes("Existing component"));
-      assert(result.includes("Content 2"));
-      assert(result.includes("Content 3"));
+      expect(result.includes("Content 1")).toBeTruthy();
+      expect(result.includes("Existing component")).toBeTruthy();
+      expect(result.includes("Content 2")).toBeTruthy();
+      expect(result.includes("Content 3")).toBeTruthy();
     });
 
     it("should handle encoding errors gracefully", async () => {
@@ -611,7 +592,7 @@ ${"<p>This is paragraph content that repeats many times to create a large file. 
       );
 
       // Should handle encoding issue and continue
-      assert(result.includes("After include"));
+      expect(result.includes("After include")).toBeTruthy();
     });
   });
 });

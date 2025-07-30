@@ -18,8 +18,7 @@
  * - Build process end-to-end
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -166,8 +165,8 @@ This is a test blog post written in Markdown.
       ], { cwd: tempDir });
 
       // Verify build succeeded
-      assert.strictEqual(result.code, 0, `Build failed: ${result.stderr}`);
-      assert(result.stdout.includes('Build completed successfully'));
+      expect(result.code).toBe(0);
+      expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
 
       // Verify all pages were generated
       const expectedFiles = [
@@ -184,28 +183,28 @@ This is a test blog post written in Markdown.
         try {
           await fs.access(filePath);
         } catch (error) {
-          assert.fail(`Expected file ${file} was not generated`);
+          throw new Error(`Expected file ${file} was not generated`);
         }
       }
 
       // Verify content processing
       const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
-      assert(indexContent.includes('<!DOCTYPE html>'), 'Should have doctype');
-      assert(indexContent.includes('<title>Home - Final Boss Test</title>'), 'Should have correct title');
-      assert(indexContent.includes('Welcome to Final Boss Test Site'), 'Should have main content');
-      assert(indexContent.includes('<div class="card">'), 'Should include card component');
-      assert(indexContent.includes('<li><a href="/index.html">Home</a></li>'), 'Should include navigation');
+      expect(indexContent.includes('<!DOCTYPE html>')).toBeTruthy();
+      expect(indexContent.includes('<title>Home - Final Boss Test</title>')).toBeTruthy();
+      expect(indexContent.includes('Welcome to Final Boss Test Site')).toBeTruthy();
+      expect(indexContent.includes('<div class="card">')).toBeTruthy();
+      expect(indexContent.includes('<li><a href="/index.html">Home</a></li>')).toBeTruthy();
 
       // Verify sitemap was generated with correct base URL
       const sitemapContent = await fs.readFile(path.join(outputDir, 'sitemap.xml'), 'utf-8');
-      assert(sitemapContent.includes('https://finalboss.example.com'), 'Should use homepage from package.json');
-      assert(sitemapContent.includes('<loc>https://finalboss.example.com/</loc>'), 'Should include index page as root URL');
-      assert(sitemapContent.includes('<loc>https://finalboss.example.com/about.html</loc>'), 'Should include about page');
+      expect(sitemapContent.includes('https://finalboss.example.com')).toBeTruthy();
+      expect(sitemapContent.includes('<loc>https://finalboss.example.com/</loc>')).toBeTruthy();
+      expect(sitemapContent.includes('<loc>https://finalboss.example.com/about.html</loc>')).toBeTruthy();
 
       // Verify markdown processing
       const blogContent = await fs.readFile(path.join(outputDir, 'blog.html'), 'utf-8');
-      assert(blogContent.includes('<title>Blog Post</title>'), 'Should have title from frontmatter');
-      assert(blogContent.includes('<h1 id="blog-post">Blog Post</h1>'), 'Should convert markdown to HTML');
+      expect(blogContent.includes('<title>Blog Post</title>')).toBeTruthy();
+      expect(blogContent.includes('<h1 id="blog-post">Blog Post</h1>')).toBeTruthy();
     });
 
     it('should handle edge cases and error conditions', async () => {
@@ -264,9 +263,9 @@ This is a test blog post written in Markdown.
       ], { cwd: tempDir });
 
       // Build should fail due to errors
-      assert.strictEqual(result.code, 1, 'Build should fail due to missing files and circular deps');
-      assert(result.stderr.includes('missing.html') || result.stdout.includes('missing.html'), 'Should report missing file');
-      assert(result.stderr.includes('Circular dependency') || result.stdout.includes('Circular dependency'), 'Should report circular dependency');
+      expect(result.code).toBe(1);
+      expect(result.stderr.includes('missing.html') || result.stdout.includes('missing.html')).toBeTruthy();
+      expect(result.stderr.includes('Circular dependency') || result.stdout.includes('Circular dependency')).toBeTruthy();
     });
   });
 });
@@ -575,7 +574,7 @@ describe('Final Boss Integration Test', () => {
 //       // Run the build process
 //       const buildResult = await runDompileBuild(tempDir, sourceDir, outputDir);
       
-//       assert.strictEqual(buildResult.code, 0, `Build failed: ${buildResult.stderr}`);
+//       expect(buildResult.code).toBe(0);
 
 //       // Verify all output files exist
 //       const outputFiles = [
@@ -594,45 +593,45 @@ describe('Final Boss Integration Test', () => {
 //       for (const file of outputFiles) {
 //         const filePath = path.join(outputDir, file);
 //         const exists = await fs.access(filePath).then(() => true).catch(() => false);
-//         assert(exists, `Output file ${file} should exist`);
+//         expect(exists).toBeTruthy();
 //       }
 
 //       // Verify HTML content
 //       const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
       
 //       // Should have proper DOCTYPE and structure
-//       assert(indexContent.includes('<!DOCTYPE html>'));
-//       assert(indexContent.includes('<html lang="en">'));
+//       expect(indexContent.includes('<!DOCTYPE html>')).toBeTruthy();
+//       expect(indexContent.includes('<html lang="en">')).toBeTruthy();
       
 //       // Should have processed includes
-//       assert(indexContent.includes('Final Boss Test Site'));
-//       assert(indexContent.includes('Testing all the things'));
-//       assert(indexContent.includes('GitHub</a>'));
+//       expect(indexContent.includes('Final Boss Test Site')).toBeTruthy();
+//       expect(indexContent.includes('Testing all the things')).toBeTruthy();
+//       expect(indexContent.includes('GitHub</a>')).toBeTruthy();
       
 //       // Should have CSS and JS references
-//       assert(indexContent.includes('href="/assets/styles/main.css"'));
-//       assert(indexContent.includes('src="/assets/scripts/main.js"'));
+//       expect(indexContent.includes('href="/assets/styles/main.css"')).toBeTruthy();
+//       expect(indexContent.includes('src="/assets/scripts/main.js"')).toBeTruthy();
       
 //       // Should have processed template slots
-//       assert(indexContent.includes('Welcome to the Final Boss Test'));
+//       expect(indexContent.includes('Welcome to the Final Boss Test')).toBeTruthy();
 
 //       // Verify markdown processing
 //       const docsContent = await fs.readFile(path.join(outputDir, 'docs.html'), 'utf-8');
-//       assert(docsContent.includes('<h1 id="dompile-documentation">DOMpile Documentation</h1>'));
-//       assert(docsContent.includes('<strong>markdown</strong>'));
-//       assert(docsContent.includes('Documentation - Final Boss Test Site')); // Title from frontmatter
+//       expect(docsContent.includes('<h1 id="dompile-documentation">DOMpile Documentation</h1>')).toBeTruthy();
+//       expect(docsContent.includes('<strong>markdown</strong>')).toBeTruthy();
+//       expect(docsContent.includes('Documentation - Final Boss Test Site')).toBeTruthy(); // Title from frontmatter
 
 //       // Verify blog post
 //       const blogContent = await fs.readFile(path.join(outputDir, 'blog/post1.html'), 'utf-8');
-//       assert(blogContent.includes('First Blog Post - Final Boss Blog'));
-//       assert(blogContent.includes('Published on 2024-01-10'));
-//       assert(blogContent.includes('<code>console.log'));
+//       expect(blogContent.includes('First Blog Post - Final Boss Blog')).toBeTruthy();
+//       expect(blogContent.includes('Published on 2024-01-10')).toBeTruthy();
+//       expect(blogContent.includes('<code>console.log')).toBeTruthy();
 
 //       // Verify sitemap
 //       const sitemapContent = await fs.readFile(path.join(outputDir, 'sitemap.xml'), 'utf-8');
-//       assert(sitemapContent.includes('https://finalboss.example.com'));
-//       assert(sitemapContent.includes('<loc>https://finalboss.example.com/index.html</loc>'));
-//       assert(sitemapContent.includes('<loc>https://finalboss.example.com/about.html</loc>'));
+//       expect(sitemapContent.includes('https://finalboss.example.com')).toBeTruthy();
+//       expect(sitemapContent.includes('<loc>https://finalboss.example.com/index.html</loc>')).toBeTruthy();
+//       expect(sitemapContent.includes('<loc>https://finalboss.example.com/about.html</loc>')).toBeTruthy();
 //     });
 
     it('should handle edge cases and error conditions', async () => {
@@ -690,20 +689,20 @@ describe('Final Boss Integration Test', () => {
       const buildResult = await runDompileBuild(tempDir, sourceDir, outputDir);
       
       // Build should complete despite errors (graceful degradation)
-      assert.strictEqual(buildResult.code, 0, `Build should complete with warnings: ${buildResult.stderr}`);
+      expect(buildResult.code).toBe(0);
 
       // Check that security violations are handled
       const edgeContent = await fs.readFile(path.join(outputDir, 'edge-test.html'), 'utf-8');
       
       // Should not contain actual sensitive file content
-      assert(!edgeContent.includes('root:x:0:0'));
+      expect(edgeContent.includes('root:x:0:0')).toBeFalsy();
       
       // Should contain error comments for missing files
-      assert(edgeContent.includes('Error:') || edgeContent.includes('not found'));
+      expect(edgeContent.includes('Error:') || edgeContent.includes('not found')).toBeTruthy();
       
       // Should still contain valid content
-      assert(edgeContent.includes('Edge Case Tests'));
-      assert(edgeContent.includes('Security test'));
+      expect(edgeContent.includes('Edge Case Tests')).toBeTruthy();
+      expect(edgeContent.includes('Security test')).toBeTruthy();
     });
 
     it('should handle CLI argument variations', async () => {
@@ -724,11 +723,11 @@ describe('Final Boss Integration Test', () => {
         ['-l', 'layouts', '-c', 'partials']
       );
 
-      assert.strictEqual(buildResult.code, 0);
+      expect(buildResult.code).toBe(0);
 
       const indexExists = await fs.access(path.join(customOutputDir, 'index.html'))
         .then(() => true).catch(() => false);
-      assert(indexExists, 'Should build to custom output directory');
+      expect(indexExists).toBeTruthy();
     });
   });
 
@@ -759,10 +758,10 @@ describe('Final Boss Integration Test', () => {
       const buildResult = await runDompileBuild(tempDir, sourceDir, outputDir);
       const buildTime = Date.now() - startTime;
 
-      assert.strictEqual(buildResult.code, 0);
+      expect(buildResult.code).toBe(0);
       
       // Should complete within reasonable time (adjust threshold as needed)
-      assert(buildTime < 30000, `Build took too long: ${buildTime}ms`);
+      expect(buildTime).toBeLessThan(30000);
 
       // Verify some output files
       const page0Exists = await fs.access(path.join(outputDir, 'page-0.html'))
@@ -770,7 +769,7 @@ describe('Final Boss Integration Test', () => {
       const page99Exists = await fs.access(path.join(outputDir, 'page-99.html'))
         .then(() => true).catch(() => false);
       
-      assert(page0Exists && page99Exists, 'All pages should be generated');
+      expect(page0Exists && page99Exists).toBeTruthy();
     });
 
     it('should handle deeply nested includes', async () => {
@@ -798,14 +797,14 @@ describe('Final Boss Integration Test', () => {
 
       const buildResult = await runDompileBuild(tempDir, sourceDir, outputDir);
       
-      assert.strictEqual(buildResult.code, 0);
+      expect(buildResult.code).toBe(0);
 
       const content = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
       
       // Should contain all levels
-      assert(content.includes('Level 0'));
-      assert(content.includes('Level 9'));
-      assert(content.includes('Deep content'));
+      expect(content.includes('Level 0')).toBeTruthy();
+      expect(content.includes('Level 9')).toBeTruthy();
+      expect(content.includes('Deep content')).toBeTruthy();
     });
   });
 });

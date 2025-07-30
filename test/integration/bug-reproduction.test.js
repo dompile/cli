@@ -2,8 +2,7 @@
  * Simple reproduction test for DOM Mode include processing bug
  */
 
-import { test } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,7 +11,7 @@ import { build } from '../../src/core/file-processor.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-test('DOM Mode include processing bug reproduction', async () => {
+it('DOM Mode include processing bug reproduction', async () => {
   const testDir = path.join(__dirname, '../test-temp/bug-reproduction');
   const sourceDir = path.join(testDir, 'src');
   const outputDir = path.join(testDir, 'dist');
@@ -124,7 +123,7 @@ test('DOM Mode include processing bug reproduction', async () => {
     console.log('\n🐛 ISSUES FOUND:');
     issues.forEach((issue, i) => console.log(`${i + 1}. ${issue}`));
     
-    assert.fail(`Found ${issues.length} issues with DOM Mode processing:\n${issues.join('\n')}`);
+    expect(issues.length).toBe(0);
   } else {
     console.log('\n✅ All DOM Mode processing working correctly!');
   }

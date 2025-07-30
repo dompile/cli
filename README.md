@@ -7,7 +7,7 @@ A modern, lightweight static site generator that brings the power of server-side
 ## ✨ Perfect for Frontend Developers
 
 - **Zero Learning Curve**: Uses familiar Apache SSI syntax (`<!--#include file="header.html" -->`) or intuitive `<slot>`, `<template>`, and `<include>` elements.
-- **Modern Tooling**: Built with ESM modules, works on Node.js and **Bun** with native optimizations
+- **Modern Tooling**: Built with ESM modules, powered by **Bun** for maximum performance
 - **Live Development**: Built-in dev server with live reload via Server-Sent Events
 - **Multi-Format Support**: HTML, Markdown with frontmatter, and static assets
 - **SEO Optimized**: Automatic sitemap generation
@@ -17,37 +17,22 @@ A modern, lightweight static site generator that brings the power of server-side
 
 ## 🚀 Quick Start
 
-### With Bun (Recommended for best performance)
+### Installation
 
 ```bash
-# Install Bun
+# Install Bun (required runtime)
 curl -fsSL https://bun.sh/install | bash
 
 # Install unify globally
-bun add -g @unify/cli
+bun add -g @fwdslsh/unify
 
-# Use with Bun's native optimizations
-bun run unify build                    # 3-5x faster HTML processing
-bun run unify serve                    # High-performance dev server
-bun run unify watch                    # Native file watching
+# Basic usage with defaults (src => dist)
+unify build                    # Build from src/ to dist/
+unify serve                    # Serve with live reload on port 3000
+unify watch                    # Watch for changes and rebuild
 
 # Create cross-platform executable
 bun run build:executable
-```
-
-### With Node.js (Traditional)
-
-```bash
-# Install globally
-npm install -g @unify/cli
-
-# Simple usage with defaults (src => dist)
-unify build                    # Build from src/ to dist/
-unify serve                    # Serve with live reload on port 3000
-
-# Or use with npx
-npx @unify/cli build
-npx @unify/cli serve
 
 # Advanced usage with custom options
 unify build --pretty-urls --base-url https://mysite.com

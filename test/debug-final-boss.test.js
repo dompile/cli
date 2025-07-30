@@ -2,8 +2,7 @@
  * Quick test to debug the final boss sitemap issue
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -60,7 +59,7 @@ describe('Final Boss Debug', () => {
       console.log('Build stderr:', buildResult.stderr);
     }
 
-    assert.strictEqual(buildResult.code, 0, `Build failed: ${buildResult.stderr}`);
+    expect(buildResult.code).toBe(0);
 
     // Check the generated index.html content
     const indexExists = await fs.access(path.join(outputDir, 'index.html'))
@@ -77,7 +76,7 @@ describe('Final Boss Debug', () => {
       const hasDoctype = indexContent.includes('<!DOCTYPE html>');
       console.log('Has DOCTYPE:', hasDoctype);
       
-      assert(hasDoctype, 'Generated HTML should include DOCTYPE declaration');
+      expect(hasDoctype).toBe(true);
     }
 
     // Check if assets were copied
@@ -85,7 +84,7 @@ describe('Final Boss Debug', () => {
       .then(() => true).catch(() => false);
     console.log('Logo copied:', logoExists);
     
-    assert(logoExists, 'Logo should be copied because it is referenced');
+    expect(logoExists).toBe(true);
   });
 });
 

@@ -10,9 +10,7 @@ import { logger } from '../utils/logger.js';
 
 export class BunDevServer {
   constructor() {
-    if (runtime.isBun) {
-      ensureBunFeature('serve');
-    }
+    ensureBunFeature('bunServe');
     
     this.server = null;
     this.isRunning = false;
@@ -38,12 +36,6 @@ export class BunDevServer {
 
     this.config = config;
 
-    if (!runtime.isBun) {
-      // Fallback to existing dev server for Node.js
-      logger.info('Bun not available, falling back to Node.js dev server');
-      const { startDevServer } = await import('./dev-server.js');
-      return startDevServer(config);
-    }
 
     try {
       logger.info(`Starting Bun development server on http://${config.hostname}:${config.port}`);

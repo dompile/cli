@@ -3,8 +3,7 @@
  * Tests for proper copying of assets and exclusion of layout/component files
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { build } from '../../src/core/file-processor.js';
@@ -57,7 +56,7 @@ describe('Asset Handling', () => {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // Referenced images should be copied
       const logoExists = await fs.access(path.join(outputDir, 'assets/logo.png'))
@@ -65,13 +64,13 @@ describe('Asset Handling', () => {
       const photoExists = await fs.access(path.join(outputDir, 'images/photo.jpg'))
         .then(() => true).catch(() => false);
       
-      assert(logoExists, 'Referenced logo.png should be copied');
-      assert(photoExists, 'Referenced photo.jpg should be copied');
+      expect(logoExists).toBeTruthy(); // Referenced logo.png should be copied
+      expect(photoExists).toBeTruthy(); // Referenced photo.jpg should be copied
 
       // Unreferenced images should NOT be copied (asset tracking should work)
       const unusedExists = await fs.access(path.join(outputDir, 'images/unused.gif'))
         .then(() => true).catch(() => false);
-      assert(!unusedExists, 'Unreferenced unused.gif should NOT be copied');
+      expect(unusedExists).toBeFalsy(); // Unreferenced unused.gif should NOT be copied
     });
 
     it('should copy CSS files referenced in HTML', async () => {
@@ -97,7 +96,7 @@ describe('Asset Handling', () => {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // Referenced CSS should be copied
       const mainCssExists = await fs.access(path.join(outputDir, 'styles/main.css'))
@@ -105,13 +104,13 @@ describe('Asset Handling', () => {
       const themeCssExists = await fs.access(path.join(outputDir, 'css/theme.css'))
         .then(() => true).catch(() => false);
       
-      assert(mainCssExists, 'Referenced main.css should be copied');
-      assert(themeCssExists, 'Referenced theme.css should be copied');
+      expect(mainCssExists).toBeTruthy(); // Referenced main.css should be copied
+      expect(themeCssExists).toBeTruthy(); // Referenced theme.css should be copied
 
       // Unreferenced CSS should NOT be copied
       const unusedCssExists = await fs.access(path.join(outputDir, 'css/unused.css'))
         .then(() => true).catch(() => false);
-      assert(!unusedCssExists, 'Unreferenced unused.css should NOT be copied');
+      expect(unusedCssExists).toBeFalsy(); // Unreferenced unused.css should NOT be copied
     });
 
     it('should copy JavaScript files referenced in HTML', async () => {
@@ -137,7 +136,7 @@ describe('Asset Handling', () => {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // Referenced JS should be copied
       const mainJsExists = await fs.access(path.join(outputDir, 'js/main.js'))
@@ -145,13 +144,13 @@ describe('Asset Handling', () => {
       const appJsExists = await fs.access(path.join(outputDir, 'scripts/app.js'))
         .then(() => true).catch(() => false);
       
-      assert(mainJsExists, 'Referenced main.js should be copied');
-      assert(appJsExists, 'Referenced app.js should be copied');
+      expect(mainJsExists).toBeTruthy(); // Referenced main.js should be copied
+      expect(appJsExists).toBeTruthy(); // Referenced app.js should be copied
 
       // Unreferenced JS should NOT be copied
       const unusedJsExists = await fs.access(path.join(outputDir, 'js/unused.js'))
         .then(() => true).catch(() => false);
-      assert(!unusedJsExists, 'Unreferenced unused.js should NOT be copied');
+      expect(unusedJsExists).toBeFalsy(); // Unreferenced unused.js should NOT be copied
     });
 
     it('should handle various asset file types', async () => {
@@ -186,7 +185,7 @@ describe('Asset Handling', () => {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // All referenced assets should be copied
       const cssExists = await fs.access(path.join(outputDir, 'css/style.css'))
@@ -200,11 +199,11 @@ describe('Asset Handling', () => {
       const mp3Exists = await fs.access(path.join(outputDir, 'audio/music.mp3'))
         .then(() => true).catch(() => false);
       
-      assert(cssExists, 'CSS file should be copied');
-      assert(icoExists, 'ICO file should be copied');
-      assert(jpgExists, 'JPG file should be copied');
-      assert(mp4Exists, 'MP4 file should be copied');
-      assert(mp3Exists, 'MP3 file should be copied');
+      expect(cssExists).toBeTruthy(); // CSS file should be copied
+      expect(icoExists).toBeTruthy(); // ICO file should be copied
+      expect(jpgExists).toBeTruthy(); // JPG file should be copied
+      expect(mp4Exists).toBeTruthy(); // MP4 file should be copied
+      expect(mp3Exists).toBeTruthy(); // MP3 file should be copied
     });
 
     it('should copy assets referenced in CSS files', async () => {
@@ -242,7 +241,7 @@ body {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // Assets referenced in CSS should be copied
       const bgExists = await fs.access(path.join(outputDir, 'images/bg.jpg'))
@@ -250,13 +249,13 @@ body {
       const fontExists = await fs.access(path.join(outputDir, 'fonts/custom.woff2'))
         .then(() => true).catch(() => false);
       
-      assert(bgExists, 'Background image should be copied');
-      assert(fontExists, 'Font file should be copied');
+      expect(bgExists).toBeTruthy(); // Background image should be copied
+      expect(fontExists).toBeTruthy(); // Font file should be copied
 
       // Unreferenced assets should NOT be copied
       const unusedExists = await fs.access(path.join(outputDir, 'images/unused.png'))
         .then(() => true).catch(() => false);
-      assert(!unusedExists, 'Unreferenced image should NOT be copied');
+      expect(unusedExists).toBeFalsy(); // Unreferenced image should NOT be copied
     });
   });
 
@@ -286,7 +285,7 @@ body {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // Layout and component directories should NOT be copied
       const layoutExists = await fs.access(path.join(outputDir, 'layouts'))
@@ -294,13 +293,13 @@ body {
       const componentExists = await fs.access(path.join(outputDir, 'components'))
         .then(() => true).catch(() => false);
       
-      assert(!layoutExists, 'Layout directory should NOT be copied');
-      assert(!componentExists, 'Component directory should NOT be copied');
+      expect(layoutExists).toBeFalsy(); // Layout directory should NOT be copied
+      expect(componentExists).toBeFalsy(); // Component directory should NOT be copied
 
       // Regular assets should be copied
       const assetExists = await fs.access(path.join(outputDir, 'assets'))
         .then(() => true).catch(() => false);
-      assert(assetExists, 'Asset directory should be copied');
+      expect(assetExists).toBeTruthy(); // Asset directory should be copied
     });
 
     it('should NOT copy component directories to output', async () => {
@@ -329,7 +328,7 @@ body {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // Component directories should NOT be copied
       const compExists = await fs.access(path.join(outputDir, '.components'))
@@ -337,13 +336,13 @@ body {
       const includesExists = await fs.access(path.join(outputDir, 'includes'))
         .then(() => true).catch(() => false);
       
-      assert(!compExists, 'Components directory should NOT be copied');
-      assert(!includesExists, 'Includes directory should NOT be copied');
+      expect(compExists).toBeFalsy(); // Components directory should NOT be copied
+      expect(includesExists).toBeFalsy(); // Includes directory should NOT be copied
 
       // Regular assets should be copied
       const cssExists = await fs.access(path.join(outputDir, 'css'))
         .then(() => true).catch(() => false);
-      assert(cssExists, 'CSS directory should be copied');
+      expect(cssExists).toBeTruthy(); // CSS directory should be copied
     });
 
     it('should handle alternative layout/component directory names', async () => {
@@ -373,7 +372,7 @@ body {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
 
       // Custom layout/component directories should NOT be copied
       const templatesExists = await fs.access(path.join(outputDir, 'templates'))
@@ -381,13 +380,13 @@ body {
       const partialsExists = await fs.access(path.join(outputDir, 'partials'))
         .then(() => true).catch(() => false);
       
-      assert(!templatesExists, 'Templates directory should NOT be copied');
-      assert(!partialsExists, 'Partials directory should NOT be copied');
+      expect(templatesExists).toBeFalsy(); // Templates directory should NOT be copied
+      expect(partialsExists).toBeFalsy(); // Partials directory should NOT be copied
 
       // Public assets should be copied
       const publicExists = await fs.access(path.join(outputDir, 'public'))
         .then(() => true).catch(() => false);
-      assert(publicExists, 'Public directory should be copied');
+      expect(publicExists).toBeTruthy(); // Public directory should be copied
     });
   });
 
@@ -429,16 +428,16 @@ body {
         clean: true
       });
 
-      assert.strictEqual(result.errors.length, 0, 'Build should succeed');
+      expect(result.errors.length).toBe(0); // Build should succeed
       
       // Should process 2 HTML pages
-      assert.strictEqual(result.processed, 2, 'Should process 2 pages');
+      expect(result.processed).toBe(2); // Should process 2 pages
       
       // Should copy 2 assets (CSS and image)
-      assert.strictEqual(result.copied, 2, 'Should copy 2 assets');
+      expect(result.copied).toBe(2); // Should copy 2 assets
       
       // Should skip 3 component/layout files (2 components + 1 layout)
-      assert.strictEqual(result.skipped, 3, 'Should skip 3 layout/component files');
+      expect(result.skipped).toBe(3); // Should skip 3 layout/component files
     });
   });
 });

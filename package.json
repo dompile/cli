@@ -12,22 +12,17 @@
     "access": "public"
   },
   "engines": {
-    "bun": ">=1.2.0",
-    "node": ">=14.0.0"
+    "bun": ">=1.2.0"
   },
   "scripts": {
-    "test": "node test/test-runner.js",
-    "test:bun": "bun test",
-    "test:node": "node test/test-runner.js --runtime node",
-    "test:cross": "node test/test-runner.js",
-    "test:performance": "node test/test-runner.js --performance",
+    "test": "bun test",
     "watch": "bun run bin/cli.js watch --source example/src --output example/dist",
     "serve": "bun run bin/cli.js serve --source example/dist --port 3000",
     "example": "npm run build && npm run serve",
     "build": "bun run bin/cli.js build --source example/src --output example/dist",
     "build:advanced": "rm -rf example/advanced/dist && bun run ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/custom_components/ -l example/advanced/src/site_layouts/",
-    "build:executable": "node scripts/build-executables.js",
-    "build:cross-platform": "node scripts/build-executables.js",
+    "build:executable": "bun run scripts/build-executables.js",
+    "build:cross-platform": "bun run scripts/build-executables.js",
     "build:linux": "bun build --compile --target=bun-linux-x64 ./bin/cli.js --outfile unify-linux",
     "build:macos": "bun build --compile --target=bun-darwin-arm64 ./bin/cli.js --outfile unify-macos", 
     "build:windows": "bun build --compile --target=bun-windows-x64 ./bin/cli.js --outfile unify-windows.exe"

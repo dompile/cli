@@ -3,76 +3,64 @@
  * Cross-runtime compatible test
  */
 
-// Cross-runtime test imports
-import { runtime } from '../../src/utils/runtime-detector.js';
-
-// Use appropriate test framework
-let describe, it, beforeEach, afterEach;
-if (runtime.isBun) {
-  // Bun test framework
-  ({ describe, it, beforeEach, afterEach } = await import('bun:test'));
-} else {
-  // Node.js test framework
-  ({ describe, it, beforeEach, afterEach } = await import('node:test'));
-}
-
-import assert from 'node:assert';
+// Bun test framework
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import { parseArgs } from '../../src/cli/args-parser.js';
 
 describe('parseArgs', () => {
   it('should parse build command', () => {
     const args = parseArgs(['build']);
-    assert.strictEqual(args.command, 'build');
+    expect(args.command).toBe('build');
   });
   
   it('should parse watch command', () => {
     const args = parseArgs(['watch']);
-    assert.strictEqual(args.command, 'watch');
+    expect(args.command).toBe('watch');
   });
   
   it('should handle help flag', () => {
     const args = parseArgs(['--help']);
-    assert.strictEqual(args.help, true);
+    expect(args.help).toBe(true);
   });
   
   it('should handle version flag', () => {
     const args = parseArgs(['--version']);
-    assert.strictEqual(args.version, true);
+    expect(args.version).toBe(true);
   });
   
   it('should parse source option', () => {
     const args = parseArgs(['build', '--source', 'my-src']);
-    assert.strictEqual(args.source, 'my-src');
+    expect(args.source).toBe('my-src');
   });
   
   it('should parse output option', () => {
     const args = parseArgs(['build', '--output', 'my-dist']);
-    assert.strictEqual(args.output, 'my-dist');
+    expect(args.output).toBe('my-dist');
   });
   
   
   it('should parse layouts option', () => {
     const args = parseArgs(['build', '--layouts', 'templates']);
-    assert.strictEqual(args.layouts, 'templates');
+    expect(args.layouts).toBe('templates');
   });
   
   it('should parse components option', () => {
     const args = parseArgs(['build', '--components', 'ui']);
-    assert.strictEqual(args.components, 'ui');
+    expect(args.components).toBe('ui');
   });
   
   it('should use default values', () => {
     const args = parseArgs(['build']);
-    assert.strictEqual(args.source, 'src');
-    assert.strictEqual(args.output, 'dist');
-    assert.strictEqual(args.layouts, '.layouts');
-    assert.strictEqual(args.components, '.components');
-    assert.strictEqual(args.port, 3000);
+    expect(args.source).toBe('src');
+    expect(args.output).toBe('dist');
+    expect(args.layouts).toBe('.layouts');
+    expect(args.components).toBe('.components');
+    expect(args.port).toBe(3000);
   });
   
   it('should throw error for unknown option', () => {
-    assert.throws(() => {
+    expect(() => {
       parseArgs(['build', '--unknown']);
-    }, /Unknown option/);
+    }).toThrow(/Unknown option/);
   });
 });

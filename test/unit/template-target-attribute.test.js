@@ -3,8 +3,7 @@
  * Verifies spec compliance for <template target="name"> syntax
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -95,23 +94,23 @@ describe('template target attribute', () => {
     );
     
     // Verify head slot replacement
-    assert(result.includes('<meta name="description" content="Custom page description">'));
-    assert(result.includes('<link rel="stylesheet" href="custom.css">'));
+    expect(result.includes('<meta name="description" content="Custom page description">')).toBeTruthy();
+    expect(result.includes('<link rel="stylesheet" href="custom.css">')).toBeTruthy();
     
     // Verify header slot replacement
-    assert(result.includes('<h1>Custom Header</h1>'));
-    assert(result.includes('<nav>Custom Navigation</nav>'));
+    expect(result.includes('<h1>Custom Header</h1>')).toBeTruthy();
+    expect(result.includes('<nav>Custom Navigation</nav>')).toBeTruthy();
     
     // Verify sidebar slot replacement
-    assert(result.includes('<li>Custom Sidebar Item 1</li>'));
-    assert(result.includes('<li>Custom Sidebar Item 2</li>'));
+    expect(result.includes('<li>Custom Sidebar Item 1</li>')).toBeTruthy();
+    expect(result.includes('<li>Custom Sidebar Item 2</li>')).toBeTruthy();
     
     // Verify main content in default slot
-    assert(result.includes('<h2>Main Content</h2>'));
-    assert(result.includes('<p>This is the main page content that goes in the default slot.</p>'));
+    expect(result.includes('<h2>Main Content</h2>')).toBeTruthy();
+    expect(result.includes('<p>This is the main page content that goes in the default slot.</p>')).toBeTruthy();
     
     // Verify template elements are removed from output
-    assert(!result.includes('<template target='));
+    expect(result.includes('<template target=')).toBeFalsy();
   });
   
   it('should handle template without target attribute as default slot content', async () => {
@@ -146,12 +145,12 @@ describe('template target attribute', () => {
     );
     
     // Verify template content replaces default slot
-    assert(result.includes('<article>'));
-    assert(result.includes('<h1>Article Title</h1>'));
-    assert(result.includes('<p>Article content for default slot</p>'));
+    expect(result.includes('<article>')).toBeTruthy();
+    expect(result.includes('<h1>Article Title</h1>')).toBeTruthy();
+    expect(result.includes('<p>Article content for default slot</p>')).toBeTruthy();
     
     // Verify template element is removed
-    assert(!result.includes('<template>'));
+    expect(result.includes('<template>')).toBeFalsy();
   });
   
   it('should support multiple template elements with different targets', async () => {
@@ -201,15 +200,15 @@ describe('template target attribute', () => {
     
     
     // Verify all targeted content is placed correctly
-    assert(result.includes('<meta charset="UTF-8">'));
-    assert(result.includes('<title>Multi-Template Page</title>'));
-    assert(result.includes('<a href="/">Home</a>'));
-    assert(result.includes('<a href="/about">About</a>'));
-    assert(result.includes('<p>© 2024 Test Site</p>'));
-    assert(result.includes('<h1>Main Content</h1>'));
+    expect(result.includes('<meta charset="UTF-8">')).toBeTruthy();
+    expect(result.includes('<title>Multi-Template Page</title>')).toBeTruthy();
+    expect(result.includes('<a href="/">Home</a>')).toBeTruthy();
+    expect(result.includes('<a href="/about">About</a>')).toBeTruthy();
+    expect(result.includes('<p>© 2024 Test Site</p>')).toBeTruthy();
+    expect(result.includes('<h1>Main Content</h1>')).toBeTruthy();
     
     // Verify all template elements are removed
-    assert(!result.includes('<template target='));
+    expect(result.includes('<template target=')).toBeFalsy();
   });
   
   it('should maintain backward compatibility with data-slot attribute', async () => {
@@ -243,10 +242,10 @@ describe('template target attribute', () => {
     );
     
     // Verify legacy data-slot still works
-    assert(result.includes('<h1>Legacy Header</h1>'));
-    assert(result.includes('<p>Main content using legacy approach</p>'));
+    expect(result.includes('<h1>Legacy Header</h1>')).toBeTruthy();
+    expect(result.includes('<p>Main content using legacy approach</p>')).toBeTruthy();
     
     // Verify template elements are removed
-    assert(!result.includes('<template data-slot'));
+    expect(result.includes('<template data-slot')).toBeFalsy();
   });
 });

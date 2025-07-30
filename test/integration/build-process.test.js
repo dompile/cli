@@ -2,8 +2,7 @@
  * Integration tests for full build process
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -129,10 +128,10 @@ describe('build-process integration', () => {
     });
     
     // Verify build results
-    assert.strictEqual(result.processed, 3); // index.html, about.html, default-layout.html
-    assert.strictEqual(result.copied, 1);    // style.css
-    assert.strictEqual(result.skipped, 4);   // 4 include files (reduced from 5)
-    assert.strictEqual(result.errors.length, 0);
+    expect(result.processed).toBe(3); // index.html, about.html, default-layout.html
+    expect(result.copied).toBe(1);    // style.css
+    expect(result.skipped).toBe(4);   // 4 include files (reduced from 5)
+    expect(result.errors.length).toBe(0);
     
     // Verify output files exist
     const indexPath = path.join(outputDir, 'index.html');
@@ -144,9 +143,9 @@ describe('build-process integration', () => {
 
     // Verify include files are NOT in output
     const headerPath = path.join(outputDir, '.components', 'header.html');
-    await assert.rejects(async () => {
+    await expect(async () => {
       await fs.access(headerPath);
-    });
+    }).rejects.toThrow();
   });
   
   it('should process nested components correctly', async () => {
@@ -159,11 +158,11 @@ describe('build-process integration', () => {
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
     
     // Should contain nested navigation from header -> nav
-    assert(indexContent.includes('<ul><li><a href="/">Home</a></li>'));
-    assert(indexContent.includes('<li><a href="/about.html">About</a></li></ul>'));
+    expect(indexContent.includes('<ul><li><a href="/">Home</a></li>')).toBeTruthy();
+    expect(indexContent.includes('<li><a href="/about.html">About</a></li></ul>')).toBeTruthy();
     
     // Should not contain any include directives
-    assert(!indexContent.includes('<!--#include'));
+    expect(indexContent.includes('<!--#include')).toBeFalsy();
   });
   
 
@@ -174,7 +173,7 @@ describe('build-process integration', () => {
     });
     
     const cssContent = await fs.readFile(path.join(outputDir, 'css', 'style.css'), 'utf-8');
-    assert(cssContent.includes('font-family: Arial'));
+    expect(cssContent.includes('font-family: Arial')).toBeTruthy();
   });
   
   it('should track dependencies correctly', async () => {
@@ -192,18 +191,18 @@ describe('build-process integration', () => {
     const navPath = path.join(sourceDir, '.components', 'nav.html');
     
     const indexDeps = tracker.getPageDependencies(indexPath);
-    assert(indexDeps.includes(headerPath));
-    assert(indexDeps.includes(path.join(sourceDir, '.components', 'footer.html')));
+    expect(indexDeps.includes(headerPath)).toBeTruthy();
+    expect(indexDeps.includes(path.join(sourceDir, '.components', 'footer.html'))).toBeTruthy();
     
     // Verify reverse mapping
     const headerAffected = tracker.getAffectedPages(headerPath);
-    assert(headerAffected.includes(indexPath));
-    assert(headerAffected.includes(path.join(sourceDir, 'about.html')));
+    expect(headerAffected.includes(indexPath)).toBeTruthy();
+    expect(headerAffected.includes(path.join(sourceDir, 'about.html'))).toBeTruthy();
     
     // Verify nested dependencies (nav included by header)
     const navAffected = tracker.getAffectedPages(navPath);
     // nav.html is included by header.html, which is included by both pages
-    assert(navAffected.length > 0, `Expected nav.html to affect pages, got: ${JSON.stringify(navAffected)}`);
+    expect(navAffected.length).toBeGreaterThan(0);
   });
   
   it('should fail build when components are missing', async () => {
@@ -223,10 +222,10 @@ describe('build-process integration', () => {
 
     // Verify the build succeeded
 
-    assert.strictEqual(result.errors.length, 0); // Expect one warning/error
+    expect(result.errors.length).toBe(0); // Expect one warning/error
     //Output broken.html should contain a warning comment
     const brokenContent = await fs.readFile(brokenFilePath.replace('src', 'dist'), 'utf-8');
-    assert(brokenContent.includes('<!-- WARNING: Include file not found: missing.html -->'));
+    expect(brokenContent.includes('<!-- WARNING: Include file not found: missing.html -->')).toBeTruthy();
     //TODO: Add warnings collection to result, ensure all none fatal errors are collected
     // assert(result.warnings[0].message.includes('Include file not found')); // Check for specific warning
 
@@ -250,9 +249,9 @@ describe('build-process integration', () => {
     });
     
     // Old file should be removed
-    await assert.rejects(async () => {
+    await expect(async () => {
       await fs.access(path.join(outputDir, 'old-file.txt'));
-    });
+    }).rejects.toThrow();
     
     // New files should exist
     await fs.access(path.join(outputDir, 'index.html'));
@@ -338,15 +337,15 @@ title: Partial HTML Page
     
     // Verify markdown without html element uses default layout
     const testMarkdownContent = await fs.readFile(path.join(outputDir, 'test-markdown.html'), 'utf-8');
-    assert(testMarkdownContent.includes('Default Layout'));
-    assert(testMarkdownContent.includes('Default Footer'));
-    assert(testMarkdownContent.includes('Test Content')); // Check for content presence
+    expect(testMarkdownContent.includes('Default Layout')).toBeTruthy();
+    expect(testMarkdownContent.includes('Default Footer')).toBeTruthy();
+    expect(testMarkdownContent.includes('Test Content')).toBeTruthy(); // Check for content presence
     
     // Verify markdown with html element does NOT use layout
     const fullHtmlContent = await fs.readFile(path.join(outputDir, 'full-html.html'), 'utf-8');
-    assert(fullHtmlContent.includes('Custom HTML Structure'));
-    assert(!fullHtmlContent.includes('Default Layout'));
-    assert(!fullHtmlContent.includes('Default Footer'));
+    expect(fullHtmlContent.includes('Custom HTML Structure')).toBeTruthy();
+    expect(fullHtmlContent.includes('Default Layout')).toBeFalsy();
+    expect(fullHtmlContent.includes('Default Footer')).toBeFalsy();
 
     //TODO: re-enable this check for properly applying default layout
     // // Verify markdown with html elements but WITHOUT <html> element uses default layout
@@ -380,11 +379,11 @@ This should get basic HTML structure.`
     
     // Verify basic HTML structure is created
     const noLayoutContent = await fs.readFile(path.join(outputDir, 'no-layout.html'), 'utf-8');
-    assert(noLayoutContent.includes('<!DOCTYPE html>'));
-    assert(noLayoutContent.includes('<html lang="en">'));
-    assert(noLayoutContent.includes('<title>No Layout Test</title>'));
-    assert(noLayoutContent.includes('<main>'));
-    assert(noLayoutContent.includes('Content Without Layout')); // Check for content presence
-    assert(!noLayoutContent.includes('Default Layout')); // Should not have default layout content
+    expect(noLayoutContent.includes('<!DOCTYPE html>')).toBeTruthy();
+    expect(noLayoutContent.includes('<html lang="en">')).toBeTruthy();
+    expect(noLayoutContent.includes('<title>No Layout Test</title>')).toBeTruthy();
+    expect(noLayoutContent.includes('<main>')).toBeTruthy();
+    expect(noLayoutContent.includes('Content Without Layout')).toBeTruthy(); // Check for content presence
+    expect(noLayoutContent.includes('Default Layout')).toBeFalsy(); // Should not have default layout content
   });
 });
