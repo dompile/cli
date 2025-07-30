@@ -1,6 +1,7 @@
 /**
  * Development server with live reload support
  * Serves static files and provides hot reload functionality
+ * Uses Bun server when available, falls back to Node.js HTTP server
  */
 
 import { createServer } from 'http';
@@ -10,6 +11,7 @@ import { parse as parseUrl } from 'url';
 import { liveReload } from './live-reload.js';
 import { logger } from '../utils/logger.js';
 import { isPathWithinDirectory } from '../utils/path-resolver.js';
+import { runtime } from '../utils/runtime-detector.js';
 
 /**
  * MIME type mapping for common file extensions
@@ -247,4 +249,40 @@ export class DevServer {
       this.sendError(res, 500, 'Error reading directory');
     }
   }
+}
+
+/**
+ * Factory function to create appropriate development server
+ * Uses BunDevServer when available, falls back to Node.js DevServer
+ * @param {Object} options - Server configuration options
+ * @returns {Promise<DevServer|BunDevServer>} Server instance
+ */
+export async function createDevServer(options = {}) {
+  // Use Bun server when available for better performance
+  if (runtime.isBun) {
+    try {
+      logger.info('Using Bun development server');
+      const { BunDevServer } = await import('./bun-dev-server.js');
+      const server = new BunDevServer();
+      await server.start(options);
+      return server;
+    } catch (error) {
+      logger.warn('BunDevServer not available, falling back to Node.js server:', error.message);
+    }
+  }
+
+  // Fallback to Node.js server
+  logger.info('Using Node.js development server');
+  const server = new DevServer(options);
+  await server.start();
+  return server;
+}
+
+/**
+ * Start development server (legacy function for backward compatibility)
+ * @param {Object} options - Server configuration options
+ * @returns {Promise<DevServer|BunDevServer>} Server instance
+ */
+export async function startDevServer(options = {}) {
+  return createDevServer(options);
 }

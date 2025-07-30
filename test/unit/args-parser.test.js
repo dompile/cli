@@ -1,8 +1,21 @@
 /**
  * Tests for CLI argument parser
+ * Cross-runtime compatible test
  */
 
-import { describe, it } from 'node:test';
+// Cross-runtime test imports
+import { runtime } from '../../src/utils/runtime-detector.js';
+
+// Use appropriate test framework
+let describe, it, beforeEach, afterEach;
+if (runtime.isBun) {
+  // Bun test framework
+  ({ describe, it, beforeEach, afterEach } = await import('bun:test'));
+} else {
+  // Node.js test framework
+  ({ describe, it, beforeEach, afterEach } = await import('node:test'));
+}
+
 import assert from 'node:assert';
 import { parseArgs } from '../../src/cli/args-parser.js';
 

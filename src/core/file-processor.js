@@ -32,6 +32,8 @@ import {
   processHtmlUnified,
   getUnifiedConfig
 } from './unified-html-processor.js';
+import { createBuildCache } from './bun-build-cache.js';
+import { runtime } from '../utils/runtime-detector.js';
 import { FileSystemError, BuildError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { getBaseUrlFromPackage } from '../utils/package-reader.js';
@@ -139,6 +141,14 @@ export async function build(options = {}) {
   
   logger.info(`Building site from ${config.source} to ${config.output}`);
   
+  // Initialize build cache if caching is enabled
+  let buildCache = null;
+  if (config.cache !== false) {
+    buildCache = createBuildCache(config.cacheDir || '.unify-cache');
+    await buildCache.initialize();
+    logger.debug(`Build cache initialized (${runtime.isBun ? 'Bun native' : 'fallback'})`);
+  }
+  
   try {
     // Resolve paths
     const sourceRoot = path.resolve(config.source);
@@ -236,7 +246,8 @@ export async function build(options = {}) {
               outputRoot, 
               dependencyTracker,
               assetTracker,
-              config
+              config,
+              buildCache
             );
             processedFiles.push(filePath);
             results.processed++;
@@ -369,11 +380,18 @@ export async function build(options = {}) {
       throw new BuildError(`${results.errors.length} error(s)`, results.errors);
     }
     
+    // Save build cache if enabled
+    if (buildCache) {
+      await buildCache.saveCache();
+      logger.debug('Build cache saved');
+    }
+    
     return {
       ...results,
       duration,
       dependencyTracker,
-      assetTracker
+      assetTracker,
+      buildCache
     };
     
   } catch (error) {
@@ -775,7 +793,15 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutConte
  * @param {DependencyTracker} dependencyTracker - Dependency tracker instance
  * @param {AssetTracker} assetTracker - Asset tracker instance
  */
-async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTracker, assetTracker, config = {}) {
+async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTracker, assetTracker, config = {}, buildCache = null) {
+  const outputPath = getOutputPath(filePath, sourceRoot, outputRoot);
+  
+  // Check cache if available
+  if (buildCache && await buildCache.isUpToDate(filePath, outputPath)) {
+    logger.debug(`Skipping unchanged file: ${path.relative(sourceRoot, filePath)}`);
+    return;
+  }
+  
   // Read HTML content
   let htmlContent;
   try {
@@ -802,7 +828,6 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTrack
   }
   
   // Write to output
-  const outputPath = getOutputPath(filePath, sourceRoot, outputRoot);
   await ensureDirectoryExists(path.dirname(outputPath));
   
   // Apply minification if enabled
@@ -812,6 +837,19 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTrack
   
   try {
     await fs.writeFile(outputPath, processedContent, 'utf-8');
+    
+    // Update cache after successful write
+    if (buildCache) {
+      await buildCache.updateFileHash(filePath);
+      
+      // Update dependencies from dependency tracker
+      if (dependencyTracker) {
+        const dependencies = dependencyTracker.getPageDependencies(filePath);
+        if (dependencies && dependencies.length > 0) {
+          buildCache.setDependencies(filePath, dependencies);
+        }
+      }
+    }
   } catch (error) {
     throw new FileSystemError('write', outputPath, error);
   }

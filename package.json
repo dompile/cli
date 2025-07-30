@@ -1,7 +1,7 @@
 {
   "name": "@fwdslsh/unify",
-  "version": "0.5.2",
-  "description": "A lightweight, framework-free static site generator with Apache SSI-style includes and live reload",
+  "version": "0.6.0",
+  "description": "A lightweight, framework-free static site generator with Bun native APIs",
   "type": "module",
   "main": "src/index.js",
   "bin": {
@@ -12,15 +12,25 @@
     "access": "public"
   },
   "engines": {
+    "bun": ">=1.2.0",
     "node": ">=14.0.0"
   },
   "scripts": {
-    "test": "node --test test/**/*.test.js",
-    "watch": "node bin/cli.js watch --source example/src --output example/dist",
-    "serve": "node bin/cli.js serve --source example/dist --port 3000",
+    "test": "node test/test-runner.js",
+    "test:bun": "bun test",
+    "test:node": "node test/test-runner.js --runtime node",
+    "test:cross": "node test/test-runner.js",
+    "test:performance": "node test/test-runner.js --performance",
+    "watch": "bun run bin/cli.js watch --source example/src --output example/dist",
+    "serve": "bun run bin/cli.js serve --source example/dist --port 3000",
     "example": "npm run build && npm run serve",
-    "build": "node bin/cli.js build --source example/src --output example/dist",
-    "build:advanced": "rm -rf example/advanced/dist && node ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/custom_components/ -l example/advanced/src/site_layouts/"
+    "build": "bun run bin/cli.js build --source example/src --output example/dist",
+    "build:advanced": "rm -rf example/advanced/dist && bun run ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/custom_components/ -l example/advanced/src/site_layouts/",
+    "build:executable": "node scripts/build-executables.js",
+    "build:cross-platform": "node scripts/build-executables.js",
+    "build:linux": "bun build --compile --target=bun-linux-x64 ./bin/cli.js --outfile unify-linux",
+    "build:macos": "bun build --compile --target=bun-darwin-arm64 ./bin/cli.js --outfile unify-macos", 
+    "build:windows": "bun build --compile --target=bun-windows-x64 ./bin/cli.js --outfile unify-windows.exe"
   },
   "keywords": [
     "static-site-generator",
@@ -43,10 +53,18 @@
   },
   "homepage": "https://unify.github.io/website",
   "dependencies": {
-    "chokidar": "^3.5.3",
     "gray-matter": "^4.0.3",
-    "jsdom": "^26.1.0",
     "markdown-it": "^14.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "bun": ">=1.2.0"
+  },
+  "optionalDependencies": {
+    "chokidar": "^3.5.3",
+    "jsdom": "^26.1.0"
   },
   "files": [
     "bin/",

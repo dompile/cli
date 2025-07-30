@@ -10,14 +10,27 @@ import { JSDOM } from "jsdom";
 import { processIncludes } from "./include-processor.js";
 import { logger } from "../utils/logger.js";
 import { isPathWithinDirectory } from "../utils/path-resolver.js";
+import { runtime } from "../utils/runtime-detector.js";
 import {
   ComponentError,
   LayoutError,
   FileSystemError,
 } from "../utils/errors.js";
 
+// Import Bun HTML processor when available
+let BunHtmlProcessor;
+if (runtime.isBun) {
+  try {
+    const { BunHtmlProcessor: BunProcessor } = await import('./bun-html-processor.js');
+    BunHtmlProcessor = BunProcessor;
+  } catch (error) {
+    logger.warn('BunHtmlProcessor not available, falling back to JSDOM');
+  }
+}
+
 /**
  * Process HTML content with unified support for both SSI includes and DOM templating
+ * Uses Bun HTMLRewriter when available, falls back to JSDOM for Node.js
  * @param {string} htmlContent - Raw HTML content to process
  * @param {string} filePath - Path to the HTML file being processed
  * @param {string} sourceRoot - Source root directory
@@ -40,13 +53,64 @@ export async function processHtmlUnified(
   };
 
   try {
-    // Step 1: Process SSI includes first (traditional <!--#include --> directives)
+    // Use Bun HTMLRewriter if available for better performance
+    if (runtime.isBun && BunHtmlProcessor) {
+      logger.debug(
+        `Using Bun HTMLRewriter for: ${path.relative(sourceRoot, filePath)}`
+      );
+      
+      const bunProcessor = new BunHtmlProcessor();
+      
+      // Track dependencies before processing
+      if (dependencyTracker) {
+        dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
+      }
+      
+      // Process includes with HTMLRewriter
+      let processedContent = await bunProcessor.processIncludes(
+        htmlContent,
+        filePath,
+        sourceRoot,
+        processingConfig
+      );
+      
+      // Handle layouts and slots if needed
+      if (shouldUseDOMMode(processedContent)) {
+        processedContent = await processDOMMode(
+          processedContent,
+          filePath,
+          sourceRoot,
+          processingConfig
+        );
+      } else if (
+        hasDOMTemplating(processedContent) ||
+        !processedContent.includes("<html")
+      ) {
+        processedContent = await processDOMTemplating(
+          processedContent,
+          filePath,
+          sourceRoot,
+          processingConfig
+        );
+      }
+      
+      // Apply HTML optimization if enabled
+      if (processingConfig.optimize !== false) {
+        processedContent = await bunProcessor.optimizeHtml(processedContent);
+      }
+      
+      return processedContent;
+    }
+
+    // Fallback to original JSDOM processing for Node.js
     logger.debug(
       `Processing SSI includes for: ${path.relative(sourceRoot, filePath)}`
     );
 
     // Track dependencies before processing
-    dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
+    if (dependencyTracker) {
+      dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
+    }
 
     let processedContent = await processIncludes(
       htmlContent,
@@ -750,4 +814,39 @@ export function getUnifiedConfig(userConfig = {}) {
 export function shouldUseUnifiedProcessing(htmlContent) {
   // Unified processor handles all HTML content
   return true;
+}
+
+/**
+ * Optimize HTML content using Bun HTMLRewriter when available
+ * @param {string} htmlContent - HTML content to optimize
+ * @returns {Promise<string>} Optimized HTML content
+ */
+export async function optimizeHtml(htmlContent) {
+  if (runtime.isBun && BunHtmlProcessor) {
+    const bunProcessor = new BunHtmlProcessor();
+    return await bunProcessor.optimizeHtml(htmlContent);
+  }
+  
+  // No optimization available on Node.js
+  return htmlContent;
+}
+
+/**
+ * Extract metadata from HTML using Bun HTMLRewriter when available
+ * @param {string} htmlContent - HTML content to analyze
+ * @returns {Promise<Object>} Extracted metadata
+ */
+export async function extractHtmlMetadata(htmlContent) {
+  if (runtime.isBun && BunHtmlProcessor) {
+    const bunProcessor = new BunHtmlProcessor();
+    return await bunProcessor.extractMetadata(htmlContent);
+  }
+  
+  // Basic fallback for Node.js
+  return {
+    title: '',
+    description: '',
+    keywords: [],
+    openGraph: {}
+  };
 }

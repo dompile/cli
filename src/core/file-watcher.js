@@ -1,22 +1,59 @@
 /**
  * File watching system for unify
  * Watches source files and rebuilds on changes
+ * Uses Bun's native fs.watch when available, falls back to chokidar
  */
 
 import chokidar from 'chokidar';
 import { build, incrementalBuild, initializeModificationCache } from './file-processor.js';
 import { logger } from '../utils/logger.js';
+import { runtime } from '../utils/runtime-detector.js';
 
 /**
  * Start watching files and rebuild on changes
+ * Automatically uses BunFileWatcher when running on Bun
  * @param {Object} options - Watch configuration options
  * @param {string} [options.source='src'] - Source directory path
  * @param {string} [options.output='dist'] - Output directory path  
  * @param {string} [options.includes='includes'] - Include directory name
  * @param {string} [options.head=null] - Custom head file path
  * @param {boolean} [options.clean=true] - Whether to clean output directory before build
+ * @param {boolean} [options.forceBun=false] - Force use of Bun watcher even on Node.js (will fail)
+ * @param {boolean} [options.forceChokidar=false] - Force use of chokidar even on Bun
  */
 export async function watch(options = {}) {
+  // Check for forced runtime preference
+  if (options.forceChokidar) {
+    logger.info('Forcing chokidar file watcher');
+    return watchWithChokidar(options);
+  }
+  
+  if (options.forceBun && !runtime.isBun) {
+    logger.error('Cannot force Bun watcher when not running on Bun');
+    throw new Error('Bun runtime required for BunFileWatcher');
+  }
+
+  // Use Bun file watcher if available
+  if (runtime.isBun) {
+    try {
+      logger.info('Using Bun native file watcher');
+      const { createFileWatcher } = await import('./bun-file-watcher.js');
+      return await createFileWatcher(options);
+    } catch (error) {
+      logger.warn('BunFileWatcher not available, falling back to chokidar:', error.message);
+    }
+  }
+
+  // Fallback to chokidar implementation
+  logger.info('Using chokidar file watcher');
+  return watchWithChokidar(options);
+}
+
+/**
+ * Original chokidar-based file watching implementation
+ * @param {Object} options - Watch configuration options
+ */
+async function watchWithChokidar(options = {}) {
   const config = {
     source: 'src',
     output: 'dist',

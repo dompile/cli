@@ -6,8 +6,7 @@ import { watch } from '../src/core/file-watcher.js';
 import { DevServer } from '../src/server/dev-server.js';
 import { liveReload } from '../src/server/live-reload.js';
 import { logger } from '../src/utils/logger.js';
-
-const VERSION = '0.5.2';
+import { getVersionInfo, logRuntimeInfo } from '../src/utils/build-constants.js';
 
 async function main() {
   try {
@@ -15,7 +14,7 @@ async function main() {
     
     // Handle version and help flags
     if (args.version) {
-      console.log(`unify v${VERSION}`);
+      console.log(getVersionInfo());
       process.exit(0);
     }
     
@@ -27,6 +26,7 @@ async function main() {
     // Set logging level based on verbose flag
     if (args.verbose) {
       logger.setLevel('DEBUG');
+      logRuntimeInfo();
     }
     
     // Default to build command if none specified
