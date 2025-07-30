@@ -1,59 +1,59 @@
 # CLI Reference
 
-Complete reference for all dompile CLI commands and options.
+Complete reference for all unify CLI commands and options.
 
 ## Commands
 
-### `dompile [command] [options]`
+### `unify [command] [options]`
 
-If no command is specified, dompile defaults to `build`.
+If no command is specified, unify defaults to `build`.
 
-### `dompile build [options]`
+### `unify build [options]`
 
 Build your static site from source files.
 
 **Examples:**
 ```bash
 # Basic build
-dompile build
+unify build
 
 # Build with custom directories
-dompile build --source content --output public
+unify build --source content --output public
 
 # Build with pretty URLs and custom base URL
-dompile build --pretty-urls --base-url https://mysite.com
+unify build --pretty-urls --base-url https://mysite.com
 
 # Build with custom component and layout directories
-dompile build --components partials --layouts templates
+unify build --components partials --layouts templates
 ```
 
-### `dompile serve [options]`
+### `unify serve [options]`
 
 Start development server with live reload.
 
 **Examples:**
 ```bash
 # Start dev server on default port 3000
-dompile serve
+unify serve
 
 # Custom port and host
-dompile serve --port 8080 --host 0.0.0.0
+unify serve --port 8080 --host 0.0.0.0
 
 # Serve from custom directories
-dompile serve --source content --output tmp
+unify serve --source content --output tmp
 ```
 
-### `dompile watch [options]`
+### `unify watch [options]`
 
 Watch files and rebuild on changes (legacy command, use `serve` instead).
 
 **Examples:**
 ```bash
 # Watch and rebuild
-dompile watch
+unify watch
 
 # Watch with custom directories
-dompile watch --source src --output dist
+unify watch --source src --output dist
 ```
 
 ## Global Options
@@ -137,24 +137,24 @@ Show version number.
 Control logging verbosity.
 - **Values:** `error`, `warn`, `info`, `debug`
 - **Default:** `info`
-- **Example:** `LOG_LEVEL=debug dompile build`
+- **Example:** `LOG_LEVEL=debug unify build`
 
 ### `DEBUG`
 Enable debug mode with stack traces.
 - **Values:** Any truthy value
-- **Example:** `DEBUG=1 dompile build`
+- **Example:** `DEBUG=1 unify build`
 
 ### `NODE_ENV`
 Environment mode (affects some default behaviors).
 - **Values:** `development`, `production`
-- **Example:** `NODE_ENV=production dompile build`
+- **Example:** `NODE_ENV=production unify build`
 
 ## Configuration Precedence
 
-dompile resolves configuration in this order (highest to lowest priority):
+unify resolves configuration in this order (highest to lowest priority):
 
 1. **CLI arguments** - Command line flags
-2. **Environment variables** - `DOMPILE_*` prefixed vars
+2. **Environment variables** - `UNIFY_*` prefixed vars
 3. **Package.json** - `homepage` field for base URL
 4. **Defaults** - Built-in default values
 
@@ -282,9 +282,9 @@ Add to `package.json`:
 ```json
 {
   "scripts": {
-    "build": "dompile build --pretty-urls",
-    "dev": "dompile serve",
-    "preview": "dompile build && python -m http.server -d dist 8080"
+    "build": "unify build --pretty-urls",
+    "dev": "unify serve",
+    "preview": "unify build && python -m http.server -d dist 8080"
   }
 }
 ```

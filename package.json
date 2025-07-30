@@ -1,5 +1,5 @@
 {
-  "name": "@dompile/cli",
+  "name": "@fwdslsh/unify",
   "version": "0.5.2",
   "description": "A lightweight, framework-free static site generator with Apache SSI-style includes and live reload",
   "type": "module",
@@ -32,16 +32,16 @@
     "development",
     "live-reload"
   ],
-  "author": "DOMpile Contributors",
+  "author": "Unify Contributors",
   "license": "CC0-1.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dompile/cli.git"
+    "url": "git+https://github.com/unify/cli.git"
   },
   "bugs": {
-    "url": "https://github.com/dompile/cli/issues"
+    "url": "https://github.com/unify/cli/issues"
   },
-  "homepage": "https://dompile.github.io/website",
+  "homepage": "https://unify.github.io/website",
   "dependencies": {
     "chokidar": "^3.5.3",
     "gray-matter": "^4.0.3",

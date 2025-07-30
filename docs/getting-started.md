@@ -1,19 +1,19 @@
-# Getting Started with dompile
+# Getting Started with unify
 
-This guide will walk you through creating your first dompile site and understanding the core concepts.
+This guide will walk you through creating your first unify site and understanding the core concepts.
 
 ## Installation
 
 ### Global Installation (Recommended)
 
 ```bash
-npm install -g @dompile/cli
+npm install -g @unify/cli
 ```
 
 ### Or use with npx
 
 ```bash
-npx @dompile/cli --help
+npx @unify/cli --help
 ```
 
 ## Your First Site

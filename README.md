@@ -1,6 +1,6 @@
-# dompile - an SSG for a more peaceful future
+# unify - an SSG for a more peaceful future
 
-![dompile banner](example/src/imgs/green-banner-800.png)
+![unify banner](example/src/imgs/green-banner-800.png)
 
 A modern,  lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture-no more copying and pasting headers, footers, and navigation across multiple pages!
 
@@ -18,19 +18,19 @@ A modern,  lightweight static site generator that brings the power of server-sid
 
 ```bash
 # Install globally
-npm install -g dompile/cli
+npm install -g @unify/cli
 
 # Simple usage with defaults (src => dist)
-dompile build                    # Build from src/ to dist/
-dompile serve                    # Serve with live reload on port 3000
+unify build                    # Build from src/ to dist/
+unify serve                    # Serve with live reload on port 3000
 
 # Or use with npx
-npx dompile/cli build
-npx dompile/cli serve
+npx @unify/cli build
+npx @unify/cli serve
 
 # Advanced usage with custom options
-dompile build --pretty-urls --base-url https://mysite.com
-dompile serve --port 8080
+unify build --pretty-urls --base-url https://mysite.com
+unify serve --port 8080
 ```
 
 ## 📁 Quick Example
@@ -49,7 +49,7 @@ See the [Getting Started Guide](docs/getting-started.md) for a complete tutorial
 
 ## 📚 Documentation
 
-- **[Getting Started](docs/getting-started.md)** - Your first dompile site
+- **[Getting Started](docs/getting-started.md)** - Your first unify site
 - **[CLI Reference](docs/cli-reference.md)** - Complete command documentation
 - **[Docker Usage](docs/docker-usage.md)** - Container deployment guide
 - **[Template Elements](docs/template-elements-in-markdown.md)** - Advanced templating
@@ -59,19 +59,19 @@ See the [Getting Started Guide](docs/getting-started.md) for a complete tutorial
 
 ```bash
 # Build your site (default command)
-dompile
-dompile build
+unify
+unify build
 
 # Development server with live reload
-dompile serve
+unify serve
 
 # Get help
-dompile --help
+unify --help
 ```
 
 See [CLI Reference](docs/cli-reference.md) for all options.
 
-## 🎯 Why dompile?
+## 🎯 Why unify?
 
 - **Simple**: Familiar HTML and Apache SSI syntax
 - **Fast**: Incremental builds and smart dependency tracking  
@@ -91,7 +91,7 @@ See [CLI Reference](docs/cli-reference.md) for all options.
 
 ## 🧪 Testing
 
-dompile has comprehensive test coverage:
+unify has comprehensive test coverage:
 
 - **Security tests**: Path traversal and validation
 - **CLI tests**: All commands and options
@@ -101,8 +101,8 @@ dompile has comprehensive test coverage:
 ## 🔗 Cross-Platform Support
 
 - **Node.js** 14+ (native ESM support)
-- **Bun**: `bun run dompile/cli serve` (faster execution)
-- **Deno**: `deno run --allow-read --allow-write --allow-net npm:dompile/cli`
+- **Bun**: `bun run @unify/cli serve` (faster execution)
+- **Deno**: `deno run --allow-read --allow-write --allow-net npm:@unify/cli`
 
 ## 🗺️ Roadmap
 
@@ -115,7 +115,7 @@ We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for deta
 ### Development Setup
 
 ```bash
-git clone https://github.com/dompile/cli
+git clone https://github.com/unify/cli
 cd cli
 npm install
 npm test

@@ -1,6 +1,6 @@
-# Contributing to dompile
+# Contributing to unify
 
-Thank you for your interest in contributing to dompile! This guide will help you get started with development and understand our contribution process.
+Thank you for your interest in contributing to unify! This guide will help you get started with development and understand our contribution process.
 
 ## 🚀 Quick Start
 
