@@ -1,7 +1,7 @@
 <div>
   <!--Uses default layout since it is an html fragment and not data-layout attribute is provided -->
-  <template data-slot="title">About DOM Mode</template>
-  <template data-slot="header">
+  <template target="title">About DOM Mode</template>
+  <template target="header">
     <h1>About DOM Mode</h1>
         <include src="/custom_components/navigation.html" />
   </template>
@@ -29,7 +29,7 @@
   <h3>How It Works</h3>
   <ol>
     <li>Pages specify layouts with <code>data-layout</code></li>
-    <li>Content goes into slots using <code>&lt;template data-slot="name"&gt;</code></li>
+    <li>Content goes into slots using <code>&lt;template target="name"&gt;</code></li>
     <li>Components are included with <code>&lt;include src="..." /&gt;</code></li>
 
   </ol>

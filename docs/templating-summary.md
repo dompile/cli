@@ -7,7 +7,7 @@ A concise overview of dompile's four templating features.
 - **Includes** → Component insertion via comments or elements
 - **Layouts** → HTML structure with `<slot>` placeholders  
 - **Slots** → Content placeholders with optional names and default content
-- **Templates** → Content containers with `data-slot` attributes that replace associated slots
+- **Templates** → Content containers with `target` attributes that replace associated slots
 
 ## How It Works
 
@@ -30,7 +30,7 @@ A concise overview of dompile's four templating features.
    `src/index.html`
 
    ```html
-   <template data-slot="title">Home Page</template>
+   <template target="title">Home Page</template>
 
    <div id="home-content">
      <h1>Welcome home!</h1>
@@ -74,7 +74,7 @@ A concise overview of dompile's four templating features.
 | ------------------------------- | -------------------------------- | ------------------------------------------- |
 | `<slot name="x">`               | Content placeholder              | `<slot name="title">Default</slot>`         |
 | `<slot></slot>`                 | Default content area             | `<slot></slot>`                             |
-| `<template data-slot="x">`      | Content for named slot           | `<template data-slot="title">Hi</template>` |
+| `<template target="x">`      | Content for named slot           | `<template target="title">Hi</template>` |
 | `data-layout="path"`            | Layout selection                 | `<div data-layout="base.html">`             |
 | `<!--#include virtual="/x" -->` | Include from source root         | `<!--#include virtual="/header.html" -->`   |
 | `<!--#include file="x" -->`     | Include relative to current file | `<!--#include file="../nav.html" -->`       |
@@ -104,7 +104,7 @@ src/
 Pages contain exactly:
 
 - **One root element** with optional `data-layout` attribute
-- **Zero or more** `<template data-slot="name">` elements
+- **Zero or more** `<template target="name">` elements
 - **Zero or more** `<script>` and `<style>` elements
 - **Include directives** (comments or elements) within the root element
 
@@ -140,7 +140,7 @@ Pages contain exactly:
 
 ```html
 <div data-layout="base">
-  <template data-slot="title">My Card Page</template>
+  <template target="title">My Card Page</template>
   
   <p>This goes to the layout's main slot</p>
   <!--#include virtual="/.components/card.html" -->

@@ -269,7 +269,7 @@ async function optimizeHtmlContent(html) {
 function shouldUseDOMMode(content) {
   return content.includes('<include ') || 
          content.includes('<slot') || 
-         content.includes('data-slot=') ||
+         content.includes('target=') ||
          content.includes('data-layout=');
 }
 
@@ -535,14 +535,8 @@ function hasDOMTemplating(content) {
 function extractSlotDataFromHTML(htmlContent) {
   const slots = {};
   
-  // Extract named slots with data-slot attribute (legacy support)
-  const dataSlotRegex = /<template[^>]+data-slot=["']([^"']+)["'][^>]*>([\s\S]*?)<\/template>/gi;
   let match;
-  while ((match = dataSlotRegex.exec(htmlContent)) !== null) {
-    const slotName = match[1];
-    const content = match[2];
-    slots[slotName] = content;
-  }
+
   
   // Extract named slots with target attribute (spec-compliant)
   const targetRegex = /<template[^>]+target=["']([^"']+)["'][^>]*>([\s\S]*?)<\/template>/gi;
@@ -552,8 +546,8 @@ function extractSlotDataFromHTML(htmlContent) {
     slots[targetName] = content;
   }
   
-  // Extract default slot content from template without target or data-slot attributes
-  const defaultTemplateRegex = /<template(?!\s+(?:target|data-slot)=)[^>]*>([\s\S]*?)<\/template>/gi;
+  // Extract default slot content from template without target attributes
+  const defaultTemplateRegex = /<template(?!\s+(?:target)=)[^>]*>([\s\S]*?)<\/template>/gi;
   match = defaultTemplateRegex.exec(htmlContent);
   if (match) {
     slots['default'] = match[1];

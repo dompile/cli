@@ -53,7 +53,7 @@ Named slots in layouts:
 Content for slots:
 ```html
 <!-- In page -->
-<template data-slot="title">My Page Title</template>
+<template target="title">My Page Title</template>
 <!-- Content outside templates goes to unnamed slot -->
 <h1>Main Content</h1>
 ```
@@ -95,7 +95,7 @@ dompile build --source examples/dom-mode/pages --output examples/dom-mode/dist
 The `index.html` file will be processed into a complete HTML document:
 
 - Layout `layouts/blog.html` provides the structure
-- Named slots (`title`, `header`, `footer`) filled from `<template data-slot="...">`
+- Named slots (`title`, `header`, `footer`) filled from `<template target="...">`
 - Default content goes into the unnamed `<slot></slot>`
 - `<include>` elements replaced with component content
 - `data-token` attributes replaced with values from `data-*` attributes

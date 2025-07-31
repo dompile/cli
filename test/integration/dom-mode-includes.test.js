@@ -128,7 +128,7 @@ describe('DOM Mode Include Processing', () => {
   </style>
 </head>
 <body class="blog-layout">
-  <template data-slot="header">
+  <template target="header">
     <h1>My Blog</h1>
   </template>
   <main class="blog-content">
@@ -142,8 +142,8 @@ describe('DOM Mode Include Processing', () => {
     await fs.writeFile(
       path.join(sourceDir, 'blog.html'),
       `<body data-layout="/site_layouts/blog.html">
-  <template data-slot="title">Welcome to DOM Mode</template>
-  <template data-slot="header">
+  <template target="title">Welcome to DOM Mode</template>
+  <template target="header">
     <h1>🧱 DOMpile DOM Mode</h1>
     <p>Modern templating with pure HTML</p>
   </template>
@@ -168,7 +168,7 @@ describe('DOM Mode Include Processing', () => {
 
   <include src="/custom_components/navigation.html" />
 
-  <template data-slot="footer">
+  <template target="footer">
     <p>© 2025 - Built with DOMpile DOM Mode</p>
     <p><a href="https://github.com/yourusername/dompile">View on GitHub</a></p>
   </template>
@@ -279,7 +279,7 @@ describe('DOM Mode Include Processing', () => {
     await fs.writeFile(
       path.join(sourceDir, 'blog.html'),
       `<body data-layout="/site_layouts/blog.html">
-  <template data-slot="title">Nested Include Test</template>
+  <template target="title">Nested Include Test</template>
   
   <h2>Testing Nested Includes</h2>
   <include src="/custom_components/nested.html" />

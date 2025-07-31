@@ -37,8 +37,8 @@ describe('Final Boss Debug', () => {
 </html>`,
 
       'src/index.html': `<div data-layout="/layouts/base.html">
-  <template data-slot="title">Home Page</template>
-  <template data-slot="content">
+  <template target="title">Home Page</template>
+  <template target="content">
     <h1>Welcome</h1>
     <img src="/assets/images/logo.png" alt="Logo" />
   </template>

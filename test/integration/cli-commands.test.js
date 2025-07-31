@@ -68,7 +68,7 @@ describe('CLI Commands and Options', () => {
 
     it('should build with short flags', async () => {
       const structure = {
-        'content/index.html': '<div data-layout="base.html"><template data-slot="content">Content</template></div>',
+        'content/index.html': '<div data-layout="base.html"><template target="content">Content</template></div>',
         'templates/base.html': '<!DOCTYPE html><html><body><slot name="content">Default</slot></body></html>',
         'includes/header.html': '<header>Header</header>'
       };
@@ -426,7 +426,7 @@ describe('CLI Commands and Options', () => {
   describe('Mixed Flag Formats', () => {
     it('should handle mixed long and short flags', async () => {
       const structure = {
-        'content/index.html': '<div data-layout="base.html"><template data-slot="content">Mixed Flags</template></div>',
+        'content/index.html': '<div data-layout="base.html"><template target="content">Mixed Flags</template></div>',
         'templates/base.html': '<!DOCTYPE html><html><body><slot name="content">Default</slot></body></html>'
       };
 

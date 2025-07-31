@@ -211,41 +211,5 @@ describe('template target attribute', () => {
     expect(result.includes('<template target=')).toBeFalsy();
   });
   
-  it('should maintain backward compatibility with data-slot attribute', async () => {
-    // Create layout
-    const layoutContent = `<!DOCTYPE html>
-<html>
-<body>
-  <header><slot name="header">Default Header</slot></header>
-  <main><slot>Default Content</slot></main>
-</body>
-</html>`;
-    
-    await fs.writeFile(path.join(layoutsDir, 'default.html'), layoutContent);
-    
-    // Create page using legacy data-slot attribute
-    const pageContent = `<div data-layout="default.html">
-  <template data-slot="header">
-    <h1>Legacy Header</h1>
-  </template>
-  
-  <p>Main content using legacy approach</p>
-</div>`;
-    
-    const pagePath = path.join(sourceDir, 'legacy-test.html');
-    const result = await processHtmlUnified(
-      pageContent,
-      pagePath,
-      sourceDir,
-      dependencyTracker,
-      { layoutsDir: '.layouts' }
-    );
-    
-    // Verify legacy data-slot still works
-    expect(result.includes('<h1>Legacy Header</h1>')).toBeTruthy();
-    expect(result.includes('<p>Main content using legacy approach</p>')).toBeTruthy();
-    
-    // Verify template elements are removed
-    expect(result.includes('<template data-slot')).toBeFalsy();
-  });
+
 });
