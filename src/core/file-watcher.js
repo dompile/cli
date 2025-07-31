@@ -6,6 +6,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { build, incrementalBuild, initializeModificationCache } from './file-processor.js';
+import { getOutputPath } from '../utils/path-resolver.js';
 import { logger } from '../utils/logger.js';
 
 export class FileWatcher {
@@ -166,8 +167,8 @@ export class FileWatcher {
       return;
     }
 
-    // Map events to standard events for compatibility
-    const mappedEvent = this.mapEventType(eventType, filename);
+    // Map events to standard events for compatibility, now with proper file existence checking
+    const mappedEvent = await this.mapEventType(eventType, filename, fullPath);
     
     logger.debug(`File ${mappedEvent} (${eventType}): ${filename}`);
     
@@ -175,8 +176,15 @@ export class FileWatcher {
     this.emit(mappedEvent, fullPath);
     this.emit('all', mappedEvent, fullPath);
     
-    // Add to build queue and debounce
-    this.buildQueue.add(fullPath);
+    // Handle different event types appropriately
+    if (mappedEvent === 'unlink') {
+      // File was deleted - clean up from tracking and output
+      await this.handleFileDeletion(fullPath, config);
+      // Note: dependent pages are added to build queue in handleFileDeletion
+    } else {
+      // File was added or changed - add to build queue
+      this.buildQueue.add(fullPath);
+    }
     
     if (this.buildTimeout) {
       clearTimeout(this.buildTimeout);
@@ -188,18 +196,69 @@ export class FileWatcher {
   }
 
   /**
-   * Map fs.watch event types to standardized event types
+   * Handle file deletion by cleaning up tracking and removing from output
    */
-  mapEventType(eventType, filename) {
+  async handleFileDeletion(deletedFilePath, config) {
+    logger.info(`File deleted: ${path.relative(config.source, deletedFilePath)}`);
+    
+    try {
+      // Get dependent pages BEFORE cleaning up dependency tracking
+      let dependentPages = [];
+      if (this.dependencyTracker) {
+        dependentPages = this.dependencyTracker.getDependentPages(deletedFilePath);
+        logger.debug(`Found ${dependentPages.length} pages dependent on deleted file: ${dependentPages.map(p => path.relative(config.source, p)).join(', ')}`);
+        
+        // Add dependent pages to build queue for rebuilding
+        dependentPages.forEach(page => {
+          this.buildQueue.add(page);
+          logger.debug(`Added dependent page to rebuild queue: ${path.relative(config.source, page)}`);
+        });
+        
+        // Now clean up from dependency tracking
+        this.dependencyTracker.removeFile(deletedFilePath);
+      }
+      
+      // Clean up from asset tracking
+      if (this.assetTracker) {
+        this.assetTracker.removePage(deletedFilePath);
+      }
+      
+      // Remove corresponding file from output directory
+      const outputPath = getOutputPath(deletedFilePath, config.source, config.output);
+      try {
+        await fs.unlink(outputPath);
+        logger.debug(`Removed output file: ${outputPath}`);
+      } catch (error) {
+        // File might not exist in output (e.g., if it's a partial file)
+        if (error.code !== 'ENOENT') {
+          logger.warn(`Failed to remove output file ${outputPath}: ${error.message}`);
+        }
+      }
+      
+    } catch (error) {
+      logger.error(`Error handling file deletion for ${deletedFilePath}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Map fs.watch event types to standardized event types with proper file existence checking
+   */
+  async mapEventType(eventType, filename, fullPath) {
     const eventMap = {
       'change': 'change',
-      'rename': 'add', // File was created or moved
       'delete': 'unlink'
     };
     
-    // Detect if it's actually a file deletion vs creation
+    // For 'rename' events, we need to check if the file exists to determine if it's add or unlink
     if (eventType === 'rename') {
-      return filename.includes('.tmp') ? 'unlink' : 'add';
+      try {
+        await fs.access(fullPath);
+        // File exists - it's an addition or move-in
+        return 'add';
+      } catch (error) {
+        // File doesn't exist - it's a deletion or move-out  
+        return 'unlink';
+      }
     }
     
     return eventMap[eventType] || 'change';

@@ -409,6 +409,26 @@ The development server provides live reload functionality that automatically ref
 - **Asset Files:** Changes to CSS, JavaScript, and other static assets trigger full page reload
 - **Include Dependencies:** Changes to any file that is included by another file trigger full rebuild of dependent pages with updated content
 
+#### File Addition and Deletion Handling
+
+The watch system properly handles file lifecycle events:
+
+**File Additions:**
+
+- **New Content Files:** Newly created `.html` and `.md` files are detected and built into the output directory
+- **New Component Files:** Newly created component files trigger rebuilds of any pages that reference them (even if they had missing include errors before)
+- **New Asset Files:** Newly added CSS, JS, images, and other assets are detected, analyzed for references, and copied to output if referenced by any page
+- **Directory Creation:** Files added to newly created directories are properly detected and processed
+
+**File Deletions:**
+
+- **Content File Removal:** Deleted `.html` and `.md` files are removed from the output directory
+- **Component File Removal:** Deleted component files trigger rebuilds of dependent pages, which will show "Include not found" messages
+- **Asset File Removal:** Deleted assets are removed from the output directory
+- **Dependency Cleanup:** All tracking data for deleted files is properly cleaned up
+
+**Rapid Changes:** The system handles rapid sequences of file additions and deletions without losing events, using debounced processing to batch changes efficiently.
+
 #### Rebuild Guarantees
 
 When component or include files change during development:

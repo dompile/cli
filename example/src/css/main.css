@@ -2,17 +2,49 @@
 /* Font and Reset */
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Staatliches&display=swap');
 
-:root {
-  --bg: #0d0d0d;
-  --bg-alt: #1a1a1a;
-  --text: #d8f3dc;
-  --accent: #ffdd00;
-  --accent-2: #39ff14;
-  --grime: #494949;
-  --nature: #4caf50;
-  --border: #2a2a2a;
-  --warning: #ff4444;
+/** Custom Font */
+@font-face {
+  font-family: 'slashcore';
+  src: url('fonts/selincah.regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
 
+:root {
+  /* Base CRT Theme */
+  --color-bg: #0a0a0a;
+  /* Deep black background with a slight glow */
+  --color-fg: #e0e0e0;
+  /* Muted soft white foreground text */
+
+  /* Accent Colors (Muted Phosphor Colors) */
+  --color-accent-yellow: #f2c84b;
+  /* CRT amber/yellow */
+  --color-accent-green: #8cf28a;
+  /* Phosphor green */
+  --color-accent-red: #d65f5f;
+  /* CRT warning red */
+
+  /* Additional UI Element Colors */
+  --color-border: #303030;
+  /* Muted border for panels */
+  --color-highlight: #404040;
+  /* For hover/selection */
+  --color-muted: #888888;
+
+
+  --bg: var(--color-bg, #0d0d0d);
+  --bg-alt: #1a1a1a;
+  --text: var(--color-fg, #d8f3dc);
+  --accent: var(--color-accent-yellow, #ffdd00);
+  --accent-2: var(--color-accent-green, #26c50a);
+  --grime: var(--color-muted, #494949);
+  --nature: var(--color-accent-green, #4caf50);
+  --border: var(--color-border, #2a2a2a);
+  --warning: var(--color-accent-red, #b61515);
+
+
+  /* For secondary text or metadata */
   --font-body: 'Share Tech Mono', monospace;
   --font-display: 'Staatliches', sans-serif;
 
@@ -34,6 +66,26 @@ body {
   color: var(--text);
   line-height: 1.6;
   padding: 1rem;
+}
+
+/* Generic glow effect for elements that use text color */
+.glow-on-hover:hover {
+  text-shadow: 0 0 4px currentColor,
+    0 0 8px currentColor,
+    0 0 12px currentColor;
+}
+
+/* Glow effect for buttons or any element with background-color */
+.glow-bg-on-hover:hover {
+  box-shadow: 0 0 4px var(--glow-color),
+      0 0 8px var(--glow-color),
+      0 0 12px var(--glow-color);
+}
+
+/* Optional: smooth transition */
+.glow-on-hover,
+.glow-bg-on-hover {
+  transition: all 0.2s ease-in-out;
 }
 
 a {
@@ -75,6 +127,7 @@ select:focus {
 
 button {
   background-color: var(--accent);
+  --glow-color: var(--accent-2);
   color: var(--bg);
   border: none;
   cursor: pointer;
@@ -88,28 +141,6 @@ button:hover {
   color: var(--bg);
 }
 
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--bg-alt);
-  border-bottom: 2px solid var(--border);
-  padding: 1rem 2rem;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.navbar a {
-  color: var(--text);
-  font-family: var(--font-display);
-  margin-left: 1rem;
-  font-size: 1.1rem;
-}
-
-.navbar a:hover {
-  color: var(--accent);
-}
 
 .hero {
   display: grid;
@@ -139,7 +170,7 @@ button:hover {
 .card {
   background: var(--bg-alt);
   border: 1px solid var(--border);
-  border-left: 5px solid var(--accent-2);
+  border-left: 5px solid var(--accent);
   border-radius: var(--radius);
   padding: 1.5rem;
   box-shadow: 0 0 10px #00000055;
@@ -148,7 +179,7 @@ button:hover {
 
 .card:hover {
   transform: translateY(-2px);
-  border-left-color: var(--accent);
+  border-left-color: var(--accent-2);
 }
 
 .card h3 {

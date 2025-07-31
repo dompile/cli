@@ -457,6 +457,21 @@ export async function incrementalBuild(options = {}, dependencyTracker = null, a
       try {
         const relativePath = path.relative(sourceRoot, filePath);
         
+        // Check if the file still exists (might be deleted)
+        let fileExists = true;
+        try {
+          await fs.access(filePath);
+        } catch (error) {
+          fileExists = false;
+        }
+        
+        if (!fileExists) {
+          // File was deleted - just remove it from modification cache
+          fileModificationCache.delete(filePath);
+          logger.debug(`Removed deleted file from cache: ${relativePath}`);
+          continue;
+        }
+        
         if (isHtmlFile(filePath)) {
           if (!isPartialFile(filePath, config)) {
             await processHtmlFile(filePath, sourceRoot, outputRoot, tracker, assets, config);
@@ -494,7 +509,7 @@ export async function incrementalBuild(options = {}, dependencyTracker = null, a
           }
         }
         
-        // Update modification cache
+        // Update modification cache for existing files
         const stats = await fs.stat(filePath);
         fileModificationCache.set(filePath, stats.mtime.getTime());
         
@@ -556,9 +571,32 @@ async function getFilesToRebuild(sourceRoot, changedFile, dependencyTracker, con
         logger.debug(`Page ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
       }
     } else {
-      // Asset changed - copy just this asset
+      // Asset or unknown file type changed
       filesToRebuild.add(resolvedChangedFile);
-      logger.debug(`Asset ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
+      
+      // For new asset files, we should also rebuild all HTML/Markdown pages 
+      // to check if they now reference this asset
+      if (!isHtmlFile(resolvedChangedFile) && !isMarkdownFile(resolvedChangedFile)) {
+        try {
+          // Check if this is a new file (not in modification cache)
+          const isNewFile = !fileModificationCache.has(resolvedChangedFile);
+          
+          if (isNewFile) {
+            // New asset file - rebuild all content pages to pick up potential references
+            const allFiles = await scanDirectory(sourceRoot);
+            const contentFiles = allFiles.filter(file => 
+              (isHtmlFile(file) && !isPartialFile(file, config)) || isMarkdownFile(file)
+            );
+            contentFiles.forEach(page => filesToRebuild.add(page));
+            logger.debug(`New asset ${path.relative(sourceRoot, resolvedChangedFile)} added, rebuilding ${contentFiles.length} pages to check for references`);
+          } else {
+            logger.debug(`Asset ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
+          }
+        } catch (error) {
+          // If we can't determine if it's new, just copy the asset
+          logger.debug(`Asset ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
+        }
+      }
     }
   } else {
     // No specific file - check all files for changes

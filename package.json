@@ -18,7 +18,7 @@
     "test": "bun test",
     "watch": "bun run bin/cli.js watch --source example/src --output example/dist",
     "serve": "bun run bin/cli.js serve --source example/src --port 3000",
-    "example": "bun run build && bun run serve",
+    "example": "bun run build && bun run serve --pretty-urls",
     "build": "bun run bin/cli.js build --source example/src --output example/dist",
     "build:advanced": "rm -rf example/advanced/dist && bun run ./bin/cli.js build -s example/advanced/src/ -o example/advanced/dist/ -c example/advanced/src/custom_components/ -l example/advanced/src/site_layouts/",
     "build:executable": "bun run scripts/build-executables.js",

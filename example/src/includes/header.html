@@ -1,29 +1,53 @@
-<nav>
-  <div class="container">
-    <h1>Unify</h1>
-    <button class="nav-toggle" aria-label="Toggle navigation">☰</button>
-    <ul>
-      <li><a href="/">Home</a></li>
-      <li><a href="/getting-started.html">Getting Started</a></li>
-      <li><a href="/about.html">About</a></li>
-    </ul>
+<!-- NAVBAR -->
+<style>
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-alt);
+    border-bottom: 2px solid var(--border);
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .navbar a {
+    color: var(--text);
+    font-family: var(--font-display);
+    margin-left: 1rem;
+    font-size: 1.1rem;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .navbar a:hover {
+    color: var(--accent);
+  }
+
+  .navbar .logo a {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    text-transform: lowercase;
+    color: var(--accent);
+    margin-left: 0;
+    font-family: 'slashcore', 'Share Tech Mono';
+  }
+
+  /* Generic glow effect for elements that use text color */
+  .navbar a:hover {
+    text-shadow: 0 0 1px currentColor,
+      0 0 1px currentColor,
+      0 0 1px currentColor;
+    text-decoration: none;
+  }
+</style>
+<nav class="navbar">
+  <div class="logo text-accent">
+    <a href="/">fwd/unify</a>
+  </div>
+  <div class="nav-links">
+    <a href="#">Zines</a>
+    <a href="/download.html">Download</a>
+    <a href="/about.html">About</a>
   </div>
 </nav>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const navToggle = document.querySelector('.nav-toggle');
-  const navList = document.querySelector('nav ul');
-  
-  navToggle.addEventListener('click', function() {
-    navList.classList.toggle('active');
-  });
-  
-  // Close mobile menu when clicking outside
-  document.addEventListener('click', function(e) {
-    if (!navToggle.contains(e.target) && !navList.contains(e.target)) {
-      navList.classList.remove('active');
-    }
-  });
-});
-</script>
