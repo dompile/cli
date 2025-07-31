@@ -29,24 +29,24 @@ describe('Error Message Format Validation', () => {
       const unknownCmdResult = await runCLIInDir(tempDir, ['unknown-command']);
       
       expect(unknownCmdResult.code).toBe(2);
-      expect(unknownCmdResult.stderr).toMatch(/❌.*UnifyError.*Unknown command.*unknown-command/);
-      expect(unknownCmdResult.stderr).toMatch(/💡 Suggestions:/);
-      expect(unknownCmdResult.stderr).toMatch(/•.*Use.*--help/);
+      expect(unknownCmdResult.stderr).toMatch(/ERROR.*UnifyError.*Unknown command.*unknown-command/);
+      expect(unknownCmdResult.stderr).toMatch(/Suggestions:/);
+      expect(unknownCmdResult.stderr).toMatch(/-.*Use.*--help/);
 
       // Test unknown option
       const unknownOptResult = await runCLIInDir(tempDir, ['build', '--unknown-option']);
       
       expect(unknownOptResult.code).toBe(2);
-      expect(unknownOptResult.stderr).toMatch(/❌.*UnifyError.*Unknown option.*--unknown-option/);
-      expect(unknownOptResult.stderr).toMatch(/💡 Suggestions:/);
-      expect(unknownOptResult.stderr).toMatch(/•.*Use.*--help/);
+      expect(unknownOptResult.stderr).toMatch(/ERROR.*UnifyError.*Unknown option.*--unknown-option/);
+      expect(unknownOptResult.stderr).toMatch(/Suggestions:/);
+      expect(unknownOptResult.stderr).toMatch(/-.*Use.*--help/);
 
       // Test missing argument value
       const missingArgResult = await runCLIInDir(tempDir, ['build', '--source']);
       
       expect(missingArgResult.code).toBe(2);
-      expect(missingArgResult.stderr).toMatch(/❌.*UnifyError/);
-      expect(missingArgResult.stderr).toMatch(/💡 Suggestions:/);
+      expect(missingArgResult.stderr).toMatch(/ERROR.*UnifyError/);
+      expect(missingArgResult.stderr).toMatch(/Suggestions:/);
     });
 
     it('should format build errors according to spec', async () => {
@@ -63,7 +63,7 @@ describe('Error Message Format Validation', () => {
       ]);
 
       expect(result.code).toBe(0); // Build succeeds with warnings in normal mode
-      expect(result.stderr).toMatch(/⚠️.*Include not found.*missing\.html/);
+      expect(result.stderr).toMatch(/\[WARN\].*Include not found.*missing\.html/);
     });
 
     it('should format perfection mode errors according to spec', async () => {
@@ -81,9 +81,9 @@ describe('Error Message Format Validation', () => {
       ]);
 
       expect(result.code).toBe(1);
-      expect(result.stderr).toMatch(/❌.*BuildError.*Build failed/);
-      expect(result.stderr).toMatch(/💡 Suggestions:/);
-      expect(result.stderr).toMatch(/•.*Fix the.*error\(s\)/);
+      expect(result.stderr).toMatch(/ERROR.*BuildError.*Build failed/);
+      expect(result.stderr).toMatch(/Suggestions:/);
+      expect(result.stderr).toMatch(/-.*Fix the.*error\(s\)/);
     });
 
     it('should format file system errors according to spec', async () => {
@@ -95,9 +95,9 @@ describe('Error Message Format Validation', () => {
       ]);
 
       expect(result.code).toBe(2);
-      expect(result.stderr).toMatch(/❌.*UnifyError.*Source directory.*not found/);
-      expect(result.stderr).toMatch(/💡 Suggestions:/);
-      expect(result.stderr).toMatch(/•.*Check.*path/);
+      expect(result.stderr).toMatch(/ERROR.*UnifyError.*Source directory.*not found/);
+      expect(result.stderr).toMatch(/Suggestions:/);
+      expect(result.stderr).toMatch(/-.*Check.*path/);
     });
   });
 
@@ -181,17 +181,17 @@ describe('Error Message Format Validation', () => {
         {
           name: 'Unknown command',
           args: ['unknown-command'],
-          expectedPattern: /❌.*UnifyError.*💡 Suggestions:/
+          expectedPattern: /ERROR.*UnifyError[\s\S]*Suggestions:/
         },
         {
           name: 'Missing source directory',
           args: ['build', '--source', path.join(tempDir, 'nonexistent')],
-          expectedPattern: /❌.*UnifyError.*💡 Suggestions:/
+          expectedPattern: /ERROR.*UnifyError[\s\S]*Suggestions:/
         },
         {
           name: 'Invalid option',
           args: ['build', '--invalid'],
-          expectedPattern: /❌.*UnifyError.*💡 Suggestions:/
+          expectedPattern: /ERROR.*UnifyError[\s\S]*Suggestions:/
         }
       ];
 
@@ -201,9 +201,9 @@ describe('Error Message Format Validation', () => {
         expect(result.stderr).toMatch(scenario.expectedPattern);
         
         // Should have consistent structure
-        expect(result.stderr).toMatch(/❌/); // Error emoji
-        expect(result.stderr).toMatch(/💡 Suggestions:/); // Suggestions header
-        expect(result.stderr).toMatch(/•/); // Bullet points
+        expect(result.stderr).toMatch(/ERROR/); // Error emoji
+        expect(result.stderr).toMatch(/Suggestions:/); // Suggestions header
+        expect(result.stderr).toMatch(/-/); // Bullet points
       }
     });
 
@@ -225,14 +225,14 @@ describe('Error Message Format Validation', () => {
       const output = result.stdout + result.stderr;
 
       // Should have info messages
-      expect(output).toMatch(/ℹ️.*Building static site/);
-      expect(output).toMatch(/ℹ️.*Found.*files/);
+      expect(output).toMatch(/\[INFO\].*Building static site/);
+      expect(output).toMatch(/\[INFO\].*Found.*files/);
       
       // Should have warning messages  
-      expect(output).toMatch(/⚠️.*Include not found/);
+      expect(output).toMatch(/\[WARN\].*Include not found/);
       
       // Should have success message
-      expect(output).toMatch(/✅.*Build completed/);
+      expect(output).toMatch(/\[SUCCESS\].*Build completed/);
     });
 
     it('should provide debug information when verbose mode is enabled', async () => {
@@ -253,9 +253,9 @@ describe('Error Message Format Validation', () => {
       const output = result.stdout + result.stderr;
 
       // Should include debug information
-      expect(output).toMatch(/🪲.*Runtime.*bun/);
-      expect(output).toMatch(/🪲.*Build cache/);
-      expect(output).toMatch(/🪲.*Processed.*index\.html/);
+      expect(output).toMatch(/\[DEBUG\].*Runtime.*bun/);
+      expect(output).toMatch(/\[DEBUG\].*Build cache/);
+      expect(output).toMatch(/\[DEBUG\].*Processed.*index\.html/);
     });
   });
 
@@ -320,9 +320,9 @@ describe('Error Message Format Validation', () => {
         '--perfection'
       ]);
 
-      expect(result.stderr).toMatch(/💡 Suggestions:/);
-      expect(result.stderr).toMatch(/•.*create.*missing\.html/i);
-      expect(result.stderr).toMatch(/•.*check.*path/i);
+      expect(result.stderr).toMatch(/Suggestions:/);
+      expect(result.stderr).toMatch(/-.*create.*missing\.html/i);
+      expect(result.stderr).toMatch(/-.*check.*path/i);
     });
 
     it('should suggest using debug mode for complex errors', async () => {

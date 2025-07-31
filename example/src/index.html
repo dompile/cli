@@ -13,30 +13,85 @@
   <section class="hero">
     <div>
       <h1>Unify</h1>
-      <p><em>Reclaim the DOM &mdash; build pages with bits, not bundles.</em></p>
-      <p>A minimalist CLI tool that restores serenity to web development. No framework, no bundler, no runtime&mdash;just
-        plain HTML includes.</p>
-      <p>No frameworks, no bloat, no compromise.</p>
+      <p><em>A modern, lightweight static site generator for a more peaceful future</em></p>
+      <p>Brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and navigation across multiple pages!</p>
       <div class="cta">
-        <button class="glow-bg-on-hover">Start Building</button>
+        <button class="glow-bg-on-hover">
+          <a href="/download.html" style="all: unset; cursor: pointer;">Get Started</a>
+        </button>
       </div>
     </div>
-    
-      
   </section>
 
   <main class="container">
 
-    <!-- CARDS -->
-    <h2 class="text-accent" style="margin-top: 3rem;">Toolset</h2>
+    <!-- QUICK START -->
+    <h2 class="text-accent" style="margin-top: 3rem;">✨ Perfect for Frontend Developers</h2>
     <div class="grid grid-cols-2">
       <div class="card">
-        <h3>giv CLI</h3>
-        <p>AI-assisted commit messages powered by local models and shell grit.</p>
+        <h3>Zero Learning Curve</h3>
+        <p>Uses familiar Apache SSI syntax or intuitive slot/template elements. No framework required!</p>
       </div>
       <div class="card">
-        <h3>DOMpile</h3>
-        <p>Static site generator that honors the web's roots - no build chains, just HTML.</p>
+        <h3>Bun-Native Performance</h3>
+        <p>Built exclusively for Bun with native APIs - HTMLRewriter, fs.watch, and Bun.serve for maximum speed.</p>
+      </div>
+    </div>
+
+    <!-- INSTALLATION -->
+    <h2 class="text-accent" style="margin-top: 3rem;">🚀 Quick Install</h2>
+    <div class="card">
+      <h3>One-Line Installation</h3>
+      <pre style="background: #1a1a1a; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0;">
+# Install Bun (required runtime)
+curl -fsSL https://bun.sh/install | bash
+
+# Install unify globally
+bun add -g @fwdslsh/unify</pre>
+      <p>Then just run <code>unify build</code> to build your site or <code>unify serve</code> for live development!</p>
+    </div>
+
+    <!-- EXAMPLES -->
+    <h2 class="text-accent" style="margin-top: 3rem;">📁 Simple Example</h2>
+    <div class="card">
+      <h3>HTML with Includes</h3>
+      <pre style="background: #1a1a1a; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0;">
+&lt;!-- src/index.html --&gt;
+&lt;!--#include virtual="/.components/header.html" --&gt;
+&lt;main&gt;
+  &lt;h1&gt;Welcome!&lt;/h1&gt;
+  &lt;p&gt;Build maintainable sites with includes and components.&lt;/p&gt;
+&lt;/main&gt;
+&lt;!--#include virtual="/.components/footer.html" --&gt;</pre>
+    </div>
+
+    <!-- CORE COMMANDS -->
+    <h2 class="text-accent" style="margin-top: 3rem;">⚡ Core Commands</h2>
+    <div class="grid grid-cols-3">
+      <div class="card">
+        <h3>Build</h3>
+        <p><code>unify build</code><br>Generate your static site</p>
+      </div>
+      <div class="card">
+        <h3>Serve</h3>
+        <p><code>unify serve</code><br>Development server with live reload</p>
+      </div>
+      <div class="card">
+        <h3>Watch</h3>
+        <p><code>unify watch</code><br>Watch for changes and rebuild</p>
+      </div>
+    </div>
+
+    <!-- WHY UNIFY -->
+    <h2 class="text-accent" style="margin-top: 3rem;">🎯 Why Unify?</h2>
+    <div class="grid grid-cols-2">
+      <div class="card">
+        <h3>Simple & Fast</h3>
+        <p>Familiar HTML and Apache SSI syntax with incremental builds and smart dependency tracking.</p>
+      </div>
+      <div class="card">
+        <h3>Modern & Secure</h3>
+        <p>ESM modules, live reload, Docker support with path traversal prevention and input validation.</p>
       </div>
     </div>
 
@@ -59,7 +114,7 @@
     </form>
 
     <!-- UTILITY CLASSES -->
-    <h2 class="text-accent" style="margin-top: 3rem;">Status Tags</h2>
+    <h2 class="text-accent" style="margin-top: 3rem;">console.log</h2>
     <div class="grid grid-cols-3">
       <div class="card bg-warning">
         <strong>Warning</strong><br>

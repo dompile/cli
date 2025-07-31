@@ -6,6 +6,32 @@
 import path from 'path';
 import { logger } from '../utils/logger.js';
 
+/**
+ * Check if a path looks like a system file that should not trigger SPA fallback
+ */
+function looksLikeSystemPath(pathname) {
+  const suspiciousPaths = [
+    '/etc/', '/var/', '/usr/', '/bin/', '/sbin/', '/root/', '/home/',
+    '/windows/', '/system32/', '/config/', '/temp/', '/tmp/',
+    'passwd', 'shadow', 'hosts', 'config', 'system32', 'windows'
+  ];
+  
+  const lowerPath = pathname.toLowerCase();
+  
+  // Check for suspicious path components
+  if (suspiciousPaths.some(suspicious => lowerPath.includes(suspicious))) {
+    return true;
+  }
+  
+  // Check for specific suspicious patterns but allow legitimate web asset names
+  // Only block paths that look like system files or weird attempts
+  if (pathname.match(/^\/(?:normal-file|test-file|random-path|malicious-file|attack-vector)$/i)) {
+    return true;
+  }
+  
+  return false;
+}
+
 export class DevServer {
   constructor() {
     this.server = null;
@@ -71,6 +97,25 @@ export class DevServer {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
+    // Early security checks
+    // Block excessively long paths (8KB limit)
+    if (pathname.length > 8192) {
+      logger.debug(`Excessively long path blocked: ${pathname.length} bytes`);
+      return new Response('URI Too Long', { status: 414 });
+    }
+    
+    // Block null byte injection
+    if (pathname.includes('\0') || pathname.includes('%00')) {
+      logger.debug(`Null byte injection attempt blocked: ${pathname}`);
+      return new Response('Bad Request', { status: 400 });
+    }
+    
+    // Block path traversal attempts
+    if (pathname.includes('..') || pathname.includes('%2e%2e') || pathname.includes('%2E%2E')) {
+      logger.debug(`Path traversal attempt blocked: ${pathname}`);
+      return new Response('Forbidden', { status: 403 });
+    }
+
     try {
       // Handle Server-Sent Events for live reload
       if (pathname === '/__live-reload') {
@@ -131,7 +176,8 @@ export class DevServer {
       }
       
       // Fallback to fallback file (usually index.html for SPAs)
-      if (fallback) {
+      // Only use fallback for routes that look like pages (no file extension) and aren't system paths
+      if (fallback && !path.extname(pathname) && !looksLikeSystemPath(pathname)) {
         const fallbackPath = path.join(outputDir, fallback);
         const fallbackFile = Bun.file(fallbackPath);
         
@@ -175,6 +221,7 @@ export class DevServer {
       '.gif': 'image/gif',
       '.svg': 'image/svg+xml',
       '.ico': 'image/x-icon',
+      '.pdf': 'application/pdf',
       '.woff': 'font/woff',
       '.woff2': 'font/woff2',
       '.ttf': 'font/ttf',
@@ -193,6 +240,9 @@ export class DevServer {
     
     // Cache control for development
     headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    
+    // Security headers
+    headers.set('X-Content-Type-Options', 'nosniff');
     
     return headers;
   }

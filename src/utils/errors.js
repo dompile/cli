@@ -47,15 +47,15 @@ export class UnifyError extends Error {
    */
   formatForCLI() {
     const location = this.lineNumber ? `${this.filePath}:${this.lineNumber}` : this.filePath;
-    let output = `❌ ${this.name}: ${this.message.split(' in ')[0]}`;
+    let output = `ERROR ${this.name}: ${this.message.split(' in ')[0]}`;
     
     if (this.filePath) {
-      output += `\n   📁 File: ${location}`;
+      output += `\n   File: ${location}`;
     }
     
     if (this.suggestions.length > 0) {
-      output += '\n\n💡 Suggestions:';
-      output += '\n' + this.suggestions.map(s => `   • ${s}`).join('\n');
+      output += '\n\nSuggestions:';
+      output += '\n' + this.suggestions.map(s => `   - ${s}`).join('\n');
     }
     
     return output;

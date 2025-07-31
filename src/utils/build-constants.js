@@ -38,6 +38,6 @@ export function getVersionInfo() {
 export function logRuntimeInfo() {
   const info = getVersionInfo();
   console.log(`unify v${info.version}`);
-  console.log(`🪲 Runtime: ${info.runtime} (${Bun.version})`);
+  console.log(`[DEBUG] Runtime: ${info.runtime} (${Bun.version})`);
   console.log(`Build: ${info.gitCommit} (${info.buildTime})`);
 }

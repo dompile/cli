@@ -3,6 +3,7 @@
  * Tracks include relationships for selective rebuilds
  */
 
+import path from 'path';
 import { logger } from '../utils/logger.js';
 import { extractIncludeDependencies } from './include-processor.js';
 
@@ -25,29 +26,33 @@ export class DependencyTracker {
    * Record dependencies for a page
    * @param {string} pagePath - Path to the page file
    * @param {string[]} includePaths - Array of include file paths
+   * @param {string[]} layoutPaths - Array of layout file paths (optional)
    */
-  recordDependencies(pagePath, includePaths) {
+  recordDependencies(pagePath, includePaths, layoutPaths = []) {
     // Clear existing dependencies for this page
     this.clearPageDependencies(pagePath);
     
+    // Combine include and layout dependencies
+    const allDependencies = [...includePaths, ...layoutPaths];
+    
     // Record new dependencies
-    if (includePaths.length > 0) {
-      this.includesInPage.set(pagePath, [...includePaths]);
+    if (allDependencies.length > 0) {
+      this.includesInPage.set(pagePath, [...allDependencies]);
       
       // Update reverse mapping
-      for (const includePath of includePaths) {
-        if (!this.pagesByInclude.has(includePath)) {
-          this.pagesByInclude.set(includePath, []);
+      for (const dependencyPath of allDependencies) {
+        if (!this.pagesByInclude.has(dependencyPath)) {
+          this.pagesByInclude.set(dependencyPath, []);
         }
-        this.pagesByInclude.get(includePath).push(pagePath);
+        this.pagesByInclude.get(dependencyPath).push(pagePath);
       }
       
-      logger.debug(`Recorded ${includePaths.length} dependencies for ${pagePath}`);
+      logger.debug(`Recorded ${allDependencies.length} dependencies (${includePaths.length} includes, ${layoutPaths.length} layouts) for ${pagePath}`);
     }
     
     // Track all known files
     this.knownFiles.add(pagePath);
-    includePaths.forEach(path => this.knownFiles.add(path));
+    allDependencies.forEach(path => this.knownFiles.add(path));
   }
   
   /**
@@ -174,11 +179,54 @@ export class DependencyTracker {
    * @param {string} sourceRoot - Source root directory
    */
   analyzePage(pagePath, htmlContent, sourceRoot) {
-    const dependencies = extractIncludeDependencies(htmlContent, pagePath, sourceRoot);
-    this.recordDependencies(pagePath, dependencies);
+    const includeDependencies = extractIncludeDependencies(htmlContent, pagePath, sourceRoot);
+    const layoutDependencies = this.extractLayoutDependencies(htmlContent, pagePath, sourceRoot);
+    this.recordDependencies(pagePath, includeDependencies, layoutDependencies);
     
     // Also analyze nested dependencies for deeper tracking
     this.analyzeNestedDependencies(pagePath, sourceRoot);
+  }
+
+  /**
+   * Extract layout dependencies from HTML content
+   * @param {string} htmlContent - HTML content to analyze
+   * @param {string} pagePath - Path to the current page
+   * @param {string} sourceRoot - Source root directory
+   * @returns {string[]} Array of resolved layout file paths
+   */
+  extractLayoutDependencies(htmlContent, pagePath, sourceRoot) {
+    const dependencies = [];
+    
+    // Look for data-layout attribute
+    const layoutMatch = htmlContent.match(/data-layout=["']([^"']+)["']/i);
+    
+    if (layoutMatch) {
+      const layoutPath = layoutMatch[1];
+      
+      try {
+        // Resolve layout path (similar to unified-html-processor logic)
+        let resolvedLayoutPath;
+        
+        if (layoutPath.startsWith("/")) {
+          // Absolute path from source root
+          resolvedLayoutPath = path.join(sourceRoot, layoutPath.substring(1));
+        } else if (layoutPath.includes('/')) {
+          // Path with directory structure, relative to source root
+          resolvedLayoutPath = path.join(sourceRoot, layoutPath);
+        } else {
+          // Bare filename, relative to layouts directory
+          resolvedLayoutPath = path.join(sourceRoot, '.layouts', layoutPath);
+        }
+        
+        dependencies.push(resolvedLayoutPath);
+        logger.debug(`Extracted layout dependency: ${layoutPath} -> ${resolvedLayoutPath}`);
+      } catch (error) {
+        // Log warning but continue - dependency tracking shouldn't break builds
+        logger.warn(`Could not resolve layout dependency: ${layoutPath} in ${pagePath}`);
+      }
+    }
+    
+    return dependencies;
   }
 
   /**

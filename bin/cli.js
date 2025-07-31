@@ -52,8 +52,16 @@ async function main() {
         logger.info('Starting development server with live reload...');
         const server = new DevServer();
         
-        // Start server
-        await server.start(args);
+        // Start server with proper config mapping
+        await server.start({
+          port: args.port,
+          hostname: args.host,
+          outputDir: args.output,
+          fallback: 'index.html',
+          cors: true,
+          liveReload: true,
+          verbose: args.verbose
+        });
         
         // Start file watcher with live reload callback
         const watchConfig = {
@@ -83,7 +91,7 @@ async function main() {
     if (error.formatForCLI) {
       console.error('\n' + error.formatForCLI());
     } else {
-      logger.error('❌ Error:', error.message);
+      logger.error('Error:', error.message);
     }
 
     // Show stack trace in debug mode or for unexpected errors

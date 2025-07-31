@@ -16,7 +16,7 @@ describe('Component Assets with SSI Includes', () => {
     }
   });
 
-  it('should extract and relocate style elements from SSI-included components', async () => {
+  it('should inline style elements from SSI-included components (Apache SSI behavior)', async () => {
     // Create test structure
     const sourceDir = path.join(tempDir, 'src');
     const outputDir = path.join(tempDir, 'dist');
@@ -63,17 +63,14 @@ describe('Component Assets with SSI Includes', () => {
     const outputFile = path.join(outputDir, 'index.html');
     const content = await fs.readFile(outputFile, 'utf-8');
 
-    // Should have component styles in head
-    expect(content).toMatch(/<head>[\s\S]*<style>[\s\S]*\.btn[\s\S]*background:\s*blue[\s\S]*<\/style>[\s\S]*<\/head>/);
+    // SSI includes should inline styles at include location (like Apache SSI)
+    expect(content).toMatch(/<div>[\s\S]*<style>[\s\S]*\.btn[\s\S]*background:\s*blue[\s\S]*<\/style>[\s\S]*<button class="btn">Click Me<\/button>[\s\S]*<\/div>/);
     
-    // Should have component HTML in body (without style tags)
-    expect(content).toMatch(/<body>[\s\S]*<button class="btn">Click Me<\/button>[\s\S]*<\/body>/);
-    
-    // Component content should NOT contain style tags anymore
-    expect(content).not.toMatch(/<div>[\s\S]*<style>/);
+    // Styles should NOT be moved to head (SSI maintains Apache SSI behavior)
+    expect(content).not.toMatch(/<head>[\s\S]*<style>[\s\S]*\.btn[\s\S]*<\/style>[\s\S]*<\/head>/);
   });
 
-  it('should extract and relocate script elements from SSI-included components', async () => {
+  it('should inline script elements from SSI-included components (Apache SSI behavior)', async () => {
     // Create test structure
     const sourceDir = path.join(tempDir, 'src');
     const outputDir = path.join(tempDir, 'dist');
@@ -117,17 +114,14 @@ describe('Component Assets with SSI Includes', () => {
     const outputFile = path.join(outputDir, 'index.html');
     const content = await fs.readFile(outputFile, 'utf-8');
 
-    // Should have component scripts at end of body
-    expect(content).toMatch(/<script>[\s\S]*function increment\(\)[\s\S]*<\/script>[\s\S]*<\/body>/);
+    // SSI includes should inline scripts at include location (like Apache SSI)
+    expect(content).toMatch(/<div>[\s\S]*<div id="counter">0<\/div>[\s\S]*<script>[\s\S]*function increment\(\)[\s\S]*<\/script>[\s\S]*<\/div>/);
     
-    // Should have component HTML in body (without script tags)
-    expect(content).toMatch(/<body>[\s\S]*<div id="counter">0<\/div>[\s\S]*<\/body>/);
-    
-    // Component content should NOT contain script tags in the included area
-    expect(content).not.toMatch(/<div>[\s\S]*<div id="counter">0<\/div>[\s\S]*<script>/);
+    // Scripts should NOT be moved to end of body (should be within the div, not directly before </body>)
+    expect(content).not.toMatch(/<script>[\s\S]*function increment\(\)\s*{[\s\S]*?<\/script>\s*<\/body>/);
   });
 
-  it('should handle both styles and scripts in SSI-included components', async () => {
+  it('should inline both styles and scripts from SSI-included components (Apache SSI behavior)', async () => {
     // Create test structure
     const sourceDir = path.join(tempDir, 'src');
     const outputDir = path.join(tempDir, 'dist');
@@ -188,16 +182,11 @@ describe('Component Assets with SSI Includes', () => {
     const outputFile = path.join(outputDir, 'index.html');
     const content = await fs.readFile(outputFile, 'utf-8');
 
-    // Should have component styles in head
-    expect(content).toMatch(/<head>[\s\S]*<style>[\s\S]*\.modal[\s\S]*position:\s*fixed[\s\S]*<\/style>[\s\S]*<\/head>/);
+    // SSI includes should inline both styles and scripts at include location (like Apache SSI)
+    // All the modal content (styles, HTML, scripts) should be inlined where the include was placed
+    expect(content).toMatch(/<style>[\s\S]*\.modal[\s\S]*position:\s*fixed[\s\S]*<\/style>[\s\S]*<div class="modal" id="myModal">[\s\S]*<\/div>[\s\S]*<script>[\s\S]*function showModal\(\)[\s\S]*<\/script>/);
     
-    // Should have component scripts at end of body
-    expect(content).toMatch(/<script>[\s\S]*function showModal\(\)[\s\S]*<\/script>[\s\S]*<\/body>/);
-    
-    // Should have component HTML in body (without style/script tags)
-    expect(content).toMatch(/<body>[\s\S]*<div class="modal" id="myModal">[\s\S]*<\/div>[\s\S]*<\/body>/);
-    
-    // The included section should not contain style or script tags
-    expect(content).not.toMatch(/<!--#include virtual="\/\.components\/modal\.html" -->[\s\S]*<style>/);
+    // Styles should NOT be moved to head (SSI maintains Apache SSI behavior)
+    expect(content).not.toMatch(/<head>[\s\S]*<style>[\s\S]*\.modal[\s\S]*<\/style>[\s\S]*<\/head>/);
   });
 });

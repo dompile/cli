@@ -29,6 +29,156 @@ describe('Server Security', () => {
     await cleanupTempDirectory(tempDir);
   });
 
+  describe('Basic File Serving', () => {
+    it('should serve files from the correct output directory', async () => {
+      const structure = {
+        'src/index.html': `<html><head><link rel="stylesheet" href="/css/style.css"><script src="/js/script.js"></script></head><body><h1>Hello World</h1></body></html>`,
+        'src/about.html': '<h1>About Page</h1>',
+        'src/css/style.css': 'body { color: blue; }',
+        'src/js/script.js': 'console.log("Hello");'
+      };
+
+      await createTestStructure(tempDir, structure);
+      
+      // Build the site first
+      const { build } = await import('../../src/core/file-processor.js');
+      await build({
+        source: sourceDir,
+        output: outputDir,
+        clean: true
+      });
+
+      // Debug: check what files exist in output directory
+      const outputFiles = await fs.readdir(outputDir);
+      console.log(`Output directory contents: ${outputFiles}`);
+      if (outputFiles.includes('index.html')) {
+        const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
+        console.log(`Built index.html content: ${indexContent.substring(0, 100)}...`);
+      }
+
+      const server = await startDevServer(sourceDir, outputDir);
+      
+      try {
+        // Debug: check if server process is still alive
+        console.log(`Server process running: ${!server.process.killed && server.process.exitCode === null}`);
+        console.log(`Testing server on port: ${server.port}`);
+        
+        // Test that HTML files are served correctly
+        const indexResponse = await fetch(`http://localhost:${server.port}/`);
+        console.log(`Index response status: ${indexResponse.status}`);
+        if (!indexResponse.ok) {
+          const errorText = await indexResponse.text();
+          console.log(`Index response error: ${errorText}`);
+        }
+        expect(indexResponse.ok).toBeTruthy();
+        expect(indexResponse.status).toBe(200);
+        expect(indexResponse.headers.get('content-type')).toContain('text/html');
+        const indexContent = await indexResponse.text();
+        expect(indexContent).toContain('<h1>Hello World</h1>');
+
+        const aboutResponse = await fetch(`http://localhost:${server.port}/about.html`);
+        expect(aboutResponse.ok).toBeTruthy();
+        expect(aboutResponse.status).toBe(200);
+        expect(aboutResponse.headers.get('content-type')).toContain('text/html');
+        const aboutContent = await aboutResponse.text();
+        expect(aboutContent).toContain('<h1>About Page</h1>');
+
+        // Test that CSS files are served correctly
+        const cssResponse = await fetch(`http://localhost:${server.port}/css/style.css`);
+        expect(cssResponse.ok).toBeTruthy();
+        expect(cssResponse.status).toBe(200);
+        expect(cssResponse.headers.get('content-type')).toContain('text/css');
+        const cssContent = await cssResponse.text();
+        expect(cssContent).toContain('body { color: blue; }');
+
+        // Test that JS files are served correctly
+        const jsResponse = await fetch(`http://localhost:${server.port}/js/script.js`);
+        expect(jsResponse.ok).toBeTruthy();
+        expect(jsResponse.status).toBe(200);
+        expect(jsResponse.headers.get('content-type')).toContain('javascript');
+        const jsContent = await jsResponse.text();
+        expect(jsContent).toContain('console.log("Hello");');
+
+      } finally {
+        await stopDevServer(server.process);
+      }
+    });
+
+    it('should return 404 for non-existent files', async () => {
+      const structure = {
+        'src/index.html': '<h1>Hello World</h1>'
+      };
+
+      await createTestStructure(tempDir, structure);
+      
+      // Build the site first
+      const { build } = await import('../../src/core/file-processor.js');
+      await build({
+        source: sourceDir,
+        output: outputDir,
+        clean: true
+      });
+
+      const server = await startDevServer(sourceDir, outputDir);
+      
+      try {
+        // Test 404 for non-existent file
+        const response = await fetch(`http://localhost:${server.port}/nonexistent.html`);
+        expect(response.status).toBe(404);
+
+        // Test 404 for non-existent directory
+        const dirResponse = await fetch(`http://localhost:${server.port}/nonexistent/file.html`);
+        expect(dirResponse.status).toBe(404);
+
+      } finally {
+        await stopDevServer(server.process);
+      }
+    });
+
+    it('should serve files with correct MIME types', async () => {
+      const structure = {
+        'src/index.html': `<html><head><link rel="stylesheet" href="/style.css"><script src="/script.js"></script><script src="/data.json" type="application/json"></script></head><body><h1>HTML</h1><img src="/image.png"><object data="/document.pdf" type="application/pdf"></object></body></html>`,
+        'src/style.css': 'body {}',
+        'src/script.js': 'console.log("js");',
+        'src/data.json': '{"key": "value"}',
+        'src/image.png': 'fake-png-data',
+        'src/document.pdf': 'fake-pdf-data'
+      };
+
+      await createTestStructure(tempDir, structure);
+      
+      // Build the site first
+      const { build } = await import('../../src/core/file-processor.js');
+      await build({
+        source: sourceDir,
+        output: outputDir,
+        clean: true
+      });
+
+      const server = await startDevServer(sourceDir, outputDir);
+      
+      try {
+        const tests = [
+          { file: '/', expectedType: 'text/html' },
+          { file: '/style.css', expectedType: 'text/css' },
+          { file: '/script.js', expectedType: 'javascript' },
+          { file: '/data.json', expectedType: 'application/json' },
+          { file: '/image.png', expectedType: 'image/png' },
+          { file: '/document.pdf', expectedType: 'application/pdf' }
+        ];
+
+        for (const test of tests) {
+          const response = await fetch(`http://localhost:${server.port}${test.file}`);
+          expect(response.ok).toBeTruthy();
+          expect(response.headers.get('content-type')).toContain(test.expectedType);
+        }
+
+      } finally {
+        await stopDevServer(server.process);
+      }
+    });
+  });
+
   describe('Request Path Validation', () => {
     it('should prevent path traversal attacks', async () => {
       const structure = {
@@ -394,24 +544,29 @@ describe('Server Security', () => {
  * Helper function to start development server for testing
  */
 async function startDevServer(sourceDir, outputDir, timeout = 10000) {
-  const port = await findAvailablePort(3000);
+  const port = 4000 + Math.floor(Math.random() * 1000); // Use high port range to avoid conflicts
   
   const cliPath = new URL('../../bin/cli.js', import.meta.url).pathname;
-  const process = Bun.spawn([
+  const serverProcess = Bun.spawn([
     '/home/founder3/.bun/bin/bun', 
     cliPath, 
     'serve',
     '--source', sourceDir,
     '--output', outputDir,
-    '--port', port.toString()
+    '--port', port.toString(),
+    '--verbose'
   ], {
     stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...Bun.env, DEBUG: '1' }
   });
   
   // Wait for server to be ready
   await waitForServer(port, timeout);
   
-  return { process, port };
+  // Additional wait to ensure build is complete
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return { process: serverProcess, port };
 }
 
 /**
@@ -454,4 +609,14 @@ async function waitForServer(port, timeout = 10000) {
   }
   
   throw new Error(`Server not ready within ${timeout}ms`);
+}
+
+/**
+ * Helper function to stop dev server
+ */
+async function stopDevServer(process) {
+  if (process) {
+    process.kill();
+    await process.exited;
+  }
 }
