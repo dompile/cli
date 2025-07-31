@@ -92,11 +92,22 @@ async function main() {
       console.error(error.stack);
     }
 
-    // Exit with code 1 for errors with suggestions, 2 for unexpected errors
-    if (error && error.suggestions && Array.isArray(error.suggestions)) {
-      process.exit(1);
-    } else {
-      process.exit(2);
+    // Exit with code 2 for usage/argument errors, 1 for build errors (Unix standard)
+    if (error) {
+      const { BuildError } = await import('../src/utils/errors.js');
+      
+      // Build errors always get exit code 1, regardless of suggestions
+      if (error instanceof BuildError) {
+        process.exit(1);
+      }
+      // Other errors with suggestions get exit code 2 (user/argument errors)
+      else if (error.suggestions && Array.isArray(error.suggestions)) {
+        process.exit(2);
+      }
+      // Unexpected errors without suggestions get exit code 1
+      else {
+        process.exit(1);
+      }
     }
   }
 }

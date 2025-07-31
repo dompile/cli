@@ -12,6 +12,8 @@ import {
   BuildError,
   FileSystemError,
   CircularDependencyError,
+  PathTraversalError,
+  IncludeNotFoundError,
   LayoutError
 } from "../utils/errors.js";
 import { isPathWithinDirectory, resolveIncludePath, resolveResourcePath } from "../utils/path-resolver.js";
@@ -125,7 +127,7 @@ async function processIncludesWithStringReplacement(htmlContent, filePath, sourc
   
   // Check for circular dependency
   if (callStack.has(filePath)) {
-    const chain = Array.from(callStack).join(' → ');
+    const chain = Array.from(callStack);
     throw new CircularDependencyError(filePath, chain);
   }
   
@@ -158,10 +160,15 @@ async function processIncludesWithStringReplacement(htmlContent, filePath, sourc
       processedContent = processedContent.replace(new RegExp(escapeRegExp(fullMatch), 'g'), nestedProcessedContent);
       logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
     } catch (error) {
+      // Convert file not found errors to IncludeNotFoundError with helpful suggestions
+      if (error.code === 'ENOENT' && !error.formatForCLI) {
+        const resolvedPath = resolveIncludePathInternal(type, includePath, filePath, sourceRoot);
+        error = new IncludeNotFoundError(includePath, filePath, [resolvedPath]);
+      }
       // In perfection mode, fail fast on any include error
       if (config.perfection) {
-        if (error instanceof CircularDependencyError) {
-          throw error; // Re-throw circular dependency errors as-is
+        if (error instanceof CircularDependencyError || error instanceof PathTraversalError || error instanceof IncludeNotFoundError) {
+          throw error; // Re-throw errors with helpful suggestions as-is
         }
         throw new Error(`Include not found in perfection mode: ${includePath} in ${filePath}`);
       }
@@ -185,10 +192,15 @@ async function processIncludesWithStringReplacement(htmlContent, filePath, sourc
       processedContent = processedContent.replace(fullMatch, nestedProcessedContent);
       logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
     } catch (error) {
+      // Convert file not found errors to IncludeNotFoundError with helpful suggestions
+      if (error.code === 'ENOENT' && !error.formatForCLI) {
+        const resolvedPath = resolveIncludePathInternal('file', src, filePath, sourceRoot);
+        error = new IncludeNotFoundError(src, filePath, [resolvedPath]);
+      }
       // In perfection mode, fail fast on any include error
       if (config.perfection) {
-        if (error instanceof CircularDependencyError) {
-          throw error; // Re-throw circular dependency errors as-is
+        if (error instanceof CircularDependencyError || error instanceof PathTraversalError || error instanceof IncludeNotFoundError) {
+          throw error; // Re-throw errors with helpful suggestions as-is
         }
         throw new Error(`Include element not found in perfection mode: ${src} in ${filePath}`);
       }

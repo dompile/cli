@@ -136,7 +136,7 @@ describe('Error Message Format Validation', () => {
 
     it('should format circular dependency errors clearly', async () => {
       const structure = {
-        'src/circular.html': '<!--#include file="a.html" -->',
+        'src/circular.html': '<!--#include file="includes/a.html" -->',
         'src/includes/a.html': '<!--#include file="b.html" -->',
         'src/includes/b.html': '<!--#include file="a.html" -->' // Circular!
       };

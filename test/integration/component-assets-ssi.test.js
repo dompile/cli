@@ -52,10 +52,10 @@ describe('Component Assets with SSI Includes', () => {
     // Build the site
     const { build } = await import('../../src/core/file-processor.js');
     await build({
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components'),
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components'),
       clean: true
     });
 
@@ -106,10 +106,10 @@ describe('Component Assets with SSI Includes', () => {
     // Build the site
     const { build } = await import('../../src/core/file-processor.js');
     await build({
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components'),
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components'),
       clean: true
     });
 
@@ -177,10 +177,10 @@ describe('Component Assets with SSI Includes', () => {
     // Build the site
     const { build } = await import('../../src/core/file-processor.js');
     await build({
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components'),
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components'),
       clean: true
     });
 

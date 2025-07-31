@@ -68,6 +68,7 @@ export class UnifyError extends Error {
 export class IncludeNotFoundError extends UnifyError {
   constructor(includePath, parentFile, searchPaths = [], componentsDir = '.components') {
     const suggestions = [
+      `Create the missing file: ${includePath}`,
       `Verify the file exists: ${includePath}`,
       searchPaths.length > 0 ? `Searched in: ${searchPaths.join(', ')}` : `Place include files in the ${componentsDir}/ directory`,
       `Check for typos in the include path`,

@@ -386,16 +386,16 @@ Currently, both SSI-style includes (`<!--#include -->`) and DOM-style includes (
 </div>
 ```
 
-The style remains inline within the component content, not moved to the `<head>` section.
+**Note:** The style remains inline within the component content, not moved to the `<head>` section.
 
 #### Planned Enhancement
 
 Future versions may include automatic extraction and relocation of component assets:
 
-- **Style Elements:** Extracted from components and moved to `<head>` section
-- **Script Elements:** Extracted from components and moved to end of `<body>` section  
+- **Style Elements:** When using an `<include />` element, extracted from components and moved to `<head>` section
+- **Script Elements:** When using an `<include />` element, extracted from components and moved to end of `<body>` section  
 - **Deduplication:** Identical style/script blocks deduplicated when same component included multiple times
-- **Component Isolation:** Components remain self-contained with their styling and behavior
+- **Component Isolation:** Components remain self-contained with their styling using CSS scoping
 
 ### Live Reload System
 
@@ -498,10 +498,10 @@ When component or include files change during development:
 - Should contain the error message and one or more suggestions.
 
 ```
-❌ Error: {error message}
+Error: {error message}
 
 Suggestions:
-  • {suggestion 1}
+  * {suggestion 1}
   ... 
 ```
 
@@ -521,9 +521,9 @@ Suggestions:
 unify v{version}
 
 Building static site...
-✅ Processed 15 files
-✅ Generated sitemap.xml with 8 pages
-✅ Copied 12 assets
+- Processed 15 files
+- Generated sitemap.xml with 8 pages
+- Copied 12 assets
 Build completed successfully! (1.2s)
 ```
 
@@ -533,11 +533,11 @@ Build completed successfully! (1.2s)
 unify v{version}
 
 Building static site...
-✅ Build completed successfully!
+- Build completed successfully!
 🚀 Development server started
 📁 Serving: /path/to/output
 🌐 Local: http://localhost:3000
-🔄 Live reload: enabled
+- Live reload: enabled
 ```
 
 #### Watch Command
@@ -547,24 +547,24 @@ unify v{version}
 
 Starting file watcher...
 Building static site...
-✅ Processed 15 files
-✅ Generated sitemap.xml with 8 pages
-✅ Copied 12 assets
+- Processed 15 files
+- Generated sitemap.xml with 8 pages
+- Copied 12 assets
 Build completed successfully! (1.2s)
-✅ Initial build completed
-👀 Watching for changes...
-📝 Changed: src/index.html
-🔄 Rebuilding...
-✅ Rebuild completed (0.3s)
+- Initial build completed
+- Watching for changes...
+- Changed: src/index.html
+- Rebuilding...
+- Rebuild completed (0.3s)
 ```
 
 ### Logging Levels
 
-- **Debug (🪲):** Debug messages
-- **Info (ℹ️):** General status messages
-- **Success (✅):** Successful operations
-- **Warning (⚠️):** Non-fatal issues
-- **Error (❌):** Fatal problems
+- **Debug:** Debug messages
+- **Info:** General status messages
+- **Success:** Successful operations
+- **Warning:** Non-fatal issues
+- **Error:** Fatal problems
 
 ## Security Requirements
 
@@ -619,23 +619,18 @@ Build completed successfully! (1.2s)
 
 ## Compatibility Requirements
 
-### Node.js Support
+### Bun Support
 
-- Minimum version: Node.js 14.0.0
+- Minimum version: Bun 1.2.19
 - ESM modules only
 - Built-in test runner support
+- Compiled to executable for deployment
 
 ### Cross-Platform
 
 - Windows, macOS, Linux support
 - Path handling respects OS conventions
 - Line ending normalization
-
-### Runtime Support
-
-- Node.js (primary)
-- Deno compatibility
-- Bun compatibility
 
 ## Configuration
 
@@ -689,31 +684,31 @@ project/
 
 ### Functional Requirements
 
-- ✅ All three commands (build, serve, watch) work correctly
-- ✅ Include system processes Apache SSI and DOM elements
-- ✅ Markdown processing with frontmatter and layouts
-- ✅ Live reload functionality in development server
-- ✅ Sitemap generation for SEO
-- ✅ Security validation prevents path traversal
-- ✅ Error handling with helpful messages
+- - All three commands (build, serve, watch) work correctly
+- - Include system processes Apache SSI and DOM elements
+- - Markdown processing with frontmatter and layouts
+- - Live reload functionality in development server
+- - Sitemap generation for SEO
+- - Security validation prevents path traversal
+- - Error handling with helpful messages
 
 ### Performance
 
-- ✅ Incremental builds complete in <1 second for single file changes
-- ✅ Initial builds complete in <5 seconds for typical sites (<100 pages)
-- ✅ Memory usage remains <100MB for typical projects
-- ✅ File watching responds to changes within 200ms
-- ✅ Can support files over 5MB
+- - Incremental builds complete in <1 second for single file changes
+- - Initial builds complete in <5 seconds for typical sites (<100 pages)
+- - Memory usage remains <100MB for typical projects
+- - File watching responds to changes within 200ms
+- - Can support files over 5MB
 
 ### Usability Requirements
 
-- ✅ Zero configuration required for basic usage
-- ✅ Clear error messages with actionable suggestions
-- ✅ Intuitive CLI with helpful defaults
-- ✅ Comprehensive help documentation
+- - Zero configuration required for basic usage
+- - Clear error messages with actionable suggestions
+- - Intuitive CLI with helpful defaults
+- - Comprehensive help documentation
 
 ### Reliability Requirements
 
-- ✅ Graceful handling of missing includes
-- ✅ Robust error recovery during builds
-- ✅ Cross-platform compatibility
+- - Graceful handling of missing includes
+- - Robust error recovery during builds
+- - Cross-platform compatibility

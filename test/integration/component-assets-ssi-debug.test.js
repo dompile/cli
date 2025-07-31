@@ -53,17 +53,17 @@ describe('Debug SSI Includes', () => {
     const { build } = await import('../../src/core/file-processor.js');
     
     console.log('Building with:', {
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components')
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components')
     });
     
     const result = await build({
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components'),
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components'),
       clean: true,
       cacheDir: path.join(tempDir, '.cache')  // Use temp directory for cache
     });

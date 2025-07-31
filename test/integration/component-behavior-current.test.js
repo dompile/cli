@@ -50,10 +50,10 @@ describe('Current Component Include Behavior', () => {
 
     const { build } = await import('../../src/core/file-processor.js');
     await build({
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components'),
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components'),
       clean: true,
       cacheDir: path.join(tempDir, '.cache')
     });
@@ -99,10 +99,10 @@ describe('Current Component Include Behavior', () => {
 
     const { build } = await import('../../src/core/file-processor.js');
     await build({
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components'),
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components'),
       clean: true,
       cacheDir: path.join(tempDir, '.cache')
     });
@@ -113,8 +113,8 @@ describe('Current Component Include Behavior', () => {
     // Current behavior: scripts are inlined at include location, NOT moved to end of body
     expect(content).toMatch(/<div>[\s\S]*<div id="counter">0<\/div>[\s\S]*<script>[\s\S]*function increment\(\)[\s\S]*<\/script>[\s\S]*<\/div>/);
     
-    // Current behavior: scripts are NOT moved to end of body
-    expect(content).not.toMatch(/<script>[\s\S]*function increment\(\)[\s\S]*<\/script>[\s\S]*<\/body>/);
+    // Current behavior: scripts are NOT moved to end of body (should be inside the div, not directly before </body>)
+    expect(content).not.toMatch(/<script>[\s\S]*function increment\(\)\s*{[\s\S]*?<\/script>\s*<\/body>/);
   });
 
   it('should inline style elements from DOM-included components', async () => {
@@ -151,10 +151,10 @@ describe('Current Component Include Behavior', () => {
 
     const { build } = await import('../../src/core/file-processor.js');
     await build({
-      sourceDir,
-      outputDir,
-      layoutsDir: path.join(sourceDir, '.layouts'),
-      componentsDir: path.join(sourceDir, '.components'),
+      source: sourceDir,
+      output: outputDir,
+      layouts: path.join(sourceDir, '.layouts'),
+      components: path.join(sourceDir, '.components'),
       clean: true,
       cacheDir: path.join(tempDir, '.cache')
     });

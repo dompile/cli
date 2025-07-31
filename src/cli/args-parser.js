@@ -1,4 +1,57 @@
 import { UnifyError } from "../utils/errors.js";
+
+/**
+ * Calculate Levenshtein distance between two strings
+ * @param {string} a First string
+ * @param {string} b Second string
+ * @returns {number} Edit distance
+ */
+function levenshteinDistance(a, b) {
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Find the closest command suggestion for a typo
+ * @param {string} input The user's input
+ * @param {string[]} commands Available commands
+ * @returns {string|null} Closest command or null if no good match
+ */
+function findClosestCommand(input, commands) {
+  const maxDistance = 2; // Only suggest if edit distance is 2 or less
+  let bestMatch = null;
+  let bestDistance = Infinity;
+
+  for (const command of commands) {
+    const distance = levenshteinDistance(input.toLowerCase(), command.toLowerCase());
+    if (distance < bestDistance && distance <= maxDistance) {
+      bestDistance = distance;
+      bestMatch = command;
+    }
+  }
+
+  return bestMatch;
+}
+
 /**
  * Command-line argument parser for unify
  * Handles parsing of CLI arguments and options
@@ -51,15 +104,25 @@ export function parseArgs(argv) {
     // Check for unknown commands (first non-option argument)
     if (!arg.startsWith('-') && !args.command && i === 0) {
       if (arg !== 'build' && arg !== 'watch' && arg !== 'serve') {
+        const validCommands = ['build', 'watch', 'serve'];
+        const suggestion = findClosestCommand(arg, validCommands);
+        const suggestions = [];
+        
+        if (suggestion) {
+          suggestions.push(`Did you mean "${suggestion}"?`);
+        }
+        
+        suggestions.push(
+          'Use --help to see valid options',
+          'Check for typos in the command name',
+          'Check the documentation for supported commands'
+        );
+        
         throw new UnifyError(
           `Unknown command: ${arg}`,
           null,
           null,
-          [
-            'Use --help to see valid commands',
-            'Check for typos in the command name',
-            'Refer to the documentation for supported commands'
-          ]
+          suggestions
         );
       }
       args.command = arg;
@@ -106,7 +169,16 @@ export function parseArgs(argv) {
     if ((arg === '--port' || arg === '-p') && nextArg) {
       args.port = parseInt(nextArg, 10);
       if (isNaN(args.port) || args.port < 1 || args.port > 65535) {
-        throw new Error('Port must be a number between 1 and 65535');
+        throw new UnifyError(
+          'Port must be a number between 1 and 65535',
+          null,
+          null,
+          [
+            'Use a port number like 3000, 8080, or 8000',
+            'Check that the port is not already in use',
+            'Valid port range is 1-65535'
+          ]
+        );
       }
       i++;
       continue;
@@ -156,16 +228,31 @@ export function parseArgs(argv) {
     
     // Unknown arguments
     if (arg.startsWith('-')) {
+      const validOptions = [
+        '--help', '-h', '--version', '-v', '--source', '-s', '--output', '-o',
+        '--layouts', '-l', '--components', '-c', '--port', '-p', '--host',
+        '--pretty-urls', '--base-url', '--clean', '--no-sitemap', 
+        '--perfection', '--minify', '--verbose'
+      ];
+      const suggestion = findClosestCommand(arg, validOptions);
+      const suggestions = [];
+      
+      if (suggestion) {
+        suggestions.push(`Did you mean "${suggestion}"?`);
+      }
+      
+      suggestions.push(
+        'Use --help to see valid options',
+        'Check for typos in the option name',
+        'Check the documentation for supported flags'
+      );
+      
       // Use UnifyError for consistent CLI exit code
       throw new UnifyError(
         `Unknown option: ${arg}`,
         null,
         null,
-        [
-          'Use --help to see valid options',
-          'Check for typos in the option name',
-          'Refer to the documentation for supported flags'
-        ]
+        suggestions
       );
     } else {
       // Non-option argument that's not a command

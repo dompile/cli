@@ -33,7 +33,7 @@ import {
   getUnifiedConfig
 } from './unified-html-processor.js';
 import { createBuildCache } from './build-cache.js';
-import { FileSystemError, BuildError } from '../utils/errors.js';
+import { FileSystemError, BuildError, UnifyError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { getBaseUrlFromPackage } from '../utils/package-reader.js';
 
@@ -167,7 +167,17 @@ export async function build(options = {}) {
     try {
       await fs.access(sourceRoot);
     } catch (error) {
-      throw new BuildError(`Source directory not found: ${sourceRoot}`);
+      throw new UnifyError(
+        `Source directory not found: ${sourceRoot}`,
+        null,
+        null,
+        [
+          'Check that the source path is correct',
+          'Verify the directory exists and is accessible',
+          'Use --source flag to specify the correct source directory',
+          'Create the source directory if it doesn\'t exist'
+        ]
+      );
     }
     
     // Clean output directory if requested
