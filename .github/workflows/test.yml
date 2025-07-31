@@ -14,17 +14,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '18'
-          registry-url: 'https://registry.npmjs.org'
+          bun-version: latest
           
       - name: Install dependencies
-        run: npm ci
+        run: bun install
         
       - name: Run tests
-        run: npm test
+        run: bun test
         
       - name: Verify package files
-        run: npm pack --dry-run             
+        run: bun pack --dry-run
+        
+      - name: Build test executable
+        run: bun build --compile --outfile unify-test bin/cli.js
+        
+      - name: Test executable
+        run: ./unify-test --version
+        
+      - name: Test Docker builds
+        run: |
+          # Build CLI Docker image and test it
+          docker build -f docker/Dockerfile.cli -t unify-cli-test .
+          docker run --rm unify-cli-test unify --version
+          
+          # Build NGINX Docker image and test it
+          docker build -f docker/Dockerfile.nginx -t unify-nginx-test .
+          echo "test" > test.txt
+          mkdir -p test-site
+          echo "<h1>Test</h1>" > test-site/index.html
+          timeout 10 docker run --rm -v $(pwd)/test-site:/site unify-nginx-test || true             

@@ -1,0 +1,48 @@
+services:
+  # CLI only service for building
+  unify-cli:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cli
+    volumes:
+      - ./example:/workspace
+    working_dir: /workspace
+    command: unify build --source src --output dist
+    profiles: [cli]
+
+  # Development server with live reload
+  unify-dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.nginx
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./example:/site
+    working_dir: /site
+    command: unify serve --source src --output /var/www/html --port 3000 --host 0.0.0.0 --watch
+    profiles: [dev]
+
+  # Production server with NGINX
+  unify-nginx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./example:/site
+    profiles: [prod]
+
+  # Apache production server
+  unify-apache:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.apache
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./example/dist:/var/www/html:ro
+    depends_on:
+      - unify-cli
+    profiles: [apache]

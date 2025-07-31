@@ -1,25 +1,16 @@
-# Multi-stage Docker build for dompile with NGINX
-FROM node:18-alpine AS builder
+# Streamlined Docker build using single file executable with NGINX
+# Using Debian-based nginx for glibc compatibility with Bun executables
+FROM nginx:1.25-bookworm
 
-# Install dependencies for building
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
+# Install utilities for health checks
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy source code
-COPY . .
-
-# Production stage with NGINX
-FROM nginx:alpine
-
-# Install Node.js for running dompile
-RUN apk add --no-cache nodejs npm
-
-# Copy built application
-COPY --from=builder /app /opt/dompile
-
-# Create symlink for global dompile command
-RUN ln -sf /opt/dompile/bin/cli.js /usr/local/bin/dompile
+# Copy the single file executable
+COPY dist/unify-linux-x64 /usr/local/bin/unify
+RUN chmod +x /usr/local/bin/unify
 
 # Copy custom NGINX configuration
 COPY docker/nginx.conf /etc/nginx/nginx.conf
