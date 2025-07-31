@@ -10,7 +10,7 @@
  */
 export async function runCLI(args, options = {}) {
   // Create a subprocess for isolation
-  const cliPath = new URL('../../bin/cli.js', import.meta.url).pathname;
+  const cliPath = new URL('../bin/cli.js', import.meta.url).pathname;
   
   const proc = Bun.spawn(['/home/founder3/.bun/bin/bun', cliPath, ...args], {
     cwd: options.cwd || import.meta.dir,

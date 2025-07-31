@@ -216,6 +216,12 @@ export async function build(options = {}) {
         logger.debug(`Using layout file: ${path.relative(sourceRoot, layoutFile)}`);
       } catch (error) {
         const msg = `Could not read layout file ${layoutFile}: ${error.message}`;
+        
+        // If perfection mode is enabled, fail fast on layout errors
+        if (config.perfection) {
+          throw new BuildError(`Build failed in perfection mode due to layout error: ${msg}`, results.errors);
+        }
+        
         logger.warn(msg);
         results.errors.push({
           file: layoutFile,
@@ -465,6 +471,10 @@ export async function incrementalBuild(options = {}, dependencyTracker = null, a
             try {
               layoutContent = await fs.readFile(layoutFile, 'utf-8');
             } catch (error) {
+              // If perfection mode is enabled, fail fast on layout errors
+              if (config.perfection) {
+                throw new BuildError(`Build failed in perfection mode due to layout error: Could not read layout file ${layoutFile}: ${error.message}`, results.errors);
+              }
               logger.warn(`Could not read layout file ${layoutFile}: ${error.message}`);
             }
           }

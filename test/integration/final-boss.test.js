@@ -397,7 +397,7 @@ describe('Final Boss Integration Test', () => {
       };
 
       // Generate 100 pages
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 1000; i++) {
         largeStructure[`src/page-${i}.html`] = `<template extends="base.html">
   <slot name="content">
     <!--#include virtual="/components/header.html" -->
@@ -415,7 +415,7 @@ describe('Final Boss Integration Test', () => {
       expect(buildResult.code).toBe(0);
       
       // Should complete within reasonable time (adjust threshold as needed)
-      expect(buildTime).toBeLessThan(30000);
+      expect(buildTime).toBeLessThan(1000);
 
       // Verify some output files
       const page0Exists = await fs.access(path.join(outputDir, 'page-0.html'))

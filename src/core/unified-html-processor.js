@@ -8,19 +8,36 @@ import fs from "fs/promises";
 import path from "path";
 import { processIncludes } from "./include-processor.js";
 import { logger } from "../utils/logger.js";
+import { 
+  BuildError,
+  FileSystemError,
+  CircularDependencyError,
+  LayoutError
+} from "../utils/errors.js";
 import { isPathWithinDirectory, resolveIncludePath, resolveResourcePath } from "../utils/path-resolver.js";
 import { hasFeature } from "../utils/runtime-detector.js";
-import {
-  ComponentError,
-  LayoutError,
-  FileSystemError,
-} from "../utils/errors.js";
 
 /**
  * Process HTML content with unified support for both SSI includes and DOM templating
  * Uses HTMLRewriter for high-performance processing
  * @param {string} htmlContent - Raw HTML content to process
- * @param {string} filePath - Path to the HTML file being processed
+   // Check if the layout itself has a data-layout attribute (nested layouts)
+  const nestedLayoutMatch = layoutContent.match(/data-layout=["']([^"']+)["']/i);
+  if (nestedLayoutMatch) {
+    const nestedLayoutPath = nestedLayoutMatch[1];
+    // Recursively process the nested layout, but pass the current slot data as page content
+    const slotData = extractSlotDataFromHTML(pageContent);
+    const layoutWithSlots = applySlots(layoutContent, slotData);
+    
+    // Now process the nested layout with the slot-applied content as the page content
+    return await processLayoutAttribute(
+      layoutWithSlots,
+      nestedLayoutPath,
+      resolvedLayoutPath, // Use current layout as the source file for nested layout resolution
+      sourceRoot,
+      config
+    );
+  }filePath - Path to the HTML file being processed
  * @param {string} sourceRoot - Source root directory
  * @param {DependencyTracker} dependencyTracker - Dependency tracker instance
  * @param {Object} config - Processing configuration
@@ -56,7 +73,8 @@ export async function processHtmlUnified(
       htmlContent,
       filePath,
       sourceRoot,
-      processingConfig
+      processingConfig,
+      new Set() // Initialize call stack for circular dependency detection
     );
     
     // Handle layouts and slots if needed
@@ -102,8 +120,18 @@ export async function processHtmlUnified(
 /**
  * Process includes using string replacement (more reliable for async operations)
  */
-async function processIncludesWithStringReplacement(htmlContent, filePath, sourceRoot, config = {}) {
+async function processIncludesWithStringReplacement(htmlContent, filePath, sourceRoot, config = {}, callStack = new Set()) {
   let processedContent = htmlContent;
+  
+  // Check for circular dependency
+  if (callStack.has(filePath)) {
+    const chain = Array.from(callStack).join(' → ');
+    throw new CircularDependencyError(filePath, chain);
+  }
+  
+  // Add current file to call stack
+  const newCallStack = new Set(callStack);
+  newCallStack.add(filePath);
   
   // Process SSI-style includes
   const includeRegex = /<!--\s*#include\s+(virtual|file)="([^"]+)"\s*-->/g;
@@ -124,12 +152,19 @@ async function processIncludesWithStringReplacement(htmlContent, filePath, sourc
       const includeContent = await fs.readFile(resolvedPath, 'utf-8');
       
       // Recursively process nested includes
-      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
+      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, newCallStack);
       
       // Replace all occurrences of this include
       processedContent = processedContent.replace(new RegExp(escapeRegExp(fullMatch), 'g'), nestedProcessedContent);
       logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
     } catch (error) {
+      // In perfection mode, fail fast on any include error
+      if (config.perfection) {
+        if (error instanceof CircularDependencyError) {
+          throw error; // Re-throw circular dependency errors as-is
+        }
+        throw new Error(`Include not found in perfection mode: ${includePath} in ${filePath}`);
+      }
       logger.warn(`Include not found: ${includePath} in ${filePath}`);
       processedContent = processedContent.replace(new RegExp(escapeRegExp(fullMatch), 'g'), `<!-- Include not found: ${includePath} -->`);
     }
@@ -145,11 +180,18 @@ async function processIncludesWithStringReplacement(htmlContent, filePath, sourc
       const includeContent = await fs.readFile(resolvedPath, 'utf-8');
       
       // Recursively process nested includes
-      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
+      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, newCallStack);
       
       processedContent = processedContent.replace(fullMatch, nestedProcessedContent);
       logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
     } catch (error) {
+      // In perfection mode, fail fast on any include error
+      if (config.perfection) {
+        if (error instanceof CircularDependencyError) {
+          throw error; // Re-throw circular dependency errors as-is
+        }
+        throw new Error(`Include element not found in perfection mode: ${src} in ${filePath}`);
+      }
       logger.warn(`Include element not found: ${src} in ${filePath}`);
       processedContent = processedContent.replace(fullMatch, `<!-- Include not found: ${src} -->`);
     }
@@ -168,13 +210,13 @@ function escapeRegExp(string) {
 /**
  * Process SSI include directive
  */
-async function processIncludeDirective(comment, type, includePath, filePath, sourceRoot, config) {
+async function processIncludeDirective(comment, type, includePath, filePath, sourceRoot, config, callStack = new Set()) {
   try {
     const resolvedPath = resolveIncludePathInternal(type, includePath, filePath, sourceRoot);
     const includeContent = await fs.readFile(resolvedPath, 'utf-8');
     
     // Recursively process nested includes in the included content
-    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
+    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, callStack);
     
     comment.replace(processedContent, { html: true });
     logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
@@ -187,17 +229,21 @@ async function processIncludeDirective(comment, type, includePath, filePath, sou
 /**
  * Process modern include element
  */
-async function processIncludeElement(element, src, filePath, sourceRoot, config) {
+async function processIncludeElement(element, src, filePath, sourceRoot, config, callStack = new Set()) {
   try {
     const resolvedPath = resolveIncludePathInternal('file', src, filePath, sourceRoot);
     const includeContent = await fs.readFile(resolvedPath, 'utf-8');
     
     // Recursively process nested includes in the included content
-    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config);
+    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, callStack);
     
     element.setInnerContent(processedContent, { html: true });
     logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
   } catch (error) {
+    // In perfection mode, fail fast on any include error
+    if (config.perfection) {
+      throw new Error(`Include not found in perfection mode: ${src} in ${filePath}`);
+    }
     logger.warn(`Include element not found: ${src} in ${filePath}`);
     element.setInnerContent(`<!-- Include not found: ${src} -->`, { html: true });
   }
@@ -297,6 +343,10 @@ async function processDOMMode(pageContent, pagePath, sourceRoot, config = {}) {
       layoutPath = await detectLayoutFromHTML(pageContent, sourceRoot, domConfig);
       logger.debug(`Using layout: ${layoutPath}`);
     } catch (error) {
+      // In perfection mode, fail fast on layout detection errors
+      if (domConfig.perfection) {
+        throw new Error(`Layout not found in perfection mode for ${path.relative(sourceRoot, pagePath)}: ${error.message}`);
+      }
       // Graceful degradation: if layout cannot be found, return content wrapped in basic HTML
       logger.warn(`Layout not found for ${path.relative(sourceRoot, pagePath)}: ${error.message}`);
       return `<!DOCTYPE html>
@@ -315,6 +365,10 @@ ${pageContent}
     try {
       layoutContent = await fs.readFile(layoutPath, 'utf-8');
     } catch (error) {
+      // In perfection mode, fail fast on layout file read errors
+      if (domConfig.perfection) {
+        throw new Error(`Layout file not found in perfection mode: ${layoutPath} - ${error.message}`);
+      }
       // Graceful degradation: if layout file cannot be read, return content wrapped in basic HTML
       logger.warn(`Could not read layout file ${layoutPath}: ${error.message}`);
       return `<!DOCTYPE html>
@@ -333,6 +387,14 @@ ${pageContent}
     
     // Apply slots to layout using string replacement
     let processedHTML = applySlots(layoutContent, slotData);
+    
+    // Check if the layout itself has a data-layout attribute (nested layouts)
+    const nestedLayoutMatch = layoutContent.match(/data-layout=["']([^"']+)["']/i);
+    if (nestedLayoutMatch) {
+      const nestedLayoutPath = nestedLayoutMatch[1];
+      // Recursively process the nested layout using DOM mode
+      return await processDOMMode(processedHTML, layoutPath, sourceRoot, domConfig);
+    }
     
     // Process includes in the result
     processedHTML = await processIncludesInHTML(processedHTML, sourceRoot, domConfig);
@@ -659,6 +721,10 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
           config
         );
       } catch (error) {
+        // In perfection mode, fail fast on layout errors
+        if (config.perfection) {
+          throw new Error(`Layout not found in perfection mode for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
+        }
         // Graceful degradation: if specific layout is missing, log warning and return original content
         logger.warn(`Layout not found for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
         // Remove data-layout attribute from content to avoid reprocessing
@@ -670,25 +736,17 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
     // Check if no html tag exists, apply the default layout
     if (!htmlContent.includes("<html")) {
       // If no html tag, we assume a default layout is needed
-      let defaultLayoutPath;
-      if (path.isAbsolute(config.layoutsDir)) {
-        // If layoutsDir is an absolute path (from CLI), use it directly
-        defaultLayoutPath = path.join(config.layoutsDir, config.defaultLayout);
-      } else {
-        // If layoutsDir is relative, join with sourceRoot
-        defaultLayoutPath = path.join(sourceRoot, config.layoutsDir, config.defaultLayout);
-      }
-      
       try {
         return await processLayoutAttribute(
           htmlContent,
-          defaultLayoutPath,
+          config.defaultLayout,  // Just pass the filename, not the full path
           filePath,
           sourceRoot,
           config
         );
       } catch (error) {
-        // Graceful degradation: if default layout is missing, wrap content in basic HTML
+        // For default layouts, always gracefully degrade (even in perfection mode)
+        // since they are implicit/automatic, not explicitly requested by the user
         logger.warn(`Default layout not found for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
         return `<!DOCTYPE html>
 <html>
@@ -791,6 +849,26 @@ async function processLayoutAttribute(
     0,
     null // No dependency tracker needed for layout processing
   );
+
+  // Check if the layout itself has a data-layout attribute (nested layouts)
+  // Process this BEFORE applying slots to avoid content overwriting layout attributes
+  const nestedLayoutMatch = layoutContent.match(/data-layout=["']([^"']+)["']/i);
+  if (nestedLayoutMatch) {
+    const nestedLayoutPath = nestedLayoutMatch[1];
+    console.log(`DEBUG: Found nested layout in ${layoutPath}: ${nestedLayoutPath}`);
+    // Recursively process the nested layout, but pass the current slot data as page content
+    const slotData = extractSlotDataFromHTML(pageContent);
+    const layoutWithSlots = applySlots(layoutContent, slotData);
+    
+    // Now process the nested layout with the slot-applied content as the page content
+    return await processLayoutAttribute(
+      layoutWithSlots,
+      nestedLayoutPath,
+      resolvedLayoutPath, // Use current layout as the source file for nested layout resolution
+      sourceRoot,
+      config
+    );
+  }
 
   // Extract slot data from page content using regex-based parsing and apply to layout
   const slotData = extractSlotDataFromHTML(pageContent);

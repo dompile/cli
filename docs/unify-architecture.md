@@ -1,4 +1,4 @@
-# DOMpile Architecture
+# Unify Architecture
 
 This document provides a detailed technical overview of the DOMpile static site generator implementation.
 

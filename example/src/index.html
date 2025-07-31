@@ -2,58 +2,93 @@
 <html lang="en">
 
 <head>
-  <title>Home - DOMpile Demo</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Devpunk UI Demo</title>
+  <link rel="stylesheet" href="/css/main.css">
 </head>
 
 <body>
-  <!--#include virtual="/includes/home-header.html" -->
 
-  <section>
-    <h2>Why Choose DOMpile?</h2>
-    <div class="features">
-      <div class="card" data-augmented-ui="tl-clip tr-scoop both">
-        <h3>🌱 Simple Includes</h3>
-        <p>Write <code>&lt;!--#include file="header.html"--&gt;</code> - no complex template engine needed. Pure HTML simplicity.</p>
-      </div>
-      <div class="card" data-augmented-ui="tr-clip bl-clip both">
-        <h3>⚡ Head Injection</h3>
-        <p>Automatic <code>&lt;head&gt;</code> tag injection across all pages. Global styles and scripts made simple.</p>
-      </div>
-      <div class="card" data-augmented-ui="bl-clip tr-scoop both">
-        <h3>🔧 Modern CLI</h3>
-        <p>Works with Node, Bun, Deno. Supports dry-run, verbose mode, build &amp; serve with live reload.</p>
-      </div>
-      <div class="card" data-augmented-ui="tl-round br-clip both">
-        <h3>🌿 Eco-Friendly</h3>
-        <p>Minimal dependencies, no runtime overhead. Build fast, sustainable websites with a tiny footprint.</p>
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="logo text-accent">DEVPUNK</div>
+    <div class="nav-links">
+      <a href="#">Docs</a>
+      <a href="#">Zines</a>
+      <a href="#">Download</a>
+      <a href="#">Join</a>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <section class="hero">
+    <div>
+      <h1>Code is Resistance</h1>
+      <p>Devpunk is your off-grid toolkit for a bloated world. No frameworks, no surveillance, no compromise.</p>
+      <div class="cta">
+        <button>Start Hacking</button>
       </div>
     </div>
   </section>
 
-  <section id="demo">
-    <h2>See It in Action</h2>
-    <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round">
-$ dompile build
-Processing: index.html => dist/index.html
-Injecting includes into head...
-Build complete in 114 ms
-  </pre>
-  </section>
+  <main class="container">
 
-  <section>
-    <h2>Solarpunk Philosophy</h2>
-    <p>Rooted in solarpunk philosophy—a future built on joyful, sustainable simplicity. DOMpile embodies DIY technology, eco-minded design, and digital minimalism. We believe in tools that empower without overwhelming, that build without breaking.</p>
-    <div class="card" data-augmented-ui="r-scoop b-clip both" style="background: linear-gradient(135deg, var(--surface-secondary), var(--surface-primary)); margin: var(--space-8) 0;">
-      <h3>🌟 Our Vision</h3>
-      <p><strong>Technology should feel like gardening—</strong> nurturing, sustainable, and in harmony with natural patterns. Every line of code should serve a purpose, every dependency should earn its place.</p>
+    <!-- CARDS -->
+    <h2 class="text-accent" style="margin-top: 3rem;">Toolset</h2>
+    <div class="grid grid-cols-2">
+      <div class="card">
+        <h3>giv CLI</h3>
+        <p>AI-assisted commit messages powered by local models and shell grit.</p>
+      </div>
+      <div class="card">
+        <h3>DOMpile</h3>
+        <p>Static site generator that honors the web's roots — no build chains, just HTML.</p>
+      </div>
     </div>
-  </section>
 
-  <section id="get-started" style="text-align:center;">
-    <a class="btn" href="getting-started.html" data-augmented-ui="tl-round tr-round bl-clip br-clip">Get Started →</a>
-  </section>
+    <!-- FORM -->
+    <h2 class="text-accent" style="margin-top: 3rem;">Signup</h2>
+    <form>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@darknet.local">
+      </div>
+      <div class="form-group">
+        <label for="handle">Username</label>
+        <input type="text" id="handle" placeholder="sysadmin_404">
+      </div>
+      <div class="form-group">
+        <label for="bio">Bio</label>
+        <textarea id="bio" rows="4" placeholder="Tell us about your off-grid setup..."></textarea>
+      </div>
+      <button type="submit">Join the Network</button>
+    </form>
 
-  <!--#include virtual="/includes/footer.html" -->
+    <!-- UTILITY CLASSES -->
+    <h2 class="text-accent" style="margin-top: 3rem;">Status Tags</h2>
+    <div class="grid grid-cols-3">
+      <div class="card bg-warning">
+        <strong>Warning</strong><br>
+        Critical dependency update available
+      </div>
+      <div class="card text-alt">
+        <strong>Success</strong><br>
+        Backup completed locally
+      </div>
+      <div class="card text-accent">
+        <strong>Notice</strong><br>
+        You're working offline (as you should)
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="container">
+    <p>&copy; 2025 Devpunk Underground. No cookies, no tracking, no JavaScript.</p>
+  </footer>
+
 </body>
 
 </html>

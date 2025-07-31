@@ -1,6 +1,6 @@
 # Advanced Example
 
-This example demonstrates the `dompile` modern templating system that uses pure HTML with minimal custom elements.
+This example demonstrates the `unify` modern templating system that uses pure HTML with minimal custom elements.
 
 ## 🎯 Design Principles
 
@@ -80,7 +80,7 @@ Components use `data-token` for replaceable content:
 
 ```bash
 # Build the DOM mode example
-dompile build --source examples/dom-mode/pages --output examples/dom-mode/dist
+unify build --source examples/dom-mode/pages --output examples/dom-mode/dist
 
 # The build process will:
 # 1. Detect DOM mode elements in pages
@@ -132,4 +132,4 @@ Components are self-contained HTML files that can include:
 
 ---
 
-*This example showcases the full power of DOMpile's DOM Mode - a modern approach to static site generation with pure HTML.*
+*This example showcases the full power of Unify's DOM Mode - a modern approach to static site generation with pure HTML.*
