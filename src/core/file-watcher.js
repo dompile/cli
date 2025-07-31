@@ -55,7 +55,7 @@ export class FileWatcher {
       includes: 'includes',
       head: null,
       clean: true,
-      debounceMs: 100,
+      debounceMs: 300, // Increased debounce time to prevent excessive rebuilds
       ...options,
       perfection: false // Watch mode should not use perfection flag
     };
@@ -210,8 +210,23 @@ export class FileWatcher {
       return true;
     }
     
-    // Ignore temporary files from editors
-    if (filename.includes('.tmp') || filename.includes('~') || filename.startsWith('.#')) {
+    // Ignore temporary files from editors and system
+    const tempFilePatterns = [
+      /\.tmp$/,
+      /\.temp$/,
+      /~$/,
+      /^\.#/,
+      /#$/,
+      /\.swp$/,
+      /\.swo$/,
+      /\.orig$/,
+      /\.bak$/,
+      /4913$/, // Common vim temporary file pattern
+      /\.DS_Store$/,
+      /Thumbs\.db$/
+    ];
+    
+    if (tempFilePatterns.some(pattern => pattern.test(filename))) {
       return true;
     }
     
@@ -269,7 +284,12 @@ export class FileWatcher {
       /\.tmp/,
       /\.log$/,
       /\.lock$/,
-      /~$/
+      /~$/,
+      /dist\//, // Ignore output directory
+      /build\//, // Ignore build directory
+      /out\//, // Ignore out directory
+      /\.cache/,
+      /coverage/
     ];
     
     return ignoredPatterns.some(pattern => pattern.test(filename));
