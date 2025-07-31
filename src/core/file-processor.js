@@ -809,7 +809,44 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutConte
     // Apply specified layout when content doesn't have <html> element
     finalContent = wrapInLayout(htmlWithAnchors, metadata, layoutContent);
     logger.debug('Applied specified layout');
-  } else {
+  } else if (frontmatter.layout) {
+    // Load layout from frontmatter specification
+    const layoutPath = path.isAbsolute(layoutsDir) 
+      ? path.join(layoutsDir, frontmatter.layout)
+      : path.join(sourceRoot, layoutsDir, frontmatter.layout);
+    
+    try {
+      const frontmatterLayoutContent = await fs.readFile(layoutPath, 'utf-8');
+      
+      // Process layout content through include processor to handle includes
+      const { processIncludes } = await import('./include-processor.js');
+      const processedLayout = await processIncludes(frontmatterLayoutContent, layoutPath, sourceRoot, new Set(), 0, null);
+      
+      // Replace slots with content (DOM mode style)
+      let layoutWithContent = processedLayout.replace(/<slot[^>]*><\/slot>/g, htmlWithAnchors);
+      
+      // Also handle markdown-style template variables if present
+      layoutWithContent = layoutWithContent.replace(/\{\{\s*content\s*\}\}/g, htmlWithAnchors);
+      layoutWithContent = layoutWithContent.replace(/\{\{\s*title\s*\}\}/g, metadata.title || 'Untitled');
+      
+      // Replace frontmatter variables
+      const allData = { ...metadata.frontmatter, ...metadata };
+      for (const [key, value] of Object.entries(allData)) {
+        if (typeof value === 'string') {
+          const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
+          layoutWithContent = layoutWithContent.replace(regex, value);
+        }
+      }
+      
+      finalContent = layoutWithContent;
+      logger.debug(`Applied frontmatter layout: ${frontmatter.layout}`);
+    } catch (error) {
+      logger.warn(`Could not read frontmatter layout ${frontmatter.layout}: ${error.message}`);
+      // Fall through to default layout check
+    }
+  }
+  
+  if (!finalContent) {
     // No layout specified, check for default layout
     const hasDefault = await hasDefaultLayout(sourceRoot, layoutsDir);
     if (hasDefault) {

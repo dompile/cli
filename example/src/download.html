@@ -22,25 +22,27 @@
             <div>
                 <h3>✨ Quick Install</h3>
                 <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round">
+                <code>
 # With npm (recommended)
 npm install -g @fwdslsh/unify
 
 # Or use npx for one-off runs
 npx @fwdslsh/unify --help
+</code>
                 </pre>
                 <h3>🚀 Bun-Native (fastest)</h3>
-                <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round">
+                <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round"><code>
 # Install Bun (if not already)
 curl -fsSL https://bun.sh/install | bash
 
 # Install unify globally with Bun
 bun add -g @fwdslsh/unify
-                </pre>
+                </code></pre>
                 <h3>🦕 Deno</h3>
-                <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round">
+                <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round"><code>
 # Use npm compatibility mode
 deno run -A npm:@fwdslsh/unify@latest --help
-                </pre>
+                </code></pre>
             </div>
         </section>
 
@@ -53,7 +55,7 @@ unify build         # Build from src/ to dist/
 unify serve         # Start dev server with live reload
 unify watch         # Watch for changes and rebuild
             </code></pre>
-            <p>For advanced options, see the <a href="docs/cli-reference.md">CLI Reference</a>.</p>
+            <small>For advanced options, see the <a href="docs/cli-reference.md">CLI Reference</a>.</small>
         </section>
 
         <section class="card" style="margin: 2rem 0;">

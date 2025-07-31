@@ -409,7 +409,7 @@ ${pageContent}
     }
     
     // Process includes in the result
-    processedHTML = await processIncludesInHTML(processedHTML, sourceRoot, domConfig);
+    processedHTML = await processIncludesInHTML(processedHTML, layoutPath, sourceRoot, domConfig);
     
     return processedHTML;
     
@@ -450,11 +450,11 @@ async function detectLayoutFromHTML(htmlContent, sourceRoot, config) {
 /**
  * Process includes in HTML content (both SSI and <include> elements)
  */
-async function processIncludesInHTML(htmlContent, sourceRoot, config) {
+async function processIncludesInHTML(htmlContent, layoutPath, sourceRoot, config) {
   // Process SSI includes first (already done in main flow, but handle any in layout)
   let result = await processIncludes(
     htmlContent,
-    null, // filePath not needed for this context 
+    layoutPath, // Use layout path for proper include resolution 
     sourceRoot,
     new Set(),
     0,

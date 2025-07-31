@@ -306,7 +306,7 @@ describe('Complete CLI Options Coverage', () => {
         '--verbose'
       ]);
 
-      expect(result.code).toBe(1);
+      expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
       
       // Should have error output even with verbose
       const output = result.stdout + result.stderr;

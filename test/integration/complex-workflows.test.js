@@ -29,7 +29,7 @@ describe('Complex Integration Scenarios', () => {
         'src/index.html': `
           <div data-layout="main.html">
             <h1>Home Page</h1>
-            <!--#include file="nav.html" -->
+            <!--#include file="includes/nav.html" -->
             <main>Welcome to the site</main>
           </div>
         `,
@@ -62,7 +62,7 @@ describe('Complex Integration Scenarios', () => {
           
           This is our about page.
           
-          <!--#include file="contact-info.html" -->
+          <!--#include file="includes/contact-info.html" -->
         `,
         'src/includes/contact-info.html': `
           <div class="contact">
@@ -137,36 +137,32 @@ describe('Complex Integration Scenarios', () => {
     it('should handle mixed file types in single build with complex dependencies', async () => {
       const structure = {
         // HTML pages with layouts
-        'src/index.html': '<div data-layout="page.html"><h1>Home</h1><!--#include file="sidebar.html" --></div>',
-        'src/products.html': '<div data-layout="page.html"><h1>Products</h1><!--#include file="product-list.html" --></div>',
+        'src/index.html': '<div data-layout="page.html"><h1>Home</h1><!--#include file="includes/sidebar.html" --></div>',
+        'src/products.html': '<div data-layout="page.html"><h1>Products</h1><!--#include file="includes/product-list.html" --></div>',
         
         // Markdown pages with frontmatter
-        'src/blog/post-1.md': `
-          ---
-          layout: blog.html
-          title: First Post
-          date: 2024-01-01
-          tags: [tech, web]
-          ---
-          # First Blog Post
-          
-          This is our first post.
-          
-          <!--#include file="author-bio.html" -->
-          <!--#include file="social-share.html" -->
-        `,
-        'src/blog/post-2.md': `
-          ---
-          layout: blog.html
-          title: Second Post
-          date: 2024-01-02
-          ---
-          # Second Blog Post
-          
-          Another great post.
-          
-          <!--#include file="author-bio.html" -->
-        `,
+        'src/blog/post-1.md': `---
+layout: blog.html
+title: First Post
+date: 2024-01-01
+tags: [tech, web]
+---
+# First Blog Post
+
+This is our first post.
+
+<!--#include file="../includes/author-bio.html" -->
+<!--#include file="../includes/social-share.html" -->`,
+        'src/blog/post-2.md': `---
+layout: blog.html
+title: Second Post
+date: 2024-01-02
+---
+# Second Blog Post
+
+Another great post.
+
+<!--#include file="../includes/author-bio.html" -->`,
         
         // Layouts
         'src/.layouts/page.html': `
@@ -174,13 +170,13 @@ describe('Complex Integration Scenarios', () => {
           <html>
           <head>
             <title>Site</title>
-            <!--#include file="meta-tags.html" -->
+            <!--#include file="../includes/meta-tags.html" -->
             <link rel="stylesheet" href="/css/main.css">
           </head>
           <body>
-            <!--#include file="header.html" -->
+            <!--#include file="../includes/header.html" -->
             <main><slot></slot></main>
-            <!--#include file="footer.html" -->
+            <!--#include file="../includes/footer.html" -->
           </body>
           </html>
         `,
@@ -189,13 +185,13 @@ describe('Complex Integration Scenarios', () => {
           <html>
           <head>
             <title>Blog</title>
-            <!--#include file="meta-tags.html" -->
+            <!--#include file="../includes/meta-tags.html" -->
             <link rel="stylesheet" href="/css/blog.css">
           </head>
           <body>
-            <!--#include file="header.html" -->
+            <!--#include file="../includes/header.html" -->
             <article><slot></slot></article>
-            <!--#include file="footer.html" -->
+            <!--#include file="../includes/footer.html" -->
           </body>
           </html>
         `,
@@ -233,8 +229,8 @@ describe('Complex Integration Scenarios', () => {
       const files = [
         'index.html',
         'products.html',
-        'blog/post-1.html',
-        'blog/post-2.html'
+        'blog/post-1/index.html', // Pretty URLs: .md -> /index.html
+        'blog/post-2/index.html'  // Pretty URLs: .md -> /index.html
       ];
 
       for (const file of files) {
@@ -250,7 +246,7 @@ describe('Complex Integration Scenarios', () => {
       expect(indexContent).toContain('First Post'); // From recent-posts include
 
       // Verify Markdown processing with frontmatter
-      const post1Content = await fs.readFile(path.join(outputDir, 'blog/post-1.html'), 'utf-8');
+      const post1Content = await fs.readFile(path.join(outputDir, 'blog/post-1/index.html'), 'utf-8');
       expect(post1Content).toContain('First Blog Post');
       expect(post1Content).toContain('Written by John Doe');
       expect(post1Content).toContain('Share this post');
@@ -265,7 +261,7 @@ describe('Complex Integration Scenarios', () => {
   describe('Nested Component Dependencies', () => {
     it('should handle complex nested includes with circular detection', async () => {
       const structure = {
-        'src/page.html': '<!--#include file="level1.html" -->',
+        'src/page.html': '<!--#include file="includes/level1.html" -->',
         'src/includes/level1.html': 'Level 1: <!--#include file="level2.html" -->',
         'src/includes/level2.html': 'Level 2: <!--#include file="level3.html" -->',
         'src/includes/level3.html': 'Level 3: <!--#include file="level4.html" -->',
@@ -273,7 +269,7 @@ describe('Complex Integration Scenarios', () => {
         'src/includes/level5.html': 'Level 5: Final level',
         
         // Test circular dependency detection
-        'src/circular.html': '<!--#include file="circular-a.html" -->',
+        'src/circular.html': '<!--#include file="includes/circular-a.html" -->',
         'src/includes/circular-a.html': 'A: <!--#include file="circular-b.html" -->',
         'src/includes/circular-b.html': 'B: <!--#include file="circular-c.html" -->',
         'src/includes/circular-c.html': 'C: <!--#include file="circular-a.html" -->', // Circular!
@@ -359,40 +355,38 @@ describe('Complex Integration Scenarios', () => {
       const structure = {};
       
       // Main pages
-      structure['src/index.html'] = '<div data-layout="home.html"><h1>Welcome</h1><!--#include file="recent-posts.html" --></div>';
+      structure['src/index.html'] = '<div data-layout="home.html"><h1>Welcome</h1><!--#include file="includes/recent-posts.html" --></div>';
       structure['src/about.html'] = '<div data-layout="page.html"><h1>About</h1></div>';
       structure['src/contact.html'] = '<div data-layout="page.html"><h1>Contact</h1></div>';
       
       // Blog posts (50 posts)
       for (let i = 1; i <= 50; i++) {
-        structure[`src/blog/post-${i}.md`] = `
-          ---
-          layout: blog.html
-          title: Post ${i}
-          date: 2024-01-${String(i).padStart(2, '0')}
-          category: ${i % 3 === 0 ? 'tech' : i % 2 === 0 ? 'design' : 'news'}
-          ---
-          # Post ${i}
-          
-          This is blog post number ${i}.
-          
-          <!--#include file="author-info.html" -->
-          <!--#include file="related-posts.html" -->
-        `;
+        structure[`src/blog/post-${i}.md`] = `---
+layout: blog.html
+title: Post ${i}
+date: 2024-01-${String(i).padStart(2, '0')}
+category: ${i % 3 === 0 ? 'tech' : i % 2 === 0 ? 'design' : 'news'}
+---
+# Post ${i}
+
+This is blog post number ${i}.
+
+<!--#include file="../includes/author-info.html" -->
+<!--#include file="../includes/related-posts.html" -->`;
       }
       
       // Category pages
       const categories = ['tech', 'design', 'news'];
       categories.forEach(cat => {
-        structure[`src/blog/${cat}.html`] = `<div data-layout="category.html"><h1>${cat}</h1><!--#include file="${cat}-posts.html" --></div>`;
+        structure[`src/blog/${cat}.html`] = `<div data-layout="category.html"><h1>${cat}</h1><!--#include file="../includes/${cat}-posts.html" --></div>`;
         structure[`src/includes/${cat}-posts.html`] = `<div class="${cat}-posts">Posts in ${cat}</div>`;
       });
       
       // Layouts
-      structure['src/.layouts/home.html'] = '<!DOCTYPE html><html><head><title>Home</title></head><body><!--#include file="header.html" --><main><slot></slot></main><!--#include file="footer.html" --></body></html>';
-      structure['src/.layouts/page.html'] = '<!DOCTYPE html><html><head><title>Page</title></head><body><!--#include file="header.html" --><main><slot></slot></main><!--#include file="footer.html" --></body></html>';
-      structure['src/.layouts/blog.html'] = '<!DOCTYPE html><html><head><title>Blog</title></head><body><!--#include file="header.html" --><article><slot></slot></article><!--#include file="footer.html" --></body></html>';
-      structure['src/.layouts/category.html'] = '<!DOCTYPE html><html><head><title>Category</title></head><body><!--#include file="header.html" --><section><slot></slot></section><!--#include file="footer.html" --></body></html>';
+      structure['src/.layouts/home.html'] = '<!DOCTYPE html><html><head><title>Home</title></head><body><!--#include file="../includes/header.html" --><main><slot></slot></main><!--#include file="../includes/footer.html" --></body></html>';
+      structure['src/.layouts/page.html'] = '<!DOCTYPE html><html><head><title>Page</title></head><body><!--#include file="../includes/header.html" --><main><slot></slot></main><!--#include file="../includes/footer.html" --></body></html>';
+      structure['src/.layouts/blog.html'] = '<!DOCTYPE html><html><head><title>Blog</title></head><body><!--#include file="../includes/header.html" --><article><slot></slot></article><!--#include file="../includes/footer.html" --></body></html>';
+      structure['src/.layouts/category.html'] = '<!DOCTYPE html><html><head><title>Category</title></head><body><!--#include file="../includes/header.html" --><section><slot></slot></section><!--#include file="../includes/footer.html" --></body></html>';
       
       // Includes
       structure['src/includes/header.html'] = '<header><h1>My Blog</h1><!--#include file="nav.html" --></header>';
@@ -434,8 +428,8 @@ describe('Complex Integration Scenarios', () => {
       
       // Verify some key files
       expect(await fileExists(path.join(outputDir, 'index.html'))).toBe(true);
-      expect(await fileExists(path.join(outputDir, 'blog/post-1.html'))).toBe(true);
-      expect(await fileExists(path.join(outputDir, 'blog/tech.html'))).toBe(true);
+      expect(await fileExists(path.join(outputDir, 'blog/post-1/index.html'))).toBe(true);
+      expect(await fileExists(path.join(outputDir, 'blog/tech/index.html'))).toBe(true);
       
       console.log(`Built ${outputFiles.length} files in ${buildTime}ms`);
     }, 30000); // 30 second timeout
@@ -447,7 +441,7 @@ describe('Complex Integration Scenarios', () => {
         'src/index.html': `
           <div data-layout="main.html">
             <h1>Home</h1>
-            <!--#include file="content.html" -->
+            <!--#include file="includes/content.html" -->
             <img src="/images/logo.png" alt="Logo">
           </div>
         `,
@@ -457,6 +451,7 @@ describe('Complex Integration Scenarios', () => {
           <head>
             <title>Site</title>
             <meta charset="utf-8">
+            <link rel="stylesheet" href="/css/style.css">
           </head>
           <body>
             <slot></slot>

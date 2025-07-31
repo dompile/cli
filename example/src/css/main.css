@@ -201,30 +201,37 @@ button:hover {
   background: var(--bg-alt);
   border: 1px solid var(--border);
   border-left: 5px solid var(--accent);
+  border-left-color: var(--accent);
   border-top: 1px solid transparent;
-  border-image: linear-gradient(to right, var(--accent-2) 0%, transparent 5%, transparent 100%);
+  border-image: linear-gradient(to right, var(--accent) 0%, transparent 5%, transparent 100%);
   border-image-slice: 1;
   border-radius: var(--radius);
+  border-bottom-left-radius: 0;
+  border-top-left-radius: 0;
   padding: 1.5rem;
   box-shadow: 0 0 10px #00000055;
-  transition: transform 0.2s, box-shadow 0.2s, border-left-color 0.2s;
+  transition: transform 0.2s, box-shadow 1s, border-left-color 0.5s,
+    border-image 0.5s;
+
+    ul{
+      list-style: square;
+      margin-left: 1.5rem;
+    }
+    small{
+      margin-left: 1rem;
+    }
 }
 
 .card:hover {
   transform: translateY(-2px);
   border-left-color: var(--accent-2);
-}
-
-section.card {
-  border-bottom-left-radius: 0;
-  border-top-left-radius: 0;
+  border-image: linear-gradient(to right, var(--accent-2) 0%, transparent 50%, transparent 100%);
+  border-image-slice: 1;
 }
 
 section.card:hover {
   box-shadow: 0 0 6px 3px var(--accent-2), 0 0 0 0 var(--accent-2);
   transform: none;
-  border-left-color: var(--accent-2);
-  /* Remove scaling */
 }
 
 .card h3 {
