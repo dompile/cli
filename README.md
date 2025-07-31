@@ -2,36 +2,54 @@
 
 ![unify banner](example/src/imgs/green-banner-800.png)
 
-A modern,  lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture-no more copying and pasting headers, footers, and navigation across multiple pages!
+A modern, lightweight static site generator that brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and navigation across multiple pages!
 
 ## ✨ Perfect for Frontend Developers
 
 - **Zero Learning Curve**: Uses familiar Apache SSI syntax (`<!--#include file="header.html" -->`) or intuitive `<slot>`, `<template>`, and `<include>` elements.
-- **Modern Tooling**: Built with ESM modules, works on Node.js, Deno, and Bun
+- **Modern Tooling**: Built with ESM modules, powered by **Bun** for maximum performance
 - **Live Development**: Built-in dev server with live reload via Server-Sent Events
 - **Multi-Format Support**: HTML, Markdown with frontmatter, and static assets
 - **SEO Optimized**: Automatic sitemap generation
-- **Framework-Free**: Pure HTML and CSS output-no build complexity or JavaScript frameworks required
-- **Minimal Dependencies**: Just 3 dependencies (chokidar, markdown-it, gray-matter)
+- **Framework-Free**: Pure HTML and CSS output—no build complexity or JavaScript frameworks required
+- **High Performance**: Native Bun API support with HTMLRewriter, fs.watch, and Bun.serve
+- **Cross-Platform**: Compile to standalone executables for Linux, macOS, and Windows
 
 ## 🚀 Quick Start
 
-```bash
-# Install globally
-npm install -g @unify/cli
+### Installation
 
-# Simple usage with defaults (src => dist)
+```bash
+# Install Bun (required runtime)
+curl -fsSL https://bun.sh/install | bash
+
+# Install unify globally
+bun add -g @fwdslsh/unify
+
+# Basic usage with defaults (src => dist)
 unify build                    # Build from src/ to dist/
 unify serve                    # Serve with live reload on port 3000
+unify watch                    # Watch for changes and rebuild
 
-# Or use with npx
-npx @unify/cli build
-npx @unify/cli serve
+# Create cross-platform executable
+bun run build:executable
 
 # Advanced usage with custom options
 unify build --pretty-urls --base-url https://mysite.com
 unify serve --port 8080
 ```
+
+## 🏎️ Bun-Native Performance
+
+unify is built exclusively for Bun and uses native APIs for maximum performance:
+
+| Feature | Implementation | Performance |
+|---------|----------------|-------------|
+| HTML Processing | HTMLRewriter | **Ultra-fast DOM processing** |
+| File Watching | fs.watch | **Native file system events** |
+| Dev Server | Bun.serve | **High-performance HTTP server** |
+| Build Caching | Bun.hash | **Native cryptographic hashing** |
+| Cold Start | Bun native | **~800ms startup time** |
 
 ## 📁 Quick Example
 

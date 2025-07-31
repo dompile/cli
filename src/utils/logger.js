@@ -13,13 +13,13 @@ const LOG_LEVELS = {
 class Logger {
   constructor() {
     // Support both UNIFY_DEBUG (spec-compliant) and DEBUG (generic) environment variables
-    const debugEnabled = process.env.UNIFY_DEBUG || process.env.DEBUG;
+    const debugEnabled = Bun.env.UNIFY_DEBUG || Bun.env.DEBUG;
     
     if (debugEnabled) {
       this.level = LOG_LEVELS.DEBUG;
     } else {
-      this.level = process.env.LOG_LEVEL ? 
-        LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] ?? LOG_LEVELS.INFO : 
+      this.level = Bun.env.LOG_LEVEL ? 
+        LOG_LEVELS[Bun.env.LOG_LEVEL.toUpperCase()] ?? LOG_LEVELS.INFO : 
         LOG_LEVELS.INFO;
     }
   }
@@ -34,31 +34,31 @@ class Logger {
   
   debug(...args) {
     if (this.level <= LOG_LEVELS.DEBUG) {
-      console.debug('🪲', ...args);
+      console.debug('[DEBUG]', ...args);
     }
   }
   
   info(...args) {
     if (this.level <= LOG_LEVELS.INFO) {
-      console.log('ℹ️ ', ...args);
+      console.log('[INFO]', ...args);
     }
   }
   
   warn(...args) {
     if (this.level <= LOG_LEVELS.WARN) {
-      console.warn('⚠️ ', ...args);
+      console.warn('[WARN]', ...args);
     }
   }
   
   error(...args) {
     if (this.level <= LOG_LEVELS.ERROR) {
-      console.error('❌', ...args);
+      console.error('[ERROR]', ...args);
     }
   }
   
   success(...args) {
     if (this.level <= LOG_LEVELS.INFO) {
-      console.log('✅', ...args);
+      console.log('[SUCCESS]', ...args);
     }
   }
 }

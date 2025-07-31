@@ -1,12 +1,12 @@
 # Layouts, Slots, and Templates
 
-dompile provides a powerful templating system that combines traditional layouts with modern template and slot syntax. This document covers all aspects of the template system.
+unify provides a powerful templating system that combines traditional layouts with modern template and slot syntax. This document covers all aspects of the template system.
 
 ## Overview
 
 The template system supports three main concepts:
 
-- **Layouts**: Base templates that wrap content
+- **Layouts**: Base templates that wrap content using slots
 - **Slots**: Placeholders for content insertion
 - **Templates**: Modern component-based templating
 
@@ -14,7 +14,7 @@ The template system supports three main concepts:
 
 ### Basic Layout Usage
 
-Layouts provide a base structure for your pages using variable substitution.
+Layouts provide a base structure for your pages using slot elements for content insertion.
 
 **Layout file: `src/.layouts/default.html`**
 ```html
@@ -23,19 +23,14 @@ Layouts provide a base structure for your pages using variable substitution.
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ title }}</title>
-  <meta name="description" content="{{ description }}">
+  <slot name="head"></slot>
 </head>
 <body>
-  <header>
-    <h1>{{ site_name }}</h1>
-  </header>
+  <!--#include virtual="/.components/header.html" -->
   <main>
-    {{ content }}
+    <slot></slot>
   </main>
-  <footer>
-    <p>&copy; {{ year }} {{ site_name }}</p>
-  </footer>
+  <!--#include virtual="/.components/footer.html" -->
 </body>
 </html>
 ```
@@ -44,15 +39,24 @@ Layouts provide a base structure for your pages using variable substitution.
 ```markdown
 ---
 title: "About Us"
-description: "Learn more about our company"
 layout: default
-site_name: "My Company"
-year: 2024
 ---
 
 # About Us
 
-This content will replace {{ content }} in the layout.
+This content will be placed in the default slot of the layout.
+```
+
+**HTML page with layout:**
+```html
+<template slot="head">
+  <title>About Us - My Site</title>
+  <meta name="description" content="Learn more about our company">
+</template>
+<div>
+  <h1>About Us</h1>
+  <p>This content will be placed in the default slot.</p>
+</div>
 ```
 
 ### Layout Directory Structure
@@ -90,39 +94,6 @@ layout: blog              # Uses .layouts/blog.html
 # My Blog Post
 ```
 
-### Variable Substitution
-
-Variables are replaced using `{{ variable }}` syntax:
-
-**Available variables:**
-- **Frontmatter**: Any YAML frontmatter data
-- **Built-in**: `title`, `content`, `excerpt`, `tableOfContents`
-- **Global**: Variables passed to build process
-
-**Example with multiple variables:**
-```html
-<!-- layout.html -->
-<article>
-  <header>
-    <h1>{{ title }}</h1>
-    <p class="meta">
-      Published on {{ date }} by {{ author }}
-      <span class="reading-time">{{ reading_time }} min read</span>
-    </p>
-  </header>
-  <div class="content">
-    {{ content }}
-  </div>
-  <footer>
-    <div class="tags">
-      {{#each tags}}
-      <span class="tag">{{ . }}</span>
-      {{/each}}
-    </div>
-  </footer>
-</article>
-```
-
 ## Modern Template System
 
 ### Template Elements
@@ -132,8 +103,8 @@ Use `<template>` elements for modern component-based templating:
 **Page using template: `src/index.html`**
 ```html
 <div data-layout="layouts/default.html">
-  <template data-slot="title">Welcome to My Site</template>
-  <template data-slot="meta">
+  <template slot="title">Welcome to My Site</template>
+  <template slot="meta">
     <meta name="keywords" content="static site, generator">
   </template>
   
@@ -165,14 +136,14 @@ Use the `data-layout` attribute to specify layouts and fill slots:
 **Page with data-layout:**
 ```html
 <div data-layout="layouts/blog.html">
-  <template data-slot="sidebar">
+  <template slot="sidebar">
     <h3>Recent Posts</h3>
     <ul>
       <li><a href="/post1">First Post</a></li>
       <li><a href="/post2">Second Post</a></li>
     </ul>
   </template>
-  <template data-slot="meta">
+  <template slot="meta">
     <meta name="author" content="John Doe">
   </template>
   
@@ -185,14 +156,14 @@ Use the `data-layout` attribute to specify layouts and fill slots:
 **Alternative placement on html/body elements:**
 ```html
 <html data-layout="layouts/blog.html">
-  <template data-slot="title">My Page Title</template>
+  <template slot="title">My Page Title</template>
   <!-- Page content -->
 </html>
 
 <!-- OR -->
 
 <body data-layout="layouts/blog.html">
-  <template data-slot="header">Custom Header</template>
+  <template slot="header">Custom Header</template>
   <!-- Page content -->
 </body>
 ```
@@ -249,22 +220,22 @@ Define specific content areas with named slots:
 **Page filling named slots:**
 ```html
 <div data-layout="layouts/complex.html">
-  <template data-slot="head">
+  <template slot="head">
     <title>Custom Page Title</title>
     <link rel="stylesheet" href="/custom.css">
   </template>
   
-  <template data-slot="header">
+  <template slot="header">
     <h1>Custom Header</h1>
     <nav>...</nav>
   </template>
   
-  <template data-slot="sidebar">
+  <template slot="sidebar">
     <h3>Page Navigation</h3>
     <ul>...</ul>
   </template>
   
-  <template data-slot="footer">
+  <template slot="footer">
     <p>Custom footer for this page</p>
   </template>
   
@@ -286,7 +257,7 @@ The unnamed slot receives content not in named templates:
 
 <!-- Page -->
 <div data-layout="layout.html">
-  <template data-slot="title">Page Title</template>
+  <template slot="title">Page Title</template>
   
   <!-- This content goes to the default slot -->
   <h1>Main Heading</h1>
@@ -324,63 +295,11 @@ Provide fallback content for empty slots:
 
 ## Advanced Template Patterns
 
-### Nested Template Inheritance
-
-Create layout hierarchies with multiple levels:
-
-**Base layout: `layouts/base.html`**
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <slot name="head"></slot>
-</head>
-<body>
-  <slot name="body"></slot>
-</body>
-</html>
-```
-
-**Content layout: `layouts/content.html`**
-```html
-<template extends="base.html">
-  <template data-slot="head">
-    <title><slot name="title"></slot></title>
-    <slot name="meta"></slot>
-  </template>
-  
-  <template data-slot="body">
-    <header>
-      <slot name="header"></slot>
-    </header>
-    <main>
-      <slot name="content"></slot>
-    </main>
-    <footer>
-      <slot name="footer"></slot>
-    </footer>
-  </template>
-</template>
-```
-
-**Page using nested inheritance:**
-```html
-<template extends="layouts/content.html">
-  <template data-slot="title">My Page</template>
-  <template data-slot="header">
-    <h1>Page Header</h1>
-  </template>
-  <template data-slot="content">
-    <p>Page content here</p>
-  </template>
-</template>
-```
-
 ### Component-Based Architecture
 
 Build reusable components with slots:
 
-**Card component: `components/card.html`**
+**Card component: `src/.components/card.html`**
 ```html
 <div class="card">
   <header class="card-header">
@@ -397,17 +316,86 @@ Build reusable components with slots:
 
 **Using card component:**
 ```html
-<!--#include virtual="/components/card.html" -->
-<template data-slot="header">
+<div data-layout="layouts/default.html">
+  <!--#include virtual="/.components/card.html" -->
+  <template slot="header">
+    <h3>Product Card</h3>
+  </template>
+  <template slot="footer">
+    <button>Buy Now</button>
+  </template>
+  
+  <!-- Default slot content -->
+  <p>Product description goes here.</p>
+  <p class="price">$99.99</p>
+</div>
+```
+
+### Multiple Layout Support
+
+Create specialized layouts for different content types:
+
+**Blog layout: `src/.layouts/blog.html`**
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <slot name="head">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </slot>
+</head>
+<body>
+  <!--#include virtual="/.components/header.html" -->
+  <article>
+    <header class="post-header">
+      <slot name="post-meta"></slot>
+    </header>
+    <div class="post-content">
+      <slot></slot>
+    </div>
+    <footer class="post-footer">
+      <slot name="comments"></slot>
+    </footer>
+  </article>
+  <!--#include virtual="/.components/footer.html" -->
+</body>
+</html>
+```
+
+**Using blog layout:**
+```html
+<div data-layout="blog.html">
+  <template slot="head">
+    <title>My Blog Post - My Site</title>
+    <meta name="description" content="A great blog post">
+  </template>
+  <template slot="post-meta">
+    <h1>My Blog Post</h1>
+    <p class="meta">Published on January 1, 2024</p>
+  </template>
+  <template slot="comments">
+    <!--#include virtual="/.components/comments.html" -->
+  </template>
+  
+  <!-- Main content goes in default slot -->
+  <p>This is the main blog post content.</p>
+</div>
+```
+<template slot="header">
   <h3>Product Card</h3>
 </template>
-<template data-slot="footer">
+<template slot="footer">
   <button>Buy Now</button>
 </template>
 
 <!-- Default slot content -->
-<p>Product description goes here.</p>
-<p class="price">$99.99</p>
+  <p>Product description goes here.</p>
+  <p class="price">$99.99</p>
+</div>
+```
+
+## Integration with Includes
 ```
 
 ### Conditional Slots
@@ -440,64 +428,13 @@ Show slots based on conditions:
   </footer>
   {{/if}}
 </article>
-```
-
-## Integration with Includes
-
-### Slots with Includes
-
-Combine slot system with includes:
-
-```html
-<!-- Layout using includes -->
-<template>
-  <!--#include virtual="/.components/head.html" -->
-  <body>
-    <!--#include virtual="/.components/header.html" -->
-    <main>
-      <slot></slot>
-    </main>
-    <!--#include virtual="/.components/footer.html" -->
-  </body>
-</template>
-
-<!-- Include with slots -->
-<!-- components/header.html -->
-<header>
-  <h1><slot name="site-title">My Site</slot></h1>
-  <nav>
-    <slot name="navigation">
-      <!--#include virtual="/.components/nav.html" -->
-    </slot>
-  </nav>
-</header>
-```
-
-### Dynamic Includes in Slots
-
-Use includes within slot content:
-
-```html
-<div data-layout="layouts/default.html">
-  <template data-slot="sidebar">
-    <!--#include virtual="/.components/recent-posts.html" -->
-    <!--#include virtual="/.components/categories.html" -->
-  </template>
-  
-  <template data-slot="footer">
-    <!--#include virtual="/.components/social-links.html" -->
-    <!--#include virtual="/.components/newsletter.html" -->
-  </template>
-  
-  <h1>Main Content</h1>
-</div>
-```
+## Markdown Integration
 
 ## Markdown Integration
 
 ### Templates in Markdown
 
-Use template syntax within markdown files:
+Markdown files can specify layouts using frontmatter and include template elements:
 
 ```markdown
 ---
@@ -505,21 +442,15 @@ title: "Blog Post"
 layout: blog
 ---
 
-# {{ title }}
+# My Blog Post
 
-<template extends="layouts/blog.html">
-  <template data-slot="sidebar">
-    ## Related Posts
-    - [Post 1](/post1)
-    - [Post 2](/post2)
-  </template>
-  
-  <template data-slot="meta">
-    Published on {{ date }}
-  </template>
-</template>
+This markdown content will be processed and placed in the default slot of the blog layout.
 
-This markdown content will be processed and placed in the default slot.
+You can also include components within markdown:
+
+<!--#include virtual="/.components/code-example.html" -->
+
+More markdown content here.
 ```
 
 ### Layout Selection in Markdown
@@ -529,10 +460,12 @@ Specify layouts in frontmatter:
 ```markdown
 ---
 layout: custom-layout    # Uses .layouts/custom-layout.html
-template: blog-post      # Alternative field name
 ---
 
-Content here uses the specified layout.
+# Page Content
+
+This content will use the custom-layout.html layout file.
+```
 ```
 
 ## Performance and Best Practices
@@ -540,7 +473,7 @@ Content here uses the specified layout.
 ### Template Performance
 
 - **Keep templates focused**: Single responsibility
-- **Minimize nesting**: Avoid deep template inheritance
+- **Minimize nesting**: Avoid deeply nested slot structures
 - **Cache-friendly**: Templates are processed once per build
 - **Slot efficiency**: Named slots are faster than complex selectors
 
@@ -558,15 +491,14 @@ Content here uses the specified layout.
 <!DOCTYPE html>
 <html>
 <head>
-  <title><slot name="title">{{ title }}</slot> - Blog</title>
+  <slot name="title">Default Blog Title</slot>
   <slot name="meta"></slot>
 </head>
 <body>
   <article>
     <header>
-      <h1>{{ title }}</h1>
-      <slot name="post-meta">
-        <p>{{ date }} by {{ author }}</p>
+      <slot name="post-header">
+        <h1>Blog Post Title</h1>
       </slot>
     </header>
     <div class="content">
@@ -605,23 +537,25 @@ Content here uses the specified layout.
 - Ensure layout file exists and is accessible
 
 **Layout not applied:**
+
 - Confirm layout file exists in `.layouts/` directory
 - Check frontmatter layout name matches filename
 - Verify layout has proper slot placeholders
 
-**Template inheritance not working:**
-- Check extends path is correct
-- Ensure parent template exists
-- Verify slot names match between parent and child
+**Template elements not working:**
+
+- Check template slot attribute matches slot name in layout
+- Ensure template elements are properly nested
+- Verify layout file contains the expected slots
 
 ### Debug Tips
 
 ```bash
 # Enable debug mode for template processing
-DEBUG=1 dompile build
+DEBUG=1 unify build
 
 # Check specific file processing
-dompile build --source src --output debug-dist
+unify build --source src --output debug-dist
 ```
 
 ## Migration from Other Systems
@@ -634,11 +568,11 @@ dompile build --source src --output debug-dist
 {% block title %}Page Title{% endblock %}
 {% block content %}Content here{% endblock %}
 
-<!-- dompile -->
-<template extends="layouts/base.html">
-  <template data-slot="title">Page Title</template>
-  <template data-slot="content">Content here</template>
-</template>
+<!-- unify -->
+<div data-layout="layouts/base.html">
+  <template slot="title">Page Title</template>
+  Content here (goes to default slot)
+</div>
 ```
 
 ### From Handlebars
@@ -649,7 +583,23 @@ dompile build --source src --output debug-dist
 <main>{{{content}}}</main>
 {{> footer}}
 
-<!-- dompile -->
+<!-- unify -->
+<!--#include virtual="/.components/header.html" -->
+<main>
+  <slot></slot>
+</main>
+<!--#include virtual="/.components/footer.html" -->
+```
+
+### From Hugo Partials
+
+```go
+<!-- Hugo -->
+{{ partial "header.html" . }}
+<main>{{ .Content }}</main>
+{{ partial "footer.html" . }}
+
+<!-- unify -->
 <!--#include virtual="/.components/header.html" -->
 <main>
   <slot></slot>

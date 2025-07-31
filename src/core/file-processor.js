@@ -32,7 +32,8 @@ import {
   processHtmlUnified,
   getUnifiedConfig
 } from './unified-html-processor.js';
-import { FileSystemError, BuildError } from '../utils/errors.js';
+import { createBuildCache } from './build-cache.js';
+import { FileSystemError, BuildError, UnifyError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { getBaseUrlFromPackage } from '../utils/package-reader.js';
 
@@ -139,6 +140,14 @@ export async function build(options = {}) {
   
   logger.info(`Building site from ${config.source} to ${config.output}`);
   
+  // Initialize build cache if caching is enabled
+  let buildCache = null;
+  if (config.cache !== false) {
+    buildCache = createBuildCache(config.cacheDir || '.unify-cache');
+    await buildCache.initialize();
+    logger.debug('Build cache initialized with Bun native hashing');
+  }
+  
   try {
     // Resolve paths
     const sourceRoot = path.resolve(config.source);
@@ -158,7 +167,17 @@ export async function build(options = {}) {
     try {
       await fs.access(sourceRoot);
     } catch (error) {
-      throw new BuildError(`Source directory not found: ${sourceRoot}`);
+      throw new UnifyError(
+        `Source directory not found: ${sourceRoot}`,
+        null,
+        null,
+        [
+          'Check that the source path is correct',
+          'Verify the directory exists and is accessible',
+          'Use --source flag to specify the correct source directory',
+          'Create the source directory if it doesn\'t exist'
+        ]
+      );
     }
     
     // Clean output directory if requested
@@ -207,6 +226,12 @@ export async function build(options = {}) {
         logger.debug(`Using layout file: ${path.relative(sourceRoot, layoutFile)}`);
       } catch (error) {
         const msg = `Could not read layout file ${layoutFile}: ${error.message}`;
+        
+        // If perfection mode is enabled, fail fast on layout errors
+        if (config.perfection) {
+          throw new BuildError(`Build failed in perfection mode due to layout error: ${msg}`, results.errors);
+        }
+        
         logger.warn(msg);
         results.errors.push({
           file: layoutFile,
@@ -236,7 +261,8 @@ export async function build(options = {}) {
               outputRoot, 
               dependencyTracker,
               assetTracker,
-              config
+              config,
+              buildCache
             );
             processedFiles.push(filePath);
             results.processed++;
@@ -337,7 +363,12 @@ export async function build(options = {}) {
         const sitemapContent = generateSitemap(enhancedPageInfo, baseUrl);
         await writeSitemap(sitemapContent, outputRoot);
       } catch (error) {
-        logger.error(`Error generating sitemap: ${error.message}`);
+        // Use enhanced error formatting if available
+        if (error.formatForCLI) {
+          logger.error(error.formatForCLI());
+        } else {
+          logger.error(`Error generating sitemap: ${error.message}`);
+        }
         results.errors.push({ file: 'sitemap.xml', error: error.message });
         
         // If perfection mode is enabled, fail fast on any error
@@ -369,15 +400,26 @@ export async function build(options = {}) {
       throw new BuildError(`${results.errors.length} error(s)`, results.errors);
     }
     
+    // Save build cache if enabled
+    if (buildCache) {
+      await buildCache.saveCache();
+      logger.debug('Build cache saved');
+    }
+    
     return {
       ...results,
       duration,
       dependencyTracker,
-      assetTracker
+      assetTracker,
+      buildCache
     };
     
   } catch (error) {
-    logger.error('Build failed:', error.message);
+    if (error.formatForCLI) {
+      logger.error(error.formatForCLI());
+    } else {
+      logger.error('Build failed:', error.message);
+    }
     throw error;
   }
 }
@@ -385,11 +427,12 @@ export async function build(options = {}) {
 /**
  * Perform incremental build - only rebuild files that have changed
  * @param {Object} options - Build configuration options
- * @param {string} changedFile - Specific file that changed (optional)
  * @param {DependencyTracker} dependencyTracker - Existing dependency tracker
+ * @param {AssetTracker} assetTracker - Existing asset tracker
+ * @param {string} changedFile - Specific file that changed (optional)
  * @returns {Promise<Object>} Build results
  */
-export async function incrementalBuild(options = {}, changedFile = null, dependencyTracker = null, assetTracker = null) {
+export async function incrementalBuild(options = {}, dependencyTracker = null, assetTracker = null, changedFile = null) {
   const config = { ...DEFAULT_OPTIONS, ...options };
   const startTime = Date.now();
   
@@ -424,6 +467,21 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
       try {
         const relativePath = path.relative(sourceRoot, filePath);
         
+        // Check if the file still exists (might be deleted)
+        let fileExists = true;
+        try {
+          await fs.access(filePath);
+        } catch (error) {
+          fileExists = false;
+        }
+        
+        if (!fileExists) {
+          // File was deleted - just remove it from modification cache
+          fileModificationCache.delete(filePath);
+          logger.debug(`Removed deleted file from cache: ${relativePath}`);
+          continue;
+        }
+        
         if (isHtmlFile(filePath)) {
           if (!isPartialFile(filePath, config)) {
             await processHtmlFile(filePath, sourceRoot, outputRoot, tracker, assets, config);
@@ -438,6 +496,10 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
             try {
               layoutContent = await fs.readFile(layoutFile, 'utf-8');
             } catch (error) {
+              // If perfection mode is enabled, fail fast on layout errors
+              if (config.perfection) {
+                throw new BuildError(`Build failed in perfection mode due to layout error: Could not read layout file ${layoutFile}: ${error.message}`, results.errors);
+              }
               logger.warn(`Could not read layout file ${layoutFile}: ${error.message}`);
             }
           }
@@ -457,12 +519,12 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
           }
         }
         
-        // Update modification cache
+        // Update modification cache for existing files
         const stats = await fs.stat(filePath);
         fileModificationCache.set(filePath, stats.mtime.getTime());
         
       } catch (error) {
-        logger.error(`Error processing ${filePath}: ${error.message}`);
+        logger.error(error.formatForCLI ? error.formatForCLI() : `Error processing ${filePath}: ${error.message}`);
         results.errors.push({ file: filePath, error: error.message });
       }
     }
@@ -484,7 +546,11 @@ export async function incrementalBuild(options = {}, changedFile = null, depende
     };
     
   } catch (error) {
-    logger.error('Incremental build failed:', error.message);
+    if (error.formatForCLI) {
+      logger.error(error.formatForCLI());
+    } else {
+      logger.error('Incremental build failed:', error.message);
+    }
     throw error;
   }
 }
@@ -515,9 +581,32 @@ async function getFilesToRebuild(sourceRoot, changedFile, dependencyTracker, con
         logger.debug(`Page ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
       }
     } else {
-      // Asset changed - copy just this asset
+      // Asset or unknown file type changed
       filesToRebuild.add(resolvedChangedFile);
-      logger.debug(`Asset ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
+      
+      // For new asset files, we should also rebuild all HTML/Markdown pages 
+      // to check if they now reference this asset
+      if (!isHtmlFile(resolvedChangedFile) && !isMarkdownFile(resolvedChangedFile)) {
+        try {
+          // Check if this is a new file (not in modification cache)
+          const isNewFile = !fileModificationCache.has(resolvedChangedFile);
+          
+          if (isNewFile) {
+            // New asset file - rebuild all content pages to pick up potential references
+            const allFiles = await scanDirectory(sourceRoot);
+            const contentFiles = allFiles.filter(file => 
+              (isHtmlFile(file) && !isPartialFile(file, config)) || isMarkdownFile(file)
+            );
+            contentFiles.forEach(page => filesToRebuild.add(page));
+            logger.debug(`New asset ${path.relative(sourceRoot, resolvedChangedFile)} added, rebuilding ${contentFiles.length} pages to check for references`);
+          } else {
+            logger.debug(`Asset ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
+          }
+        } catch (error) {
+          // If we can't determine if it's new, just copy the asset
+          logger.debug(`Asset ${path.relative(sourceRoot, resolvedChangedFile)} changed`);
+        }
+      }
     }
   } else {
     // No specific file - check all files for changes
@@ -720,7 +809,44 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutConte
     // Apply specified layout when content doesn't have <html> element
     finalContent = wrapInLayout(htmlWithAnchors, metadata, layoutContent);
     logger.debug('Applied specified layout');
-  } else {
+  } else if (frontmatter.layout) {
+    // Load layout from frontmatter specification
+    const layoutPath = path.isAbsolute(layoutsDir) 
+      ? path.join(layoutsDir, frontmatter.layout)
+      : path.join(sourceRoot, layoutsDir, frontmatter.layout);
+    
+    try {
+      const frontmatterLayoutContent = await fs.readFile(layoutPath, 'utf-8');
+      
+      // Process layout content through include processor to handle includes
+      const { processIncludes } = await import('./include-processor.js');
+      const processedLayout = await processIncludes(frontmatterLayoutContent, layoutPath, sourceRoot, new Set(), 0, null);
+      
+      // Replace slots with content (DOM mode style)
+      let layoutWithContent = processedLayout.replace(/<slot[^>]*><\/slot>/g, htmlWithAnchors);
+      
+      // Also handle markdown-style template variables if present
+      layoutWithContent = layoutWithContent.replace(/\{\{\s*content\s*\}\}/g, htmlWithAnchors);
+      layoutWithContent = layoutWithContent.replace(/\{\{\s*title\s*\}\}/g, metadata.title || 'Untitled');
+      
+      // Replace frontmatter variables
+      const allData = { ...metadata.frontmatter, ...metadata };
+      for (const [key, value] of Object.entries(allData)) {
+        if (typeof value === 'string') {
+          const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
+          layoutWithContent = layoutWithContent.replace(regex, value);
+        }
+      }
+      
+      finalContent = layoutWithContent;
+      logger.debug(`Applied frontmatter layout: ${frontmatter.layout}`);
+    } catch (error) {
+      logger.warn(`Could not read frontmatter layout ${frontmatter.layout}: ${error.message}`);
+      // Fall through to default layout check
+    }
+  }
+  
+  if (!finalContent) {
     // No layout specified, check for default layout
     const hasDefault = await hasDefaultLayout(sourceRoot, layoutsDir);
     if (hasDefault) {
@@ -775,7 +901,15 @@ async function processMarkdownFile(filePath, sourceRoot, outputRoot, layoutConte
  * @param {DependencyTracker} dependencyTracker - Dependency tracker instance
  * @param {AssetTracker} assetTracker - Asset tracker instance
  */
-async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTracker, assetTracker, config = {}) {
+async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTracker, assetTracker, config = {}, buildCache = null) {
+  const outputPath = getOutputPath(filePath, sourceRoot, outputRoot);
+  
+  // Check cache if available
+  if (buildCache && await buildCache.isUpToDate(filePath, outputPath)) {
+    logger.debug(`Skipping unchanged file: ${path.relative(sourceRoot, filePath)}`);
+    return;
+  }
+  
   // Read HTML content
   let htmlContent;
   try {
@@ -802,7 +936,6 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTrack
   }
   
   // Write to output
-  const outputPath = getOutputPath(filePath, sourceRoot, outputRoot);
   await ensureDirectoryExists(path.dirname(outputPath));
   
   // Apply minification if enabled
@@ -812,6 +945,19 @@ async function processHtmlFile(filePath, sourceRoot, outputRoot, dependencyTrack
   
   try {
     await fs.writeFile(outputPath, processedContent, 'utf-8');
+    
+    // Update cache after successful write
+    if (buildCache) {
+      await buildCache.updateFileHash(filePath);
+      
+      // Update dependencies from dependency tracker
+      if (dependencyTracker) {
+        const dependencies = dependencyTracker.getPageDependencies(filePath);
+        if (dependencies && dependencies.length > 0) {
+          buildCache.setDependencies(filePath, dependencies);
+        }
+      }
+    }
   } catch (error) {
     throw new FileSystemError('write', outputPath, error);
   }
@@ -903,71 +1049,3 @@ async function ensureDirectoryExists(dirPath) {
   }
 }
 
-/**
- * Get MIME type for file extension
- * @param {string} filePath - File path
- * @returns {string} MIME type
- */
-export function getMimeType(filePath) {
-  const ext = getFileExtension(filePath);
-  
-  const mimeTypes = {
-    '.html': 'text/html; charset=utf-8',
-    '.css': 'text/css; charset=utf-8',
-    '.js': 'application/javascript; charset=utf-8',
-    '.json': 'application/json; charset=utf-8',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml',
-    '.ico': 'image/x-icon',
-    '.ttf': 'font/ttf',
-    '.woff': 'font/woff',
-    '.woff2': 'font/woff2',
-    '.pdf': 'application/pdf',
-    '.txt': 'text/plain; charset=utf-8',
-    '.xml': 'application/xml; charset=utf-8'
-  };
-  
-  return mimeTypes[ext] || 'application/octet-stream';
-}
-
-/**
- * Check if file should be processed as HTML
- * @param {string} filePath - File path to check
- * @returns {boolean} True if file should be processed
- */
-export function shouldProcessFile(filePath, includesDir = 'includes') {
-  return isHtmlFile(filePath) && !isPartialFile(filePath, includesDir);
-}
-
-/**
- * Get build statistics
- * @param {string} sourceRoot - Source root directory
- * @returns {Promise<Object>} Build statistics
- */
-export async function getBuildStats(sourceRoot) {
-  const files = await scanDirectory(sourceRoot);
-  
-  const stats = {
-    total: files.length,
-    html: 0,
-    partials: 0,
-    assets: 0
-  };
-  
-  for (const filePath of files) {
-    if (isHtmlFile(filePath)) {
-      if (isPartialFile(filePath)) {
-        stats.partials++;
-      } else {
-        stats.html++;
-      }
-    } else {
-      stats.assets++;
-    }
-  }
-  
-  return stats;
-}

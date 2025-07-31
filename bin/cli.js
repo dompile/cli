@@ -1,13 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { parseArgs } from '../src/cli/args-parser.js';
 import { build } from '../src/core/file-processor.js';
 import { watch } from '../src/core/file-watcher.js';
 import { DevServer } from '../src/server/dev-server.js';
-import { liveReload } from '../src/server/live-reload.js';
 import { logger } from '../src/utils/logger.js';
-
-const VERSION = '0.5.2';
+import { BUILD_INFO, getVersionInfo, logRuntimeInfo } from '../src/utils/build-constants.js';
 
 async function main() {
   try {
@@ -15,7 +13,8 @@ async function main() {
     
     // Handle version and help flags
     if (args.version) {
-      console.log(`unify v${VERSION}`);
+      const info = getVersionInfo();
+      console.log(`unify v${info.version}`);
       process.exit(0);
     }
     
@@ -27,6 +26,7 @@ async function main() {
     // Set logging level based on verbose flag
     if (args.verbose) {
       logger.setLevel('DEBUG');
+      logRuntimeInfo();
     }
     
     // Default to build command if none specified
@@ -50,19 +50,24 @@ async function main() {
         
       case 'serve':
         logger.info('Starting development server with live reload...');
-        const server = new DevServer(args);
+        const server = new DevServer();
         
-        // Enable live reload
-        liveReload.setEnabled(true);
-        
-        // Start server
-        await server.start();
+        // Start server with proper config mapping
+        await server.start({
+          port: args.port,
+          hostname: args.host,
+          outputDir: args.output,
+          fallback: 'index.html',
+          cors: true,
+          liveReload: true,
+          verbose: args.verbose
+        });
         
         // Start file watcher with live reload callback
         const watchConfig = {
           ...args,
           onReload: (eventType, filePath) => {
-            liveReload.notifyReload(eventType, filePath);
+            server.broadcastReload();
           }
         };
         
@@ -86,27 +91,38 @@ async function main() {
     if (error.formatForCLI) {
       console.error('\n' + error.formatForCLI());
     } else {
-      logger.error('❌ Error:', error.message);
+      logger.error('Error:', error.message);
     }
 
     // Show stack trace in debug mode or for unexpected errors
-    if (process.env.DEBUG || (!error.suggestions && !error.formatForCLI)) {
+    if (Bun.env.DEBUG || (!error.suggestions && !error.formatForCLI)) {
       console.error('\n🔍 Stack trace:');
       console.error(error.stack);
     }
 
-    // Exit with code 1 for errors with suggestions, 2 for unexpected errors
-    if (error && error.suggestions && Array.isArray(error.suggestions)) {
-      process.exit(1);
-    } else {
-      process.exit(2);
+    // Exit with code 2 for usage/argument errors, 1 for build errors (Unix standard)
+    if (error) {
+      const { BuildError } = await import('../src/utils/errors.js');
+      
+      // Build errors always get exit code 1, regardless of suggestions
+      if (error instanceof BuildError) {
+        process.exit(1);
+      }
+      // Other errors with suggestions get exit code 2 (user/argument errors)
+      else if (error.suggestions && Array.isArray(error.suggestions)) {
+        process.exit(2);
+      }
+      // Unexpected errors without suggestions get exit code 1
+      else {
+        process.exit(1);
+      }
     }
   }
 }
 
 function showHelp() {
   console.log(`
-unify v${VERSION}
+unify v${BUILD_INFO.version}
 
 Usage: unify [command] [options]
 

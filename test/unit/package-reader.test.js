@@ -3,8 +3,7 @@
  * Verifies package.json homepage extraction for sitemap generation
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { readPackageJson, findPackageJson, getBaseUrlFromPackage } from '../../src/utils/package-reader.js';
@@ -44,20 +43,20 @@ describe('Package.json Reading', () => {
       
       const result = await readPackageJson(tempDir);
       
-      assert.strictEqual(result.name, 'test-project');
-      assert.strictEqual(result.homepage, 'https://example.com');
+      expect(result.name).toBe('test-project');
+      expect(result.homepage).toBe('https://example.com');
     });
 
     it('should return null for missing package.json', async () => {
       const result = await readPackageJson(tempDir);
-      assert.strictEqual(result, null);
+      expect(result).toBe(null);
     });
 
     it('should return null for invalid JSON', async () => {
       await fs.writeFile(path.join(tempDir, 'package.json'), '{ invalid json }');
       
       const result = await readPackageJson(tempDir);
-      assert.strictEqual(result, null);
+      expect(result).toBe(null);
     });
 
     it('should handle package.json with no homepage', async () => {
@@ -70,8 +69,8 @@ describe('Package.json Reading', () => {
       
       const result = await readPackageJson(tempDir);
       
-      assert.strictEqual(result.name, 'test-project');
-      assert.strictEqual(result.homepage, undefined);
+      expect(result.name).toBe('test-project');
+      expect(result.homepage).toBe(undefined);
     });
   });
 
@@ -82,8 +81,8 @@ describe('Package.json Reading', () => {
       
       const result = await findPackageJson(tempDir);
       
-      assert.strictEqual(result.name, 'current-dir');
-      assert.strictEqual(result.homepage, 'https://current.com');
+      expect(result.name).toBe('current-dir');
+      expect(result.homepage).toBe('https://current.com');
     });
 
     it('should find package.json in parent directory', async () => {
@@ -95,8 +94,8 @@ describe('Package.json Reading', () => {
       
       const result = await findPackageJson(subDir);
       
-      assert.strictEqual(result.name, 'parent-dir');
-      assert.strictEqual(result.homepage, 'https://parent.com');
+      expect(result.name).toBe('parent-dir');
+      expect(result.homepage).toBe('https://parent.com');
     });
 
     it('should find closest package.json', async () => {
@@ -114,8 +113,8 @@ describe('Package.json Reading', () => {
       const result = await findPackageJson(subDir);
       
       // Should find the closer one
-      assert.strictEqual(result.name, 'sub');
-      assert.strictEqual(result.homepage, 'https://sub.com');
+      expect(result.name).toBe('sub');
+      expect(result.homepage).toBe('https://sub.com');
     });
 
     it('should return null when no package.json found', async () => {
@@ -123,7 +122,7 @@ describe('Package.json Reading', () => {
       await fs.mkdir(deepDir, { recursive: true });
       
       const result = await findPackageJson(deepDir);
-      assert.strictEqual(result, null);
+      expect(result).toBe(null);
     });
   });
 
@@ -138,13 +137,13 @@ describe('Package.json Reading', () => {
       
       const baseUrl = await getBaseUrlFromPackage(tempDir);
       
-      assert.strictEqual(baseUrl, 'https://mysite.com');
+      expect(baseUrl).toBe('https://mysite.com');
     });
 
     it('should use fallback when no package.json', async () => {
       const baseUrl = await getBaseUrlFromPackage(tempDir, 'https://fallback.com');
       
-      assert.strictEqual(baseUrl, 'https://fallback.com');
+      expect(baseUrl).toBe('https://fallback.com');
     });
 
     it('should use fallback when no homepage field', async () => {
@@ -157,13 +156,13 @@ describe('Package.json Reading', () => {
       
       const baseUrl = await getBaseUrlFromPackage(tempDir, 'https://fallback.com');
       
-      assert.strictEqual(baseUrl, 'https://fallback.com');
+      expect(baseUrl).toBe('https://fallback.com');
     });
 
     it('should use default fallback', async () => {
       const baseUrl = await getBaseUrlFromPackage(tempDir);
       
-      assert.strictEqual(baseUrl, 'https://example.com');
+      expect(baseUrl).toBe('https://example.com');
     });
 
     it('should handle various homepage URL formats', async () => {
@@ -180,7 +179,7 @@ describe('Package.json Reading', () => {
         await fs.writeFile(path.join(tempDir, 'package.json'), JSON.stringify(packageContent));
         
         const baseUrl = await getBaseUrlFromPackage(tempDir);
-        assert.strictEqual(baseUrl, homepage);
+        expect(baseUrl).toBe(homepage);
         
         // Clean up for next iteration
         const packagePath = path.join(tempDir, 'package.json');
@@ -206,11 +205,11 @@ describe('Package.json Reading', () => {
       
       // 1. No CLI arg provided, should use package.json
       const fromPackage = await getBaseUrlFromPackage(tempDir, 'https://example.com');
-      assert.strictEqual(fromPackage, 'https://package.example.com');
+      expect(fromPackage).toBe('https://package.example.com');
       
       // 2. Different fallback provided, should still use package.json
       const withFallback = await getBaseUrlFromPackage(tempDir, 'https://different.com');
-      assert.strictEqual(withFallback, 'https://package.example.com');
+      expect(withFallback).toBe('https://package.example.com');
     });
 
     it('should work with monorepo structure', async () => {
@@ -229,7 +228,7 @@ describe('Package.json Reading', () => {
       
       // Should find site-specific homepage
       const baseUrl = await getBaseUrlFromPackage(siteDir);
-      assert.strictEqual(baseUrl, 'https://site.com');
+      expect(baseUrl).toBe('https://site.com');
     });
   });
 });

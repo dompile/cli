@@ -1,12 +1,25 @@
 # Include System Documentation
 
-dompile supports two include systems: **Apache SSI-style comments** (recommended) and **DOM mode elements** (for advanced use cases). This document covers both syntaxes and when to use each.
+unify supports two include systems: **Apache SSI-style comments** and **include elements**. This document covers both syntaxes and when to use each.
 
 ## Include Syntax Types
 
-### Comment-Based Includes (Recommended)
+### Element-Based Includes
 
-**Primary include syntax** using Apache SSI comments. This is the recommended approach for most users as it's compatible with web server SSI implementations.
+Using HTML elements.
+
+```html
+<!-- include element -->
+<include src="/.components/header.html" />
+```
+
+**Limitations:**
+
+- Not compatible with traditional Apache SSI implementations
+
+### Comment-Based Includes (Legacy)
+
+Using Apache SSI comments. 
 
 ```html
 <!--#include virtual="/path/from/source/root.html" -->
@@ -29,6 +42,7 @@ Virtual includes use paths relative to the **source root directory**:
 ```
 
 **Path Resolution:**
+
 - Always starts from source root (`src/` by default)
 - Leading `/` is optional but recommended for clarity
 - Case-sensitive on most systems
@@ -49,50 +63,22 @@ File includes use paths relative to the **current file's directory**:
 ```
 
 **Path Resolution:**
+
 - Relative to the directory containing the current file
 - Use `../` to navigate up directories
 - Use `./` for current directory (optional)
 
-### Element-Based Includes (DOM Mode Only)
-
-**Secondary syntax** using HTML elements. Only available when using DOM mode processing with `data-layout` attributes.
-
-```html
-<!-- Basic include element - only works in DOM mode pages with data-layout -->
-<include src="/.components/header.html"></include>
-
-<!-- With data attributes for token replacement -->
-<include src="/.components/card.html" 
-         data-title="My Card"
-         data-content="Card description"></include>
-
-<!-- Self-closing -->
-<include src="/.components/footer.html" />
-```
-
-**When to use DOM mode includes:**
-- Pages with `data-layout` attributes (DOM mode processing)
-- When you need token replacement with `data-*` attributes
-- For component-style includes with parameters
-
-**Limitations:**
-- Only supported in DOM mode (pages using `data-layout`)
-- Token replacement limited to `data-token` attributes in components
-- Not compatible with traditional Apache SSI implementations
-
 ## Usage Recommendations
 
-### Use SSI Comments When:
-- Building traditional static sites
-- Need Apache web server compatibility  
-- Working with markdown files
-- Want simple, universal include syntax
+### Use DOM Elements When
 
-### Use DOM Elements When:
-- Using DOM mode with layouts and slots
-- Need component parameterization
 - Building component-based architectures
 - Want modern HTML element syntax
+
+### Use SSI Comments When
+
+- Building legacy static sites
+- Need Apache SSI compatibility
 
 ## Include Features
 
@@ -101,23 +87,25 @@ File includes use paths relative to the **current file's directory**:
 Includes can contain other includes, allowing complex composition:
 
 **File: `src/.components/page-layout.html`**
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <!--#include virtual="/.components/head-meta.html" -->
-</head>
-<body>
-  <!--#include virtual="/.components/header.html" -->
-  <main>
-    <!-- Content will be inserted here -->
-  </main>
-  <!--#include virtual="/.components/footer.html" -->
-</body>
+  <head>
+    <!--#include virtual="/.components/head-meta.html" -->
+  </head>
+  <body>
+    <!--#include virtual="/.components/header.html" -->
+    <main>
+      <!-- Content will be inserted here -->
+    </main>
+    <!--#include virtual="/.components/footer.html" -->
+  </body>
 </html>
 ```
 
 **File: `src/.components/header.html`**
+
 ```html
 <header>
   <!--#include virtual="/.components/navigation.html" -->
@@ -127,7 +115,7 @@ Includes can contain other includes, allowing complex composition:
 
 ### Circular Dependency Detection
 
-dompile automatically detects and prevents infinite include loops:
+unify automatically detects and prevents infinite include loops:
 
 ```html
 <!-- This will cause a circular dependency error -->
@@ -139,6 +127,7 @@ dompile automatically detects and prevents infinite include loops:
 ```
 
 **Error message:**
+
 ```
 Error: Circular dependency detected
 Include chain: file-a.html → file-b.html → file-a.html
@@ -150,7 +139,8 @@ Includes are limited to 10 levels deep to prevent runaway recursion:
 
 ```html
 <!-- This will work (within limit) -->
-<!--#include virtual="/level1.html" --> <!-- level1.html includes level2.html, etc. -->
+<!--#include virtual="/level1.html" -->
+<!-- level1.html includes level2.html, etc. -->
 
 <!-- Beyond 10 levels triggers depth limit error -->
 ```
@@ -159,7 +149,7 @@ Includes are limited to 10 levels deep to prevent runaway recursion:
 
 ### Path Traversal Prevention
 
-dompile prevents includes from accessing files outside the source directory:
+unify prevents includes from accessing files outside the source directory:
 
 ```html
 <!-- These will be blocked for security -->
@@ -168,6 +158,7 @@ dompile prevents includes from accessing files outside the source directory:
 ```
 
 **Error message:**
+
 ```
 Security Error: Include path outside source directory
 Attempted path: /etc/passwd
@@ -179,14 +170,11 @@ Allowed directories: src/
 Only certain file types can be included:
 
 **Allowed extensions:**
+
 - `.html`, `.htm` - HTML content
 - `.md`, `.markdown` - Markdown content (processed)
 - `.txt` - Plain text content
 - `.svg` - SVG images (as HTML)
-
-**Blocked extensions:**
-- `.js`, `.php`, `.asp` - Executable scripts
-- `.json`, `.xml` - Data files (use virtual includes for processed versions)
 
 ## Directory Structure Best Practices
 
@@ -218,55 +206,6 @@ src/
 - **Descriptive names**: `primary-navigation.html` vs `nav.html`
 - **Organize by feature**: Group related components in subdirectories
 
-## Advanced Patterns
-
-### Conditional Includes
-
-Include files conditionally based on frontmatter or context:
-
-```html
-<!-- In markdown with frontmatter -->
----
-has_sidebar: true
-layout_type: "blog"
----
-
-# Page Content
-
-{{#if has_sidebar}}
-<!--#include virtual="/.components/sidebar.html" -->
-{{/if}}
-
-{{#if layout_type === "blog"}}
-<!--#include virtual="/.components/blog-navigation.html" -->
-{{/if}}
-```
-
-### Dynamic Include Paths
-
-Use variables in include paths (requires variable substitution):
-
-```html
-<!-- With frontmatter variable -->
----
-component_theme: "dark"
----
-
-<!--#include virtual="/.components/header-{{ component_theme }}.html" -->
-```
-
-### Include with Parameters
-
-Pass data to includes using HTML attributes:
-
-```html
-<!-- Future feature - parameter passing -->
-<include src="/.components/card.html" 
-         title="My Card" 
-         content="Card description">
-</include>
-```
-
 ## Performance Considerations
 
 ### Build Performance
@@ -280,13 +219,14 @@ Pass data to includes using HTML attributes:
 1. **Keep includes focused**: Single responsibility per include
 2. **Minimize nesting**: Flatten complex include hierarchies
 3. **Use virtual paths**: More efficient than relative file paths
-4. **Cache includes**: dompile automatically caches parsed includes
+4. **Cache includes**: unify automatically caches parsed includes
 
 ## Error Handling
 
 ### Common Errors
 
 **Include file not found:**
+
 ```
 Include file not found: header.html
   in: src/index.html:5
@@ -297,6 +237,7 @@ Suggestions:
 ```
 
 **Circular dependency:**
+
 ```
 Circular dependency detected in includes
 Include chain: page.html → layout.html → page.html
@@ -308,6 +249,7 @@ Suggestions:
 ```
 
 **Path traversal blocked:**
+
 ```
 Security: Include path outside source directory
 Path: ../../config.html
@@ -323,10 +265,11 @@ Suggestions:
 Enable detailed include processing information:
 
 ```bash
-DEBUG=1 dompile build
+UNIFY_DEBUG=1 unify build
 ```
 
 Shows:
+
 - Include resolution steps
 - File path calculations
 - Dependency chain building
@@ -348,19 +291,6 @@ This is markdown content.
 More markdown content here.
 ```
 
-### Template System
-
-Includes integrate with template slots:
-
-```html
-<!-- layout.html -->
-<template>
-  <!--#include virtual="/.components/header.html" -->
-  <slot name="content"></slot>
-  <!--#include virtual="/.components/footer.html" -->
-</template>
-```
-
 ### Asset Processing
 
 Include files can reference assets that get tracked:
@@ -368,8 +298,8 @@ Include files can reference assets that get tracked:
 ```html
 <!-- header.html -->
 <header>
-  <img src="/images/logo.png" alt="Logo">
-  <link rel="stylesheet" href="/css/header.css">
+  <img src="/images/logo.png" alt="Logo" />
+  <link rel="stylesheet" href="/css/header.css" />
 </header>
 ```
 
@@ -378,32 +308,35 @@ Include files can reference assets that get tracked:
 ### From Other SSG Systems
 
 **From Jekyll includes:**
+
 ```liquid
 <!-- Jekyll -->
 {% include header.html %}
-<!-- dompile -->
-<!--#include virtual="/.components/header.html" -->
+<!-- unify -->
+<include src="/.components/header.html"/>
 ```
 
 **From Hugo partials:**
+
 ```go
 <!-- Hugo -->
 {{ partial "header.html" . }}
-<!-- dompile -->
-<!--#include virtual="/.components/header.html" -->
+<!-- unify -->
+<include src="/.components/header.html"/>
 ```
 
 **From 11ty includes:**
+
 ```liquid
 <!-- 11ty -->
 {% include "header.njk" %}
-<!-- dompile -->
-<!--#include virtual="/.components/header.html" -->
+<!-- unify -->
+<include src="/.components/header.html"/>
 ```
 
 ### Legacy Apache SSI
 
-dompile is compatible with most Apache SSI include directives:
+unify is compatible with most Apache SSI include directives:
 
 ```apache
 <!-- Apache SSI (supported) -->

@@ -2,16 +2,12 @@
  * Integration tests for CLI functionality
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
-import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
+import { runCLI } from '../test-utils.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testFixturesDir = path.join(__dirname, '../fixtures/cli');
-const cliPath = path.resolve(__dirname, '../../bin/cli.js');
+const testFixturesDir = path.join(import.meta.dir, '../fixtures/cli');
 
 describe('CLI integration', () => {
   let sourceDir;
@@ -69,24 +65,24 @@ describe('CLI integration', () => {
   
   it('should show version with --version flag', async () => {
     const result = await runCLI(['--version']);
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('unify v0.5.2'));
+    expect(result.code).toBe(0);
+    expect(result.stdout.includes('0.6.0')).toBeTruthy();
   });
   
   it('should show help with --help flag', async () => {
     const result = await runCLI(['--help']);
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Usage: unify'));
-    assert(result.stdout.includes('Commands:'));
-    assert(result.stdout.includes('build'));
-    assert(result.stdout.includes('watch'));
+    expect(result.code).toBe(0);
+    expect(result.stdout.includes('Usage: unify')).toBeTruthy();
+    expect(result.stdout.includes('Commands:')).toBeTruthy();
+    expect(result.stdout.includes('build')).toBeTruthy();
+    expect(result.stdout.includes('watch')).toBeTruthy();
   });
   
   it('should run build when no command is provided', async () => {
     const result = await runCLI([], { cwd: testFixturesDir });
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Building static site'));
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.code).toBe(0);
+    expect(result.stdout.includes('Building static site')).toBeTruthy();
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
 
     // Verify output files
     await fs.access(path.join(outputDir, 'index.html'));
@@ -94,8 +90,8 @@ describe('CLI integration', () => {
 
     // Verify content processing
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
-    assert(indexContent.includes('<header><h1>CLI Test</h1></header>'));
-    assert(indexContent.includes('<meta charset="UTF-8">'));
+    expect(indexContent.includes('<header><h1>CLI Test</h1></header>')).toBeTruthy();
+    expect(indexContent.includes('<meta charset="UTF-8">')).toBeTruthy();
   });
   
   it('should build site with build command', async () => {
@@ -105,9 +101,9 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Building static site'));
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.code).toBe(0);
+    expect(result.stdout.includes('Building static site')).toBeTruthy();
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output files
     await fs.access(path.join(outputDir, 'index.html'));
@@ -115,8 +111,8 @@ describe('CLI integration', () => {
     
     // Verify content processing
     const indexContent = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
-    assert(indexContent.includes('<header><h1>CLI Test</h1></header>'));
-    assert(indexContent.includes('<meta charset="UTF-8">'));
+    expect(indexContent.includes('<header><h1>CLI Test</h1></header>')).toBeTruthy();
+    expect(indexContent.includes('<meta charset="UTF-8">')).toBeTruthy();
   });
   
   it('should handle build errors gracefully', async () => {
@@ -126,8 +122,8 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Source directory not found'));
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
+    expect(result.stderr.includes('Source directory not found')).toBeTruthy();
   });
   
   it('should fail build when components are missing', async () => {
@@ -143,8 +139,9 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stderr.includes('Include file not found'));
+    expect(result.code).toBe(0);
+    const allOutput = result.stdout + result.stderr;
+    expect(allOutput.includes('Include not found') || allOutput.includes('Include file not found')).toBeTruthy();
   });
   
   it('should validate CLI arguments', async () => {
@@ -153,15 +150,15 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Unknown option'));
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
+    expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   
   it('should handle unknown commands', async () => {
     const result = await runCLI(['unknown-command']);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Unknown command'));
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
+    expect(result.stderr.includes('Unknown command')).toBeTruthy();
   });
   
   it('should handle unknown options', async () => {
@@ -170,8 +167,8 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    assert.strictEqual(result.exitCode, 1);
-    assert(result.stderr.includes('Unknown option'));
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
+    expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   
   it('should work with short option flags', async () => {
@@ -181,8 +178,8 @@ describe('CLI integration', () => {
       '-o', outputDir
     ]);
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.code).toBe(0);
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output
     await fs.access(path.join(outputDir, 'index.html'));
@@ -219,76 +216,15 @@ describe('CLI integration', () => {
     // Change to test directory and run with defaults
     const result = await runCLI(['build'], { cwd: testDir });
     
-    assert.strictEqual(result.exitCode, 0);
-    assert(result.stdout.includes('Build completed successfully'));
+    expect(result.code).toBe(0);
+    expect(result.stdout.includes('Build completed successfully')).toBeTruthy();
     
     // Verify output in default dist directory
     await fs.access(path.join(defaultDist, 'index.html'));
     const indexContent = await fs.readFile(path.join(defaultDist, 'index.html'), 'utf-8');
-    assert(indexContent.includes('<header><h1>Default Test</h1></header>'));
+    expect(indexContent.includes('<header><h1>Default Test</h1></header>')).toBeTruthy();
   });
   
  
 });
 
-/**
- * Helper function to run CLI commands
- */
-function runCLI(args, options = {}) {
-  return new Promise((resolve) => {
-    const child = spawn('node', [cliPath, ...args], {
-      stdio: 'pipe',
-      ...options
-    });
-    
-    let stdout = '';
-    let stderr = '';
-    
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-    
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-    
-    let resolved = false;
-    
-    child.on('close', (exitCode) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timeoutId);
-        resolve({
-          exitCode,
-          stdout,
-          stderr
-        });
-      }
-    });
-    
-    child.on('error', (error) => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timeoutId);
-        resolve({
-          exitCode: -1,
-          stdout,
-          stderr: stderr + '\nProcess error: ' + error.message
-        });
-      }
-    });
-    
-    // Prevent hanging tests
-    const timeoutId = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        child.kill('SIGKILL');
-        resolve({
-          exitCode: -1,
-          stdout,
-          stderr: stderr + '\nTest timeout after 5000ms'
-        });
-      }
-    }, 5000);
-  });
-}

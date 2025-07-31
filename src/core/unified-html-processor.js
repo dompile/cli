@@ -1,25 +1,45 @@
 /**
  * Unified HTML Processor for unify
  * Handles both SSI-style includes (<!--#include -->) and DOM templating (<template>, <slot>)
- * in a single processing pipeline for consistency and simplicity.
+ * using HTMLRewriter for high-performance processing.
  */
 
 import fs from "fs/promises";
 import path from "path";
-import { JSDOM } from "jsdom";
 import { processIncludes } from "./include-processor.js";
 import { logger } from "../utils/logger.js";
-import { isPathWithinDirectory } from "../utils/path-resolver.js";
-import {
-  ComponentError,
-  LayoutError,
+import { 
+  BuildError,
   FileSystemError,
+  CircularDependencyError,
+  PathTraversalError,
+  IncludeNotFoundError,
+  LayoutError
 } from "../utils/errors.js";
+import { isPathWithinDirectory, resolveIncludePath, resolveResourcePath } from "../utils/path-resolver.js";
+import { hasFeature } from "../utils/runtime-detector.js";
 
 /**
  * Process HTML content with unified support for both SSI includes and DOM templating
+ * Uses HTMLRewriter for high-performance processing
  * @param {string} htmlContent - Raw HTML content to process
- * @param {string} filePath - Path to the HTML file being processed
+   // Check if the layout itself has a data-layout attribute (nested layouts)
+  const nestedLayoutMatch = layoutContent.match(/data-layout=["']([^"']+)["']/i);
+  if (nestedLayoutMatch) {
+    const nestedLayoutPath = nestedLayoutMatch[1];
+    // Recursively process the nested layout, but pass the current slot data as page content
+    const slotData = extractSlotDataFromHTML(pageContent);
+    const layoutWithSlots = applySlots(layoutContent, slotData);
+    
+    // Now process the nested layout with the slot-applied content as the page content
+    return await processLayoutAttribute(
+      layoutWithSlots,
+      nestedLayoutPath,
+      resolvedLayoutPath, // Use current layout as the source file for nested layout resolution
+      sourceRoot,
+      config
+    );
+  }filePath - Path to the HTML file being processed
  * @param {string} sourceRoot - Source root directory
  * @param {DependencyTracker} dependencyTracker - Dependency tracker instance
  * @param {Object} config - Processing configuration
@@ -36,34 +56,31 @@ export async function processHtmlUnified(
     componentsDir: ".components",
     layoutsDir: ".layouts",
     defaultLayout: "default.html",
+    optimize: config.minify || config.optimize,
     ...config,
   };
 
   try {
-    // Step 1: Process SSI includes first (traditional <!--#include --> directives)
     logger.debug(
-      `Processing SSI includes for: ${path.relative(sourceRoot, filePath)}`
+      `Using HTMLRewriter for: ${path.relative(sourceRoot, filePath)}`
     );
-
+    
     // Track dependencies before processing
-    dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
-
-    let processedContent = await processIncludes(
+    if (dependencyTracker) {
+      dependencyTracker.analyzePage(filePath, htmlContent, sourceRoot);
+    }
+    
+    // Process includes with the main include processor
+    let processedContent = await processIncludesWithStringReplacement(
       htmlContent,
       filePath,
       sourceRoot,
-      new Set(),
-      0,
-      dependencyTracker
+      processingConfig,
+      new Set() // Initialize call stack for circular dependency detection
     );
-
-    // Step 2: Check if we should use DOM mode processing (handles <include> elements, layouts, and slots)
+    
+    // Handle layouts and slots if needed
     if (shouldUseDOMMode(processedContent)) {
-      logger.debug(
-        `Processing with DOM Mode for: ${path.relative(sourceRoot, filePath)}`
-      );
-      
-      // Use integrated DOM processing which handles <include> elements, layouts, and slots all together
       processedContent = await processDOMMode(
         processedContent,
         filePath,
@@ -74,10 +91,6 @@ export async function processHtmlUnified(
       hasDOMTemplating(processedContent) ||
       !processedContent.includes("<html")
     ) {
-      logger.debug(
-        `Processing DOM templating for: ${path.relative(sourceRoot, filePath)}`
-      );
-      // Fallback to original DOM templating for layouts/slots only
       processedContent = await processDOMTemplating(
         processedContent,
         filePath,
@@ -85,7 +98,15 @@ export async function processHtmlUnified(
         processingConfig
       );
     }
-
+    
+    // Apply HTML optimization if enabled
+    if (processingConfig.optimize !== false) {
+      logger.debug(`Optimizing HTML content, optimize=${processingConfig.optimize}`);
+      processedContent = await optimizeHtmlContent(processedContent);
+    } else {
+      logger.debug(`Skipping HTML optimization, optimize=${processingConfig.optimize}`);
+    }
+    
     return processedContent;
   } catch (error) {
     logger.error(
@@ -99,6 +120,206 @@ export async function processHtmlUnified(
 }
 
 /**
+ * Process includes using string replacement (more reliable for async operations)
+ */
+async function processIncludesWithStringReplacement(htmlContent, filePath, sourceRoot, config = {}, callStack = new Set()) {
+  let processedContent = htmlContent;
+  
+  // Check for circular dependency
+  if (callStack.has(filePath)) {
+    const chain = Array.from(callStack);
+    throw new CircularDependencyError(filePath, chain);
+  }
+  
+  // Add current file to call stack
+  const newCallStack = new Set(callStack);
+  newCallStack.add(filePath);
+  
+  // Process SSI-style includes
+  const includeRegex = /<!--\s*#include\s+(virtual|file)="([^"]+)"\s*-->/g;
+  let match;
+  const processedIncludes = new Set();
+  
+  while ((match = includeRegex.exec(htmlContent)) !== null) {
+    const [fullMatch, type, includePath] = match;
+    const includeKey = `${type}:${includePath}`;
+    
+    if (processedIncludes.has(includeKey)) {
+      continue; // Avoid processing the same include multiple times
+    }
+    processedIncludes.add(includeKey);
+    
+    try {
+      const resolvedPath = resolveIncludePathInternal(type, includePath, filePath, sourceRoot);
+      const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+      
+      // Recursively process nested includes
+      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, newCallStack);
+      
+      // Replace all occurrences of this include
+      processedContent = processedContent.replace(new RegExp(escapeRegExp(fullMatch), 'g'), nestedProcessedContent);
+      logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
+    } catch (error) {
+      // Convert file not found errors to IncludeNotFoundError with helpful suggestions
+      if (error.code === 'ENOENT' && !error.formatForCLI) {
+        const resolvedPath = resolveIncludePathInternal(type, includePath, filePath, sourceRoot);
+        error = new IncludeNotFoundError(includePath, filePath, [resolvedPath]);
+      }
+      // In perfection mode, fail fast on any include error
+      if (config.perfection) {
+        if (error instanceof CircularDependencyError || error instanceof PathTraversalError || error instanceof IncludeNotFoundError) {
+          throw error; // Re-throw errors with helpful suggestions as-is
+        }
+        throw new Error(`Include not found in perfection mode: ${includePath} in ${filePath}`);
+      }
+      logger.warn(`Include not found: ${includePath} in ${filePath}`);
+      processedContent = processedContent.replace(new RegExp(escapeRegExp(fullMatch), 'g'), `<!-- Include not found: ${includePath} -->`);
+    }
+  }
+  
+  // Process modern DOM includes
+  const domIncludeRegex = /<include\s+src="([^"]+)"[^>]*><\/include>/g;
+  while ((match = domIncludeRegex.exec(htmlContent)) !== null) {
+    const [fullMatch, src] = match;
+    
+    try {
+      const resolvedPath = resolveIncludePathInternal('file', src, filePath, sourceRoot);
+      const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+      
+      // Recursively process nested includes
+      const nestedProcessedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, newCallStack);
+      
+      processedContent = processedContent.replace(fullMatch, nestedProcessedContent);
+      logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
+    } catch (error) {
+      // Convert file not found errors to IncludeNotFoundError with helpful suggestions
+      if (error.code === 'ENOENT' && !error.formatForCLI) {
+        const resolvedPath = resolveIncludePathInternal('file', src, filePath, sourceRoot);
+        error = new IncludeNotFoundError(src, filePath, [resolvedPath]);
+      }
+      // In perfection mode, fail fast on any include error
+      if (config.perfection) {
+        if (error instanceof CircularDependencyError || error instanceof PathTraversalError || error instanceof IncludeNotFoundError) {
+          throw error; // Re-throw errors with helpful suggestions as-is
+        }
+        throw new Error(`Include element not found in perfection mode: ${src} in ${filePath}`);
+      }
+      logger.warn(`Include element not found: ${src} in ${filePath}`);
+      processedContent = processedContent.replace(fullMatch, `<!-- Include not found: ${src} -->`);
+    }
+  }
+  
+  return processedContent;
+}
+
+/**
+ * Escape special regex characters
+ */
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Process SSI include directive
+ */
+async function processIncludeDirective(comment, type, includePath, filePath, sourceRoot, config, callStack = new Set()) {
+  try {
+    const resolvedPath = resolveIncludePathInternal(type, includePath, filePath, sourceRoot);
+    const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+    
+    // Recursively process nested includes in the included content
+    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, callStack);
+    
+    comment.replace(processedContent, { html: true });
+    logger.debug(`Processed include: ${includePath} -> ${resolvedPath}`);
+  } catch (error) {
+    logger.warn(`Include not found: ${includePath} in ${filePath}`);
+    comment.replace(`<!-- Include not found: ${includePath} -->`, { html: true });
+  }
+}
+
+/**
+ * Process modern include element
+ */
+async function processIncludeElement(element, src, filePath, sourceRoot, config, callStack = new Set()) {
+  try {
+    const resolvedPath = resolveIncludePathInternal('file', src, filePath, sourceRoot);
+    const includeContent = await fs.readFile(resolvedPath, 'utf-8');
+    
+    // Recursively process nested includes in the included content
+    const processedContent = await processIncludesWithStringReplacement(includeContent, resolvedPath, sourceRoot, config, callStack);
+    
+    element.setInnerContent(processedContent, { html: true });
+    logger.debug(`Processed include element: ${src} -> ${resolvedPath}`);
+  } catch (error) {
+    // In perfection mode, fail fast on any include error
+    if (config.perfection) {
+      throw new Error(`Include not found in perfection mode: ${src} in ${filePath}`);
+    }
+    logger.warn(`Include element not found: ${src} in ${filePath}`);
+    element.setInnerContent(`<!-- Include not found: ${src} -->`, { html: true });
+  }
+}
+
+/**
+ * Resolve include path based on type
+ */
+function resolveIncludePathInternal(type, includePath, currentFile, sourceRoot) {
+  return resolveIncludePath(type, includePath, currentFile, sourceRoot);
+}
+
+/**
+ * Optimize HTML content with HTMLRewriter
+ * @param {string} html - HTML content to optimize
+ * @returns {string} Optimized HTML
+ */
+async function optimizeHtmlContent(html) {
+  // Check if HTMLRewriter is available
+  if (!hasFeature('htmlRewriter')) {
+    logger.debug('HTMLRewriter not available, skipping HTML optimization');
+    return html;
+  }
+  
+  const rewriter = new HTMLRewriter();
+
+  // Remove unnecessary whitespace (basic optimization)
+  rewriter.on('*', {
+    text(text) {
+      if (text.lastInTextNode) {
+        // Collapse multiple whitespace into single space
+        const optimized = text.text.replace(/\s+/g, ' ');
+        if (optimized !== text.text) {
+          text.replace(optimized);
+        }
+      }
+    }
+  });
+
+  // Optimize attributes (remove empty ones)
+  rewriter.on('*', {
+    element(element) {
+      // Remove empty class attributes
+      const classAttr = element.getAttribute('class');
+      if (classAttr === '') {
+        element.removeAttribute('class');
+      }
+      
+      // Remove empty id attributes
+      const idAttr = element.getAttribute('id');
+      if (idAttr === '') {
+        element.removeAttribute('id');
+      }
+    }
+  });
+
+  const response = new Response(html, {
+    headers: { 'Content-Type': 'text/html' }
+  });
+  const transformedResponse = rewriter.transform(response);
+  return await transformedResponse.text();
+}
+
+/**
  * Check if content should use DOM mode processing
  * @param {string} content - HTML content to check
  * @returns {boolean} True if content has DOM mode features
@@ -106,7 +327,7 @@ export async function processHtmlUnified(
 function shouldUseDOMMode(content) {
   return content.includes('<include ') || 
          content.includes('<slot') || 
-         content.includes('data-slot=') ||
+         content.includes('target=') ||
          content.includes('data-layout=');
 }
 
@@ -128,16 +349,16 @@ async function processDOMMode(pageContent, pagePath, sourceRoot, config = {}) {
   };
   
   try {
-    // Parse the page HTML
-    const dom = new JSDOM(pageContent, { contentType: "text/html" });
-    const document = dom.window.document;
-    
-    // Detect layout from root element
+    // Detect layout from HTML content using regex-based parsing
     let layoutPath;
     try {
-      layoutPath = await detectLayout(document, sourceRoot, domConfig);
+      layoutPath = await detectLayoutFromHTML(pageContent, sourceRoot, domConfig);
       logger.debug(`Using layout: ${layoutPath}`);
     } catch (error) {
+      // In perfection mode, fail fast on layout detection errors
+      if (domConfig.perfection) {
+        throw new Error(`Layout not found in perfection mode for ${path.relative(sourceRoot, pagePath)}: ${error.message}`);
+      }
       // Graceful degradation: if layout cannot be found, return content wrapped in basic HTML
       logger.warn(`Layout not found for ${path.relative(sourceRoot, pagePath)}: ${error.message}`);
       return `<!DOCTYPE html>
@@ -156,6 +377,10 @@ ${pageContent}
     try {
       layoutContent = await fs.readFile(layoutPath, 'utf-8');
     } catch (error) {
+      // In perfection mode, fail fast on layout file read errors
+      if (domConfig.perfection) {
+        throw new Error(`Layout file not found in perfection mode: ${layoutPath} - ${error.message}`);
+      }
       // Graceful degradation: if layout file cannot be read, return content wrapped in basic HTML
       logger.warn(`Could not read layout file ${layoutPath}: ${error.message}`);
       return `<!DOCTYPE html>
@@ -169,70 +394,45 @@ ${pageContent}
 </html>`;
     }
     
-    // Extract slot content from page
-    const slotData = extractSlotData(document);
+    // Extract slot content from page HTML using regex-based parsing
+    const slotData = extractSlotDataFromHTML(pageContent);
     
     // Apply slots to layout using string replacement
     let processedHTML = applySlots(layoutContent, slotData);
     
+    // Check if the layout itself has a data-layout attribute (nested layouts)
+    const nestedLayoutMatch = layoutContent.match(/data-layout=["']([^"']+)["']/i);
+    if (nestedLayoutMatch) {
+      const nestedLayoutPath = nestedLayoutMatch[1];
+      // Recursively process the nested layout using DOM mode
+      return await processDOMMode(processedHTML, layoutPath, sourceRoot, domConfig);
+    }
+    
     // Process includes in the result
-    processedHTML = await processIncludesInHTML(processedHTML, sourceRoot, domConfig);
+    processedHTML = await processIncludesInHTML(processedHTML, layoutPath, sourceRoot, domConfig);
     
     return processedHTML;
     
   } catch (error) {
-    logger.error(`DOM processing failed for ${pagePath}: ${error.message}`);
+    if (error.formatForCLI) {
+      logger.error(error.formatForCLI());
+    } else {
+      logger.error(`DOM processing failed for ${pagePath}: ${error.message}`);
+    }
     throw new FileSystemError('dom-process', pagePath, error);
   }
 }
 
 /**
- * Detect which layout to use for a page
+ * Detect which layout to use for a page using regex-based HTML parsing
  */
-async function detectLayout(document, sourceRoot, config) {
-  const rootElements = [
-    document.documentElement,
-    document.body,
-    document.querySelector('[data-layout]')
-  ].filter(Boolean);
+async function detectLayoutFromHTML(htmlContent, sourceRoot, config) {
+  // Look for data-layout attribute in HTML content
+  const layoutMatch = htmlContent.match(/data-layout=["']([^"']+)["']/i);
   
-  for (const element of rootElements) {
-    const layoutAttr = element.getAttribute('data-layout');
-    if (layoutAttr) {
-      let layoutPath;
-      
-      if (layoutAttr.startsWith('/')) {
-        // Absolute path relative to source root
-        const relativePath = layoutAttr.substring(1); // Remove leading slash
-        layoutPath = path.join(sourceRoot, relativePath);
-        
-        // Security check - must be within source root for absolute paths
-        if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
-          throw new Error(`Layout path outside source directory: ${layoutAttr}`);
-        }
-      } else {
-        // Relative path within layouts directory
-        if (path.isAbsolute(config.layoutsDir)) {
-          // If layoutsDir is an absolute path (from CLI), use it directly
-          layoutPath = path.join(config.layoutsDir, layoutAttr);
-          
-          // Security check - must be within the configured layouts directory
-          if (!isPathWithinDirectory(layoutPath, config.layoutsDir)) {
-            throw new Error(`Layout path outside layouts directory: ${layoutAttr}`);
-          }
-        } else {
-          // If layoutsDir is relative, join with sourceRoot
-          layoutPath = path.join(sourceRoot, config.layoutsDir, layoutAttr);
-          
-          // Security check - must be within source root for relative paths
-          if (!isPathWithinDirectory(layoutPath, sourceRoot)) {
-            throw new Error(`Layout path outside source directory: ${layoutAttr}`);
-          }
-        }
-      }
-      
-      return layoutPath;
-    }
+  if (layoutMatch) {
+    const layoutAttr = layoutMatch[1];
+    return resolveResourcePath(layoutAttr, sourceRoot, config.layoutsDir, 'layout');
   }
   
   // Fall back to default layout
@@ -250,11 +450,11 @@ async function detectLayout(document, sourceRoot, config) {
 /**
  * Process includes in HTML content (both SSI and <include> elements)
  */
-async function processIncludesInHTML(htmlContent, sourceRoot, config) {
+async function processIncludesInHTML(htmlContent, layoutPath, sourceRoot, config) {
   // Process SSI includes first (already done in main flow, but handle any in layout)
   let result = await processIncludes(
     htmlContent,
-    null, // filePath not needed for this context 
+    layoutPath, // Use layout path for proper include resolution 
     sourceRoot,
     new Set(),
     0,
@@ -298,7 +498,11 @@ async function processIncludesInHTML(htmlContent, sourceRoot, config) {
         result = result.replace(includeTag, componentResult.content);
         
       } catch (error) {
-        logger.error(`Failed to process include: ${error.message}`);
+        if (error.formatForCLI) {
+          logger.error(error.formatForCLI());
+        } else {
+          logger.error(`Failed to process include: ${error.message}`);
+        }
         result = result.replace(match[0], `<!-- Error: ${error.message} -->`);
       }
     }
@@ -333,26 +537,7 @@ async function processIncludesInHTML(htmlContent, sourceRoot, config) {
  */
 async function loadAndProcessComponent(src, unused, sourceRoot, config) {
   // Resolve component path
-  let componentPath;
-  
-  if (src.startsWith('/')) {
-    // Absolute path relative to source root
-    const relativePath = src.substring(1); // Remove leading slash
-    componentPath = path.join(sourceRoot, relativePath);
-  } else {
-    // Relative path within components directory
-    if (path.isAbsolute(config.componentsDir)) {
-      // If componentsDir is an absolute path (from CLI), use it directly
-      componentPath = path.join(config.componentsDir, src);
-    } else {
-      // If componentsDir is relative, join with sourceRoot
-      componentPath = path.join(sourceRoot, config.componentsDir, src);
-    }
-  }
-  
-  if (!isPathWithinDirectory(componentPath, sourceRoot)) {
-    throw new Error(`Component path outside source directory: ${src}`);
-  }
+  const componentPath = resolveResourcePath(src, sourceRoot, config.componentsDir, 'component');
   
   // Load component
   const componentContent = await fs.readFile(componentPath, 'utf-8');
@@ -417,55 +602,53 @@ function hasDOMTemplating(content) {
 }
 
 /**
- * Extract slot content from HTML document (consolidated from both processors)
- * @param {Document} document - DOM document to extract slots from
+ * Extract slot content from HTML using regex-based parsing (consolidated from both processors)
+ * @param {string} htmlContent - HTML content to extract slots from
  * @returns {Object} Object with slot names as keys and content as values
  */
-function extractSlotData(document) {
+function extractSlotDataFromHTML(htmlContent) {
   const slots = {};
   
-  // Extract named slots with data-slot attribute (legacy support)
-  const legacySlotTemplates = document.querySelectorAll('template[data-slot]');
-  legacySlotTemplates.forEach(template => {
-    const slotName = template.getAttribute('data-slot');
-    slots[slotName] = template.innerHTML;
-  });
+  let match;
+
   
   // Extract named slots with target attribute (spec-compliant)
-  const targetTemplates = document.querySelectorAll('template[target]');
-  targetTemplates.forEach(template => {
-    const targetName = template.getAttribute('target');
-    slots[targetName] = template.innerHTML;
-  });
+  const targetRegex = /<template[^>]+target=["']([^"']+)["'][^>]*>([\s\S]*?)<\/template>/gi;
+  while ((match = targetRegex.exec(htmlContent)) !== null) {
+    const targetName = match[1];
+    const content = match[2];
+    slots[targetName] = content;
+  }
   
-  // Extract default slot content from template without target attribute
-  const defaultTemplates = document.querySelectorAll('template:not([target]):not([data-slot])');
-  if (defaultTemplates.length > 0) {
-    // Use the first template without target as default content
-    slots['default'] = defaultTemplates[0].innerHTML;
+  // Extract default slot content from template without target attributes
+  const defaultTemplateRegex = /<template(?!\s+(?:target)=)[^>]*>([\s\S]*?)<\/template>/gi;
+  match = defaultTemplateRegex.exec(htmlContent);
+  if (match) {
+    slots['default'] = match[1];
   } else {
     // Extract default slot content (everything not in a template)
-    const body = document.body || document.documentElement;
+    let defaultContent = htmlContent;
     
-    // Clone the body and remove template elements
-    const bodyClone = body.cloneNode(true);
-    const allTemplates = bodyClone.querySelectorAll('template');
-    allTemplates.forEach(template => template.remove());
+    // Remove all template elements
+    defaultContent = defaultContent.replace(/<template[^>]*>[\s\S]*?<\/template>/gi, '');
     
-    // Remove script and style elements  
-    const scriptsInClone = bodyClone.querySelectorAll("script");
-    scriptsInClone.forEach(script => script.remove());
+    // Remove script and style elements
+    defaultContent = defaultContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    defaultContent = defaultContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
     
-    const stylesInClone = bodyClone.querySelectorAll("style");
-    stylesInClone.forEach(style => style.remove());
+    // Remove data-layout attribute
+    defaultContent = defaultContent.replace(/\s*data-layout=["'][^"']*["']/gi, '');
     
-    // Also remove the data-layout attribute from the root element
-    const rootElement = bodyClone.querySelector('[data-layout]');
-    if (rootElement) {
-      rootElement.removeAttribute('data-layout');
+    // Remove html, head, body tags if present to extract just content
+    defaultContent = defaultContent.replace(/<\/?(?:html|head|body)[^>]*>/gi, '');
+    
+    // Remove the outer wrapper div/element if it exists (e.g., <div data-layout="...">)
+    const wrapperMatch = defaultContent.match(/^<[^>]*>([\s\S]*)<\/[^>]*>$/);
+    if (wrapperMatch) {
+      defaultContent = wrapperMatch[1];
     }
     
-    const defaultContent = bodyClone.innerHTML.trim();
+    defaultContent = defaultContent.trim();
     if (defaultContent) {
       slots['default'] = defaultContent;
     }
@@ -537,14 +720,10 @@ function applySlots(layoutContent, slotData) {
  */
 async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
   try {
-    // Parse the HTML content
-    const dom = new JSDOM(htmlContent, { contentType: "text/html" });
-    const document = dom.window.document;
-
-    // Check for layout attribute on any element
-    const layoutElement = document.querySelector("[data-layout]");
-    if (layoutElement) {
-      const layoutAttr = layoutElement.getAttribute("data-layout");
+    // Check for layout attribute using regex parsing
+    const layoutMatch = htmlContent.match(/data-layout=["']([^"']+)["']/i);
+    if (layoutMatch) {
+      const layoutAttr = layoutMatch[1];
       try {
         return await processLayoutAttribute(
           htmlContent,
@@ -554,6 +733,10 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
           config
         );
       } catch (error) {
+        // In perfection mode, fail fast on layout errors
+        if (config.perfection) {
+          throw new Error(`Layout not found in perfection mode for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
+        }
         // Graceful degradation: if specific layout is missing, log warning and return original content
         logger.warn(`Layout not found for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
         // Remove data-layout attribute from content to avoid reprocessing
@@ -562,32 +745,20 @@ async function processDOMTemplating(htmlContent, filePath, sourceRoot, config) {
       }
     }
 
-    // Check for root element, other than head or html. If no html tag exists,
-    // apply the default layout
-    if (
-      !document.documentElement ||
-      document.documentElement.tagName.toLowerCase() !== "html"
-    ) {
+    // Check if no html tag exists, apply the default layout
+    if (!htmlContent.includes("<html")) {
       // If no html tag, we assume a default layout is needed
-      let defaultLayoutPath;
-      if (path.isAbsolute(config.layoutsDir)) {
-        // If layoutsDir is an absolute path (from CLI), use it directly
-        defaultLayoutPath = path.join(config.layoutsDir, config.defaultLayout);
-      } else {
-        // If layoutsDir is relative, join with sourceRoot
-        defaultLayoutPath = path.join(sourceRoot, config.layoutsDir, config.defaultLayout);
-      }
-      
       try {
         return await processLayoutAttribute(
           htmlContent,
-          defaultLayoutPath,
+          config.defaultLayout,  // Just pass the filename, not the full path
           filePath,
           sourceRoot,
           config
         );
       } catch (error) {
-        // Graceful degradation: if default layout is missing, wrap content in basic HTML
+        // For default layouts, always gracefully degrade (even in perfection mode)
+        // since they are implicit/automatic, not explicitly requested by the user
         logger.warn(`Default layout not found for ${path.relative(sourceRoot, filePath)}: ${error.message}`);
         return `<!DOCTYPE html>
 <html>
@@ -691,12 +862,28 @@ async function processLayoutAttribute(
     null // No dependency tracker needed for layout processing
   );
 
-  // Parse page content for slot extraction
-  const dom = new JSDOM(pageContent, { contentType: "text/html" });
-  const document = dom.window.document;
-  
-  // Extract slot data from page content and apply to layout
-  const slotData = extractSlotData(document);
+  // Check if the layout itself has a data-layout attribute (nested layouts)
+  // Process this BEFORE applying slots to avoid content overwriting layout attributes
+  const nestedLayoutMatch = layoutContent.match(/data-layout=["']([^"']+)["']/i);
+  if (nestedLayoutMatch) {
+    const nestedLayoutPath = nestedLayoutMatch[1];
+    console.log(`DEBUG: Found nested layout in ${layoutPath}: ${nestedLayoutPath}`);
+    // Recursively process the nested layout, but pass the current slot data as page content
+    const slotData = extractSlotDataFromHTML(pageContent);
+    const layoutWithSlots = applySlots(layoutContent, slotData);
+    
+    // Now process the nested layout with the slot-applied content as the page content
+    return await processLayoutAttribute(
+      layoutWithSlots,
+      nestedLayoutPath,
+      resolvedLayoutPath, // Use current layout as the source file for nested layout resolution
+      sourceRoot,
+      config
+    );
+  }
+
+  // Extract slot data from page content using regex-based parsing and apply to layout
+  const slotData = extractSlotDataFromHTML(pageContent);
   return applySlots(layoutContent, slotData);
 }
 
@@ -750,4 +937,68 @@ export function getUnifiedConfig(userConfig = {}) {
 export function shouldUseUnifiedProcessing(htmlContent) {
   // Unified processor handles all HTML content
   return true;
+}
+
+/**
+ * Optimize HTML content using HTMLRewriter
+ * @param {string} htmlContent - HTML content to optimize
+ * @returns {Promise<string>} Optimized HTML content
+ */
+export async function optimizeHtml(htmlContent) {
+  return await optimizeHtmlContent(htmlContent);
+}
+
+/**
+ * Extract metadata from HTML using HTMLRewriter
+ * @param {string} htmlContent - HTML content to analyze
+ * @returns {Promise<Object>} Extracted metadata
+ */
+export async function extractHtmlMetadata(htmlContent) {
+  const metadata = {
+    title: '',
+    description: '',
+    keywords: [],
+    openGraph: {}
+  };
+
+  // Check if HTMLRewriter is available
+  if (!hasFeature('htmlRewriter')) {
+    logger.debug('HTMLRewriter not available, skipping HTML metadata extraction');
+    return metadata;
+  }
+
+  const rewriter = new HTMLRewriter();
+
+  // Extract title
+  rewriter.on('title', {
+    text(text) {
+      metadata.title += text.text;
+    }
+  });
+
+  // Extract meta tags
+  rewriter.on('meta', {
+    element(element) {
+      const name = element.getAttribute('name');
+      const property = element.getAttribute('property');
+      const content = element.getAttribute('content');
+
+      if (name === 'description' && content) {
+        metadata.description = content;
+      } else if (name === 'keywords' && content) {
+        metadata.keywords = content.split(',').map(k => k.trim());
+      } else if (property && property.startsWith('og:') && content) {
+        const ogKey = property.replace('og:', '');
+        metadata.openGraph[ogKey] = content;
+      }
+    }
+  });
+
+  // Transform to trigger handlers (we don't need the output)
+  const response = new Response(htmlContent, {
+    headers: { 'Content-Type': 'text/html' }
+  });
+  rewriter.transform(response);
+  
+  return metadata;
 }

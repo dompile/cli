@@ -2,11 +2,10 @@
  * Quick test to debug the final boss sitemap issue
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
-import { spawn } from 'child_process';
+import { runCLI } from './test-utils.js';
 import { createTempDirectory, cleanupTempDirectory, createTestStructure } from './fixtures/temp-helper.js';
 
 describe('Final Boss Debug', () => {
@@ -38,8 +37,8 @@ describe('Final Boss Debug', () => {
 </html>`,
 
       'src/index.html': `<div data-layout="/layouts/base.html">
-  <template data-slot="title">Home Page</template>
-  <template data-slot="content">
+  <template target="title">Home Page</template>
+  <template target="content">
     <h1>Welcome</h1>
     <img src="/assets/images/logo.png" alt="Logo" />
   </template>
@@ -60,7 +59,7 @@ describe('Final Boss Debug', () => {
       console.log('Build stderr:', buildResult.stderr);
     }
 
-    assert.strictEqual(buildResult.code, 0, `Build failed: ${buildResult.stderr}`);
+    expect(buildResult.code).toBe(0);
 
     // Check the generated index.html content
     const indexExists = await fs.access(path.join(outputDir, 'index.html'))
@@ -77,7 +76,7 @@ describe('Final Boss Debug', () => {
       const hasDoctype = indexContent.includes('<!DOCTYPE html>');
       console.log('Has DOCTYPE:', hasDoctype);
       
-      assert(hasDoctype, 'Generated HTML should include DOCTYPE declaration');
+      expect(hasDoctype).toBe(true);
     }
 
     // Check if assets were copied
@@ -85,38 +84,16 @@ describe('Final Boss Debug', () => {
       .then(() => true).catch(() => false);
     console.log('Logo copied:', logoExists);
     
-    assert(logoExists, 'Logo should be copied because it is referenced');
+    expect(logoExists).toBe(true);
   });
 });
 
 async function runBuild(workingDir, sourceDir, outputDir) {
-  return new Promise((resolve) => {
-    const args = [
-      'node',
-      path.join(process.cwd(), 'bin/cli.js'),
-      'build',
-      '--source', sourceDir,
-      '--output', outputDir
-    ];
+  const args = [
+    'build',
+    '--source', sourceDir,
+    '--output', outputDir
+  ];
 
-    const child = spawn(args[0], args.slice(1), {
-      cwd: workingDir,
-      stdio: 'pipe'
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('close', (code) => {
-      resolve({ code, stdout, stderr });
-    });
-  });
+  return await runCLI(args, { cwd: workingDir });
 }

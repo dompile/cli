@@ -78,6 +78,9 @@ coverage/
 .claude/
 CLAUDE.md
 .notes/
+.plans/
 .giv/config
 test/test-temp/
 test/fixtures/*-test-*/
+.unify-cache/
+.vendor/

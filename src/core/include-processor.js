@@ -6,8 +6,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { resolveIncludePath } from '../utils/path-resolver.js';
-import { 
-  UnifyError,
+import {   
   IncludeNotFoundError, 
   CircularDependencyError,
   FileSystemError,
@@ -135,8 +134,12 @@ export async function processIncludes(
         continue;
       } else {
         // Fatal error - log and re-throw to stop processing
-        logger.error(`Failed to process include: ${includePath} in ${filePath}`);
-        logger.error(error.message);
+        if (error.formatForCLI) {
+          logger.error(error.formatForCLI());
+        } else {
+          logger.error(`Failed to process include: ${includePath} in ${filePath}`);
+          logger.error(error.message);
+        }
         
         // Re-throw fatal errors to fail the build
         throw error;

@@ -3,8 +3,7 @@
  * Verifies proper layout application based on content structure and frontmatter
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { processMarkdown, hasHtmlElement, wrapInLayout } from '../../src/core/markdown-processor.js';
@@ -29,32 +28,32 @@ describe('Layout Conditional Logic', () => {
 <body><p>Content</p></body>
 </html>`;
       
-      assert.strictEqual(hasHtmlElement(contentWithHtml), true);
+      expect(hasHtmlElement(contentWithHtml)).toBe(true);
     });
 
     it('should detect minimal HTML elements', () => {
       const contentWithHtml = '<html><body>Content</body></html>';
-      assert.strictEqual(hasHtmlElement(contentWithHtml), true);
+      expect(hasHtmlElement(contentWithHtml)).toBe(true);
     });
 
     it('should detect HTML with attributes', () => {
       const contentWithHtml = '<html lang="en"><body>Content</body></html>';
-      assert.strictEqual(hasHtmlElement(contentWithHtml), true);
+      expect(hasHtmlElement(contentWithHtml)).toBe(true);
     });
 
     it('should not detect partial content', () => {
       const contentWithoutHtml = '<h1>Title</h1><p>Just content</p>';
-      assert.strictEqual(hasHtmlElement(contentWithoutHtml), false);
+      expect(hasHtmlElement(contentWithoutHtml)).toBe(false);
     });
 
     it('should not detect HTML entities or escaped content', () => {
       const contentWithEscapedHtml = '&lt;html&gt;&lt;body&gt;Content&lt;/body&gt;&lt;/html&gt;';
-      assert.strictEqual(hasHtmlElement(contentWithEscapedHtml), false);
+      expect(hasHtmlElement(contentWithEscapedHtml)).toBe(false);
     });
 
     it('should handle case insensitive HTML tags', () => {
       const contentWithUppercase = '<HTML><BODY>Content</BODY></HTML>';
-      assert.strictEqual(hasHtmlElement(contentWithUppercase), true);
+      expect(hasHtmlElement(contentWithUppercase)).toBe(true);
     });
   });
 
@@ -71,9 +70,9 @@ describe('Layout Conditional Logic', () => {
       
       const result = wrapInLayout(metadata.content, metadata, layoutContent);
       
-      assert.ok(result.includes('<!DOCTYPE html>'));
-      assert.ok(result.includes('<title>Test Page</title>'));
-      assert.ok(result.includes('<h1 id="test-title">Test Title</h1>'));
+      expect(result.includes('<!DOCTYPE html>')).toBeTruthy();
+      expect(result.includes('<title>Test Page</title>')).toBeTruthy();
+      expect(result.includes('<h1 id="test-title">Test Title</h1>')).toBeTruthy();
     });
 
     it('should not apply layout when content already has HTML element', async () => {
@@ -95,9 +94,9 @@ describe('Layout Conditional Logic', () => {
       const contentHasHtml = hasHtmlElement(contentWithHtml);
       const result = contentHasHtml ? contentWithHtml : wrapInLayout(contentWithHtml, metadata, layoutContent);
       
-      assert.strictEqual(result, contentWithHtml);
-      assert.ok(result.includes('Original Title'));
-      assert.ok(!result.includes('Layout Title'));
+      expect(result).toBe(contentWithHtml);
+      expect(result.includes('Original Title')).toBeTruthy();
+      expect(result.includes('Layout Title')).toBeFalsy();
     });
 
     it('should create basic HTML structure when no layout available', async () => {
@@ -121,10 +120,10 @@ describe('Layout Conditional Logic', () => {
 </body>
 </html>`;
 
-      assert.ok(basicHtml.includes('<!DOCTYPE html>'));
-      assert.ok(basicHtml.includes('<title>Test Page</title>'));
-      assert.ok(basicHtml.includes('<meta name="description" content="Test excerpt">'));
-      assert.ok(basicHtml.includes('<h1>Test Title</h1>'));
+      expect(basicHtml.includes('<!DOCTYPE html>')).toBeTruthy();
+      expect(basicHtml.includes('<title>Test Page</title>')).toBeTruthy();
+      expect(basicHtml.includes('<meta name="description" content="Test excerpt">')).toBeTruthy();
+      expect(basicHtml.includes('<h1>Test Title</h1>')).toBeTruthy();
     });
   });
 
@@ -139,8 +138,8 @@ layout: blog
 
       const { frontmatter } = processMarkdown(markdownWithLayout, 'test.md');
       
-      assert.strictEqual(frontmatter.layout, 'blog');
-      assert.strictEqual(frontmatter.title, 'Test Post');
+      expect(frontmatter.layout).toBe('blog');
+      expect(frontmatter.title).toBe('Test Post');
     });
 
     it('should fall back to default layout when no layout specified', async () => {
@@ -152,7 +151,7 @@ title: "Test Post"
 
       const { frontmatter } = processMarkdown(markdownWithoutLayout, 'test.md');
       
-      assert.strictEqual(frontmatter.layout, undefined);
+      expect(frontmatter.layout).toBe(undefined);
       // Should trigger default layout logic in file processor
     });
 
@@ -166,7 +165,7 @@ layout: non-existent
 
       const { frontmatter } = processMarkdown(markdownWithMissingLayout, 'test.md');
       
-      assert.strictEqual(frontmatter.layout, 'non-existent');
+      expect(frontmatter.layout).toBe('non-existent');
       // Should fall back to basic HTML structure
     });
   });
@@ -178,8 +177,8 @@ layout: non-existent
       
       const result = wrapInLayout('content', metadata, layout);
       
-      assert.ok(result.includes('<title>My Post</title>'));
-      assert.ok(result.includes('<p>By John Doe</p>'));
+      expect(result.includes('<title>My Post</title>')).toBeTruthy();
+      expect(result.includes('<p>By John Doe</p>')).toBeTruthy();
     });
 
     it('should replace content placeholder', () => {
@@ -189,7 +188,7 @@ layout: non-existent
       
       const result = wrapInLayout(content, metadata, layout);
       
-      assert.ok(result.includes('<main><h1 id="title">Title</h1><p>Text</p></main>'));
+      expect(result.includes('<main><h1 id="title">Title</h1><p>Text</p></main>')).toBeTruthy();
     });
 
     it('should handle missing variables gracefully', () => {
@@ -198,8 +197,8 @@ layout: non-existent
       
       const result = wrapInLayout('content', metadata, layout);
       
-      assert.ok(result.includes('<title>My Post</title>'));
-      assert.ok(result.includes('<p></p>')); // Missing variables become empty
+      expect(result.includes('<title>My Post</title>')).toBeTruthy();
+      expect(result.includes('<p></p>')).toBeTruthy(); // Missing variables become empty
     });
 
     it('should handle frontmatter data', () => {
@@ -212,8 +211,8 @@ layout: non-existent
       
       const result = wrapInLayout('content', metadata, layout);
       
-      assert.ok(result.includes('<meta name="author" content="Jane Doe">'));
-      assert.ok(result.includes('<meta name="keywords" content="test, layout">'));
+      expect(result.includes('<meta name="author" content="Jane Doe">')).toBeTruthy();
+      expect(result.includes('<meta name="keywords" content="test, layout">')).toBeTruthy();
     });
   });
 
@@ -249,18 +248,18 @@ More content here.`;
       const metadata = { frontmatter, title, excerpt, tableOfContents: '' };
       
       // Should not have HTML element yet
-      assert.strictEqual(hasHtmlElement(html), false);
+      expect(hasHtmlElement(html)).toBe(false);
       
       // Apply layout
       const result = wrapInLayout(html, metadata, layoutContent);
       
       // Should now have complete HTML structure
-      assert.ok(result.includes('<!DOCTYPE html>'));
-      assert.ok(result.includes('<title>Test Article</title>'));
-      assert.ok(result.includes('<meta name="description" content="Test description">'));
-      assert.ok(result.includes('<meta name="author" content="Test Author">'));
-      assert.ok(result.includes('<h1 id="test-article">Test Article</h1>'));
-      assert.ok(result.includes('This is a test article by Test Author.'));
+      expect(result.includes('<!DOCTYPE html>')).toBeTruthy();
+      expect(result.includes('<title>Test Article</title>')).toBeTruthy();
+      expect(result.includes('<meta name="description" content="Test description">')).toBeTruthy();
+      expect(result.includes('<meta name="author" content="Test Author">')).toBeTruthy();
+      expect(result.includes('<h1 id="test-article">Test Article</h1>')).toBeTruthy();
+      expect(result.includes('This is a test article by Test Author.')).toBeTruthy();
     });
   });
 });

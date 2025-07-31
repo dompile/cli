@@ -3,8 +3,7 @@
  * Verifies -c and -l flags work correctly
  */
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, expect } from 'bun:test';
 import { parseArgs } from '../../src/cli/args-parser.js';
 
 describe('Short Argument Flags', () => {
@@ -12,22 +11,22 @@ describe('Short Argument Flags', () => {
     it('should parse -c as components directory', () => {
       const args = parseArgs(['build', '-c', 'partials']);
       
-      assert.strictEqual(args.command, 'build');
-      assert.strictEqual(args.components, 'partials');
+      expect(args.command).toBe('build');
+      expect(args.components).toBe('partials');
     });
 
     it('should work with other arguments', () => {
       const args = parseArgs(['build', '-s', 'src', '-c', 'includes', '-o', 'dist']);
       
-      assert.strictEqual(args.source, 'src');
-      assert.strictEqual(args.components, 'includes');
-      assert.strictEqual(args.output, 'dist');
+      expect(args.source).toBe('src');
+      expect(args.components).toBe('includes');
+      expect(args.output).toBe('dist');
     });
 
     it('should fail when -c has no value', () => {
-      assert.throws(() => {
+      expect(() => {
         parseArgs(['build', '-c']);
-      }, /Unknown option/);
+      }).toThrow(/Unknown option/);
     });
   });
 
@@ -35,22 +34,22 @@ describe('Short Argument Flags', () => {
     it('should parse -l as layouts directory', () => {
       const args = parseArgs(['build', '-l', 'templates']);
       
-      assert.strictEqual(args.command, 'build');
-      assert.strictEqual(args.layouts, 'templates');
+      expect(args.command).toBe('build');
+      expect(args.layouts).toBe('templates');
     });
 
     it('should work with components flag', () => {
       const args = parseArgs(['build', '-c', 'partials', '-l', 'templates']);
       
-      assert.strictEqual(args.components, 'partials');
-      assert.strictEqual(args.layouts, 'templates');
+      expect(args.components).toBe('partials');
+      expect(args.layouts).toBe('templates');
     });
 
     it('should work with long form', () => {
       const args = parseArgs(['build', '--components', 'partials', '-l', 'templates']);
       
-      assert.strictEqual(args.components, 'partials');
-      assert.strictEqual(args.layouts, 'templates');
+      expect(args.components).toBe('partials');
+      expect(args.layouts).toBe('templates');
     });
   });
 
@@ -65,12 +64,12 @@ describe('Short Argument Flags', () => {
         '-p', '8080'
       ]);
       
-      assert.strictEqual(args.command, 'serve');
-      assert.strictEqual(args.source, 'content');
-      assert.strictEqual(args.output, 'public');
-      assert.strictEqual(args.layouts, 'templates');
-      assert.strictEqual(args.components, 'partials');
-      assert.strictEqual(args.port, 8080);
+      expect(args.command).toBe('serve');
+      expect(args.source).toBe('content');
+      expect(args.output).toBe('public');
+      expect(args.layouts).toBe('templates');
+      expect(args.components).toBe('partials');
+      expect(args.port).toBe(8080);
     });
   });
 
@@ -78,14 +77,14 @@ describe('Short Argument Flags', () => {
     it('should still support long flags', () => {
       const args = parseArgs(['build', '--components', 'includes', '--layouts', 'templates']);
       
-      assert.strictEqual(args.components, 'includes');
-      assert.strictEqual(args.layouts, 'templates');
+      expect(args.components).toBe('includes');
+      expect(args.layouts).toBe('templates');
     });
 
     it('should prefer last value when flag specified multiple times', () => {
       const args = parseArgs(['build', '-c', 'first', '--components', 'second']);
       
-      assert.strictEqual(args.components, 'second');
+      expect(args.components).toBe('second');
     });
   });
 });

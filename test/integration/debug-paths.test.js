@@ -2,7 +2,7 @@
  * Simple test to debug path resolution issue
  */
 
-import { test } from 'node:test';
+import { describe, it, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,7 +11,7 @@ import { build } from '../../src/core/file-processor.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-test('Debug path resolution issue', async () => {
+it('Debug path resolution issue', async () => {
   const testDir = path.join(__dirname, '../test-temp/debug-paths');
   const sourceDir = path.join(testDir, 'src');
   const outputDir = path.join(testDir, 'dist');

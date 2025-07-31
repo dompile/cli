@@ -49,8 +49,10 @@ export class AssetTracker {
       /<(?:video|audio)[^>]+src=["']([^"']+\.(mp4|webm|ogg|mp3|wav))["']/gi,
       // Source elements
       /<source[^>]+src=["']([^"']+)["']/gi,
+      // Object data attributes
+      /<object[^>]+data=["']([^"']+)["']/gi,
       // Generic href/src attributes for other files
-      /(?:href|src)=["']([^"']+\.(pdf|zip|doc|docx|txt))["']/gi
+      /(?:href|src)=["']([^"']+\.(pdf|zip|doc|docx|txt|json))["']/gi
     ];
 
     for (const pattern of patterns) {

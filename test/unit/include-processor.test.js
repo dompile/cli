@@ -2,8 +2,7 @@
  * Tests for include processor
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { describe, it, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -56,8 +55,8 @@ describe('include-processor', () => {
       
       const result = await processIncludes(html, filePath, testFixturesDir);
       
-      assert(result.includes('<header><h1>Test Header</h1></header>'));
-      assert(!result.includes('<!--#include'));
+      expect(result.includes('<header><h1>Test Header</h1></header>')).toBeTruthy();
+      expect(result.includes('<!--#include')).toBeFalsy();
     });
     
     it('should process virtual includes', async () => {
@@ -66,8 +65,8 @@ describe('include-processor', () => {
       
       const result = await processIncludes(html, filePath, testFixturesDir);
       
-      assert(result.includes('<header><h1>Test Header</h1></header>'));
-      assert(!result.includes('<!--#include'));
+      expect(result.includes('<header><h1>Test Header</h1></header>')).toBeTruthy();
+      expect(result.includes('<!--#include')).toBeFalsy();
     });
     
     it('should process nested includes', async () => {
@@ -76,9 +75,9 @@ describe('include-processor', () => {
       
       const result = await processIncludes(html, filePath, testFixturesDir);
       
-      assert(result.includes('<nav><a href="/">Home</a></nav>'));
-      assert(result.includes('<div>Content</div>'));
-      assert(!result.includes('<!--#include'));
+      expect(result.includes('<nav><a href="/">Home</a></nav>')).toBeTruthy();
+      expect(result.includes('<div>Content</div>')).toBeTruthy();
+      expect(result.includes('<!--#include')).toBeFalsy();
     });
     
     it('should throw error for missing include files', async () => {
@@ -87,7 +86,7 @@ describe('include-processor', () => {
       
       // Should write a warning comment in place of the missing include
       const result = await processIncludes(html, filePath, testFixturesDir);
-      assert(result.includes('<!-- WARNING: Include file not found: missing.html -->'));
+      expect(result.includes('<!-- WARNING: Include file not found: missing.html -->')).toBeTruthy();
     });
     
     it('should detect circular dependencies', async () => {
@@ -104,9 +103,9 @@ describe('include-processor', () => {
       const html = '<!--#include file="circular1.html" -->';
       const filePath = path.join(testFixturesDir, 'test.html');
       
-      await assert.rejects(async () => {
+      expect(async () => {
         await processIncludes(html, filePath, testFixturesDir);
-      }, /Circular dependency/);
+      }).toThrow(/Circular dependency/);
     });
   });
   
@@ -117,9 +116,9 @@ describe('include-processor', () => {
       
       const deps = extractIncludeDependencies(html, filePath, testFixturesDir);
       
-      assert.strictEqual(deps.length, 2);
-      assert(deps.some(dep => dep.endsWith('header.html')));
-      assert(deps.some(dep => dep.endsWith('footer.html')));
+      expect(deps.length).toBe(2);
+      expect(deps.some(dep => dep.endsWith('header.html'))).toBeTruthy();
+      expect(deps.some(dep => dep.endsWith('footer.html'))).toBeTruthy();
     });
     
     it('should extract virtual dependencies', () => {
@@ -128,20 +127,20 @@ describe('include-processor', () => {
       
       const deps = extractIncludeDependencies(html, filePath, testFixturesDir);
       
-      assert.strictEqual(deps.length, 1);
-      assert(deps[0].endsWith('header.html'));
+      expect(deps.length).toBe(1);
+      expect(deps[0].endsWith('header.html')).toBeTruthy();
     });
   });
   
   describe('hasIncludes', () => {
     it('should detect includes', () => {
       const html = '<!--#include file="header.html" -->';
-      assert.strictEqual(hasIncludes(html), true);
+      expect(hasIncludes(html)).toBe(true);
     });
     
     it('should detect no includes', () => {
       const html = '<html><head></head><body>No includes</body></html>';
-      assert.strictEqual(hasIncludes(html), false);
+      expect(hasIncludes(html)).toBe(false);
     });
   });
   
@@ -150,23 +149,23 @@ describe('include-processor', () => {
       const directive = '<!--#include file="header.html" -->';
       const parsed = parseIncludeDirective(directive);
       
-      assert.strictEqual(parsed.type, 'file');
-      assert.strictEqual(parsed.path, 'header.html');
+      expect(parsed.type).toBe('file');
+      expect(parsed.path).toBe('header.html');
     });
     
     it('should parse virtual directive', () => {
       const directive = '<!--#include virtual="/includes/header.html" -->';
       const parsed = parseIncludeDirective(directive);
       
-      assert.strictEqual(parsed.type, 'virtual');
-      assert.strictEqual(parsed.path, '/includes/header.html');
+      expect(parsed.type).toBe('virtual');
+      expect(parsed.path).toBe('/includes/header.html');
     });
     
     it('should return null for invalid directive', () => {
       const directive = '<!--#invalid directive -->';
       const parsed = parseIncludeDirective(directive);
       
-      assert.strictEqual(parsed, null);
+      expect(parsed).toBe(null);
     });
   });
 });

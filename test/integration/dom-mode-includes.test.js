@@ -3,8 +3,7 @@
  * Tests that <include> elements are properly processed and components/layouts are excluded from output
  */
 
-import { test, describe, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert';
+import { it, describe, beforeEach, afterEach, expect } from 'bun:test';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -129,7 +128,7 @@ describe('DOM Mode Include Processing', () => {
   </style>
 </head>
 <body class="blog-layout">
-  <template data-slot="header">
+  <template target="header">
     <h1>My Blog</h1>
   </template>
   <main class="blog-content">
@@ -143,8 +142,8 @@ describe('DOM Mode Include Processing', () => {
     await fs.writeFile(
       path.join(sourceDir, 'blog.html'),
       `<body data-layout="/site_layouts/blog.html">
-  <template data-slot="title">Welcome to DOM Mode</template>
-  <template data-slot="header">
+  <template target="title">Welcome to DOM Mode</template>
+  <template target="header">
     <h1>🧱 DOMpile DOM Mode</h1>
     <p>Modern templating with pure HTML</p>
   </template>
@@ -169,7 +168,7 @@ describe('DOM Mode Include Processing', () => {
 
   <include src="/custom_components/navigation.html" />
 
-  <template data-slot="footer">
+  <template target="footer">
     <p>© 2025 - Built with DOMpile DOM Mode</p>
     <p><a href="https://github.com/yourusername/dompile">View on GitHub</a></p>
   </template>
@@ -199,7 +198,7 @@ describe('DOM Mode Include Processing', () => {
     }
   });
 
-  test('should process <include> elements and include component content', async () => {
+  it('should process <include> elements and include component content', async () => {
     // Build the site
     await build({
       source: sourceDir,
@@ -213,35 +212,26 @@ describe('DOM Mode Include Processing', () => {
     const outputContent = await fs.readFile(outputFile, 'utf-8');
 
     // Check that include elements are processed and replaced with component content
-    assert.ok(!outputContent.includes('<include'), 
-      'Output should not contain any <include> elements');
+    expect(outputContent.includes('<include')).toBeFalsy();
 
     // Check that component content was included
-    assert.ok(outputContent.includes('<div class="alert">'), 
-      'Alert component content should be included');
-    assert.ok(outputContent.includes('<div class="card">'), 
-      'Card component content should be included');
+    expect(outputContent.includes('<div class="alert">')).toBeTruthy();
+    expect(outputContent.includes('<div class="card">')).toBeTruthy();
 
     // Check that component styles were moved to head
-    assert.ok(outputContent.includes('.alert {'), 
-      'Alert component styles should be in output');
-    assert.ok(outputContent.includes('.card {'), 
-      'Card component styles should be in output');
+    expect(outputContent.includes('.alert {')).toBeTruthy();
+    expect(outputContent.includes('.card {')).toBeTruthy();
 
     // Check that navigation content was included
-    assert.ok(outputContent.includes('<nav>'), 
-      'Navigation component should be included');
-    assert.ok(outputContent.includes('<a href="/about.html">About</a>'), 
-      'Navigation links should be included');
+    expect(outputContent.includes('<nav>')).toBeTruthy();
+    expect(outputContent.includes('<a href="/about.html">About</a>')).toBeTruthy();
 
     // Check that layout was applied
-    assert.ok(outputContent.includes('<!DOCTYPE html>'), 
-      'Layout should provide DOCTYPE');
-    assert.ok(outputContent.includes('<title>Welcome to DOM Mode</title>'), 
-      'Layout should have title slot filled');
+    expect(outputContent.includes('<!DOCTYPE html>')).toBeTruthy();
+    expect(outputContent.includes('<title>Welcome to DOM Mode</title>')).toBeTruthy();
   });
 
-  test('should exclude component and layout directories from output', async () => {
+  it('should exclude component and layout directories from output', async () => {
     // Build the site
     await build({
       source: sourceDir,
@@ -254,18 +244,18 @@ describe('DOM Mode Include Processing', () => {
     const outputComponentsDir = path.join(outputDir, 'custom_components');
     try {
       await fs.access(outputComponentsDir);
-      assert.fail('Components directory should not be copied to output');
+      throw new Error('Components directory should not be copied to output');
     } catch (error) {
-      assert.strictEqual(error.code, 'ENOENT', 'Components directory should not exist in output');
+      expect(error.code).toBe('ENOENT');
     }
 
     // Check that layouts directory is not copied to output
     const outputLayoutsDir = path.join(outputDir, 'site_layouts');
     try {
       await fs.access(outputLayoutsDir);
-      assert.fail('Layouts directory should not be copied to output');
+      throw new Error('Layouts directory should not be copied to output');
     } catch (error) {
-      assert.strictEqual(error.code, 'ENOENT', 'Layouts directory should not exist in output');
+      expect(error.code).toBe('ENOENT');
     }
 
     // Check that other assets (like styles) are copied
@@ -275,7 +265,7 @@ describe('DOM Mode Include Processing', () => {
     await fs.access(cssFile); // Should not throw
   });
 
-  test('should handle nested includes recursively', async () => {
+  it('should handle nested includes recursively', async () => {
     // Create a component that includes another component
     await fs.writeFile(
       path.join(componentsDir, 'nested.html'),
@@ -289,7 +279,7 @@ describe('DOM Mode Include Processing', () => {
     await fs.writeFile(
       path.join(sourceDir, 'blog.html'),
       `<body data-layout="/site_layouts/blog.html">
-  <template data-slot="title">Nested Include Test</template>
+  <template target="title">Nested Include Test</template>
   
   <h2>Testing Nested Includes</h2>
   <include src="/custom_components/nested.html" />
@@ -309,11 +299,8 @@ describe('DOM Mode Include Processing', () => {
     const outputContent = await fs.readFile(outputFile, 'utf-8');
 
     // Check that nested includes are processed
-    assert.ok(!outputContent.includes('<include'), 
-      'Output should not contain any <include> elements');
-    assert.ok(outputContent.includes('Nested Component'), 
-      'Nested component content should be included');
-    assert.ok(outputContent.includes('<div class="alert">'), 
-      'Nested alert component should be included');
+    expect(outputContent.includes('<include')).toBeFalsy();
+    expect(outputContent.includes('Nested Component')).toBeTruthy();
+    expect(outputContent.includes('<div class="alert">')).toBeTruthy();
   });
 });

@@ -327,19 +327,17 @@ We follow the [Contributor Covenant](https://www.contributor-covenant.org/):
 
 ### Related Technologies
 
-- **Node.js Streams**: For file processing
+- **Bun native APIs**: For file processing and performance
 - **ESM Modules**: For modern JavaScript
 - **Apache SSI**: For include syntax
 - **Server-Sent Events**: For live reload
-- **JSDOM**: For DOM manipulation
+- **HTMLRewriter**: For high-performance HTML manipulation
 
 ### External Dependencies
 
 We minimize dependencies but use:
-- **chokidar**: File watching
 - **markdown-it**: Markdown processing
 - **gray-matter**: Frontmatter parsing
-- **jsdom**: DOM templating (optional)
 
 ## 🚢 Deployment and Release
 
@@ -347,7 +345,7 @@ We minimize dependencies but use:
 
 1. **Update version** in `package.json`
 2. **Update CHANGELOG.md** with changes
-3. **Run full test suite** `npm test`
+3. **Run full test suite** `bun test`
 4. **Test with examples** to verify functionality
 5. **Create release tag** and GitHub release
 

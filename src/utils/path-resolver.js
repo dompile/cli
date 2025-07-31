@@ -170,3 +170,57 @@ export function getOutputPath(sourcePath, sourceRoot, outputRoot) {
 export function getCurrentDirectory(importMetaUrl) {
   return path.dirname(fileURLToPath(importMetaUrl));
 }
+
+/**
+ * Resolve layout or component path with security checks
+ * @param {string} resourcePath - The layout/component path from attribute
+ * @param {string} sourceRoot - Source root directory  
+ * @param {string} resourceDir - Base directory for the resource (layouts/components)
+ * @param {string} resourceType - Type of resource for error messages ('layout' or 'component')
+ * @param {boolean} allowDirectoryPaths - Whether to treat paths with slashes as relative to sourceRoot
+ * @returns {string} Resolved absolute path
+ * @throws {Error} If path is outside allowed directories
+ */
+export function resolveResourcePath(resourcePath, sourceRoot, resourceDir, resourceType = 'resource', allowDirectoryPaths = false) {
+  let resolvedPath;
+  
+  if (resourcePath.startsWith('/')) {
+    // Absolute path relative to source root
+    const relativePath = resourcePath.substring(1); // Remove leading slash
+    resolvedPath = path.join(sourceRoot, relativePath);
+    
+    // Security check - must be within source root for absolute paths
+    if (!isPathWithinDirectory(resolvedPath, sourceRoot)) {
+      throw new Error(`${resourceType} path outside source directory: ${resourcePath}`);
+    }
+  } else if (allowDirectoryPaths && resourcePath.includes('/')) {
+    // Path with directory structure, relative to source root
+    resolvedPath = path.join(sourceRoot, resourcePath);
+    
+    // Security check - must be within source root
+    if (!isPathWithinDirectory(resolvedPath, sourceRoot)) {
+      throw new Error(`${resourceType} path outside source directory: ${resourcePath}`);
+    }
+  } else {
+    // Relative path within resource directory
+    if (path.isAbsolute(resourceDir)) {
+      // If resourceDir is an absolute path (from CLI), use it directly
+      resolvedPath = path.join(resourceDir, resourcePath);
+      
+      // Security check - must be within the configured resource directory
+      if (!isPathWithinDirectory(resolvedPath, resourceDir)) {
+        throw new Error(`${resourceType} path outside ${resourceType} directory: ${resourcePath}`);
+      }
+    } else {
+      // If resourceDir is relative, join with sourceRoot
+      resolvedPath = path.join(sourceRoot, resourceDir, resourcePath);
+      
+      // Security check - must be within source root for relative paths
+      if (!isPathWithinDirectory(resolvedPath, sourceRoot)) {
+        throw new Error(`${resourceType} path outside source directory: ${resourcePath}`);
+      }
+    }
+  }
+  
+  return resolvedPath;
+}

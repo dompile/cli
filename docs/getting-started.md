@@ -7,13 +7,13 @@ This guide will walk you through creating your first unify site and understandin
 ### Global Installation (Recommended)
 
 ```bash
-npm install -g @unify/cli
+npm install -g @fwdslsh/unify
 ```
 
 ### Or use with npx
 
 ```bash
-npx @unify/cli --help
+npx @fwdslsh/unify --help
 ```
 
 ## Your First Site
@@ -35,19 +35,18 @@ Create `src/.layouts/default.html`:
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ title }}</title>
-  <meta name="description" content="{{ description }}">
-</head>
-<body>
-  <!--#include virtual="/.components/header.html" -->
-  <main>
-    {{ content }}
-  </main>
-  <!--#include virtual="/.components/footer.html" -->
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <slot name="head"></slot>
+  </head>
+  <body>
+    <!--#include virtual="/.components/header.html" -->
+    <main>
+      <slot></slot>
+    </main>
+    <!--#include virtual="/.components/footer.html" -->
+  </body>
 </html>
 ```
 
@@ -71,7 +70,7 @@ Create `src/.components/footer.html`:
 
 ```html
 <footer>
-  <p>&copy; 2024 My Site. Built with dompile.</p>
+  <p>&copy; 2024 My Site. Built with unify.</p>
 </footer>
 ```
 
@@ -80,20 +79,13 @@ Create `src/.components/footer.html`:
 Create `src/index.html`:
 
 ```html
-<!DOCTYPE html>
-<html>
-<head>
+<template slot="head">
   <title>Welcome - My Site</title>
-</head>
-<body>
-  <!--#include virtual="/.components/header.html" -->
-  <main>
-    <h1>Welcome to My Site</h1>
-    <p>This is the home page built with dompile.</p>
-  </main>
-  <!--#include virtual="/.components/footer.html" -->
-</body>
-</html>
+</template>
+<div>
+  <h1>Welcome to My Site</h1>
+  <p>This is the home page built with unify.</p>
+</div>
 ```
 
 Create `src/about.md`:
@@ -101,7 +93,6 @@ Create `src/about.md`:
 ```markdown
 ---
 title: "About Us"
-description: "Learn more about our company"
 layout: default
 ---
 
@@ -122,10 +113,10 @@ This page demonstrates markdown with frontmatter and layout integration.
 
 ```bash
 # Build the site
-dompile build
+unify build
 
 # Start development server
-dompile serve
+unify serve
 ```
 
 Visit `http://localhost:3000` to see your site!
@@ -134,17 +125,10 @@ Visit `http://localhost:3000` to see your site!
 
 ### Include System
 
-dompile uses Apache SSI syntax for includes:
+unify uses Apache SSI syntax for includes:
 
 - `<!--#include virtual="/path/from/source/root.html" -->`
 - `<!--#include file="relative/path.html" -->`
-
-### Layout System
-
-
-- `{{ title }}` - From frontmatter or page data
-- `{{ content }}` - Main content (markdown or HTML)
-- `{{ description }}` - SEO description
 
 ### File Organization
 
@@ -163,7 +147,6 @@ dompile uses Apache SSI syntax for includes:
 ## Next Steps
 
 - Read the [Full Documentation](../README.md)
-- Explore [Advanced Features](advanced-features.md)
 - Check out [Example Projects](../example/)
 - Learn about [Docker Deployment](docker-usage.md)
 

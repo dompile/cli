@@ -352,6 +352,108 @@ unify watch [options]
 - Smart rebuilding of affected files only
 - Live reload with full page refresh for all file changes (CSS-only reloads not supported)
 
+### Component Asset Processing
+
+Currently, both SSI-style includes (`<!--#include -->`) and DOM-style includes (`<include>`) inline component content as-is without extracting or relocating `<style>` and `<script>` elements. Component styles and scripts remain embedded within the component content at the location where they are included.
+
+#### Current Behavior
+
+**Example Component** (`/.components/button.html`):
+
+```html
+<style>
+  .btn { background: blue; color: white; }
+</style>
+<button class="btn">Click Me</button>
+```
+
+**Page with SSI Include:**
+
+```html
+<div>
+  <!--#include virtual="/.components/button.html" -->
+</div>
+```
+
+**Final Output:**
+
+```html
+<div>
+  <style>
+    .btn { background: blue; color: white; }
+  </style>
+  <button class="btn">Click Me</button>
+</div>
+```
+
+**Note:** The style remains inline within the component content, not moved to the `<head>` section.
+
+#### Planned Enhancement
+
+Future versions may include automatic extraction and relocation of component assets:
+
+- **Style Elements:** When using an `<include />` element, extracted from components and moved to `<head>` section
+- **Script Elements:** When using an `<include />` element, extracted from components and moved to end of `<body>` section  
+- **Deduplication:** Identical style/script blocks deduplicated when same component included multiple times
+- **Component Isolation:** Components remain self-contained with their styling using CSS scoping
+
+### Live Reload System
+
+The development server provides live reload functionality that automatically refreshes the browser when source files change.
+
+#### Reload Triggers
+
+- **Page Files:** Changes to `.html` and `.md` files trigger full page reload
+- **Component Files:** Changes to files in the components directory trigger full page reload
+- **Layout Files:** Changes to files in the layouts directory trigger full page reload
+- **Asset Files:** Changes to CSS, JavaScript, and other static assets trigger full page reload
+- **Include Dependencies:** Changes to any file that is included by another file trigger full rebuild of dependent pages with updated content
+
+#### File Addition and Deletion Handling
+
+The watch system properly handles file lifecycle events:
+
+**File Additions:**
+
+- **New Content Files:** Newly created `.html` and `.md` files are detected and built into the output directory
+- **New Component Files:** Newly created component files trigger rebuilds of any pages that reference them (even if they had missing include errors before)
+- **New Asset Files:** Newly added CSS, JS, images, and other assets are detected, analyzed for references, and copied to output if referenced by any page
+- **Directory Creation:** Files added to newly created directories are properly detected and processed
+
+**File Deletions:**
+
+- **Content File Removal:** Deleted `.html` and `.md` files are removed from the output directory
+- **Component File Removal:** Deleted component files trigger rebuilds of dependent pages, which will show "Include not found" messages
+- **Asset File Removal:** Deleted assets are removed from the output directory
+- **Dependency Cleanup:** All tracking data for deleted files is properly cleaned up
+
+**Rapid Changes:** The system handles rapid sequences of file additions and deletions without losing events, using debounced processing to batch changes efficiently.
+
+#### Rebuild Guarantees
+
+When component or include files change during development:
+
+1. **Dependency Detection:** The build system tracks which pages depend on which includes
+2. **Complete Rebuild:** Dependent pages are fully rebuilt from source, ensuring all includes are re-processed
+3. **Content Synchronization:** The final HTML output reflects the latest version of all included content
+4. **Browser Notification:** After successful rebuild, all connected browsers receive reload notifications
+
+**Critical Requirement:** Component changes must result in complete page reconstruction, not just cache invalidation. The served HTML must contain the updated component content before the browser reload is triggered.
+
+#### Technical Implementation
+
+- **Server-Sent Events (SSE):** Live reload uses SSE for efficient real-time communication
+- **File Watching:** Native file system watching with recursive directory monitoring
+- **Incremental Builds:** Only changed files and their dependencies are rebuilt
+- **Broadcast System:** All connected browser instances receive reload notifications
+- **Endpoint:** Live reload endpoint available at `/__live-reload`
+
+#### Browser Integration
+
+- **Automatic Injection:** Live reload client script is automatically injected into served HTML pages
+- **Connection Management:** Robust reconnection handling for interrupted connections
+- **Visual Feedback:** Console logging of connection status and reload events
+
 ## Error Handling and Exit Codes
 
 ### Exit Codes
@@ -396,10 +498,10 @@ unify watch [options]
 - Should contain the error message and one or more suggestions.
 
 ```
-❌ Error: {error message}
+Error: {error message}
 
 Suggestions:
-  • {suggestion 1}
+  * {suggestion 1}
   ... 
 ```
 
@@ -419,9 +521,9 @@ Suggestions:
 unify v{version}
 
 Building static site...
-✅ Processed 15 files
-✅ Generated sitemap.xml with 8 pages
-✅ Copied 12 assets
+- Processed 15 files
+- Generated sitemap.xml with 8 pages
+- Copied 12 assets
 Build completed successfully! (1.2s)
 ```
 
@@ -431,11 +533,11 @@ Build completed successfully! (1.2s)
 unify v{version}
 
 Building static site...
-✅ Build completed successfully!
+- Build completed successfully!
 🚀 Development server started
 📁 Serving: /path/to/output
 🌐 Local: http://localhost:3000
-🔄 Live reload: enabled
+- Live reload: enabled
 ```
 
 #### Watch Command
@@ -445,24 +547,24 @@ unify v{version}
 
 Starting file watcher...
 Building static site...
-✅ Processed 15 files
-✅ Generated sitemap.xml with 8 pages
-✅ Copied 12 assets
+- Processed 15 files
+- Generated sitemap.xml with 8 pages
+- Copied 12 assets
 Build completed successfully! (1.2s)
-✅ Initial build completed
-👀 Watching for changes...
-📝 Changed: src/index.html
-🔄 Rebuilding...
-✅ Rebuild completed (0.3s)
+- Initial build completed
+- Watching for changes...
+- Changed: src/index.html
+- Rebuilding...
+- Rebuild completed (0.3s)
 ```
 
 ### Logging Levels
 
-- **Debug (🪲):** Debug messages
-- **Info (ℹ️):** General status messages
-- **Success (✅):** Successful operations
-- **Warning (⚠️):** Non-fatal issues
-- **Error (❌):** Fatal problems
+- **Debug:** Debug messages
+- **Info:** General status messages
+- **Success:** Successful operations
+- **Warning:** Non-fatal issues
+- **Error:** Fatal problems
 
 ## Security Requirements
 
@@ -517,23 +619,18 @@ Build completed successfully! (1.2s)
 
 ## Compatibility Requirements
 
-### Node.js Support
+### Bun Support
 
-- Minimum version: Node.js 14.0.0
+- Minimum version: Bun 1.2.19
 - ESM modules only
 - Built-in test runner support
+- Compiled to executable for deployment
 
 ### Cross-Platform
 
 - Windows, macOS, Linux support
 - Path handling respects OS conventions
 - Line ending normalization
-
-### Runtime Support
-
-- Node.js (primary)
-- Deno compatibility
-- Bun compatibility
 
 ## Configuration
 
@@ -587,31 +684,31 @@ project/
 
 ### Functional Requirements
 
-- ✅ All three commands (build, serve, watch) work correctly
-- ✅ Include system processes Apache SSI and DOM elements
-- ✅ Markdown processing with frontmatter and layouts
-- ✅ Live reload functionality in development server
-- ✅ Sitemap generation for SEO
-- ✅ Security validation prevents path traversal
-- ✅ Error handling with helpful messages
+- - All three commands (build, serve, watch) work correctly
+- - Include system processes Apache SSI and DOM elements
+- - Markdown processing with frontmatter and layouts
+- - Live reload functionality in development server
+- - Sitemap generation for SEO
+- - Security validation prevents path traversal
+- - Error handling with helpful messages
 
 ### Performance
 
-- ✅ Incremental builds complete in <1 second for single file changes
-- ✅ Initial builds complete in <5 seconds for typical sites (<100 pages)
-- ✅ Memory usage remains <100MB for typical projects
-- ✅ File watching responds to changes within 200ms
-- ✅ Can support files over 5MB
+- - Incremental builds complete in <1 second for single file changes
+- - Initial builds complete in <5 seconds for typical sites (<100 pages)
+- - Memory usage remains <100MB for typical projects
+- - File watching responds to changes within 200ms
+- - Can support files over 5MB
 
 ### Usability Requirements
 
-- ✅ Zero configuration required for basic usage
-- ✅ Clear error messages with actionable suggestions
-- ✅ Intuitive CLI with helpful defaults
-- ✅ Comprehensive help documentation
+- - Zero configuration required for basic usage
+- - Clear error messages with actionable suggestions
+- - Intuitive CLI with helpful defaults
+- - Comprehensive help documentation
 
 ### Reliability Requirements
 
-- ✅ Graceful handling of missing includes
-- ✅ Robust error recovery during builds
-- ✅ Cross-platform compatibility
+- - Graceful handling of missing includes
+- - Robust error recovery during builds
+- - Cross-platform compatibility

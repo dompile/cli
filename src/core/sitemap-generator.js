@@ -213,7 +213,11 @@ export async function writeSitemap(sitemapContent, outputRoot) {
     await fs.writeFile(sitemapPath, sitemapContent, 'utf-8');
     logger.info(`Generated sitemap.xml with ${sitemapContent.split('<url>').length - 1} pages`);
   } catch (error) {
-    logger.error(`Failed to write sitemap.xml: ${error.message}`);
+    if (error.formatForCLI) {
+      logger.error(error.formatForCLI());
+    } else {
+      logger.error(`Failed to write sitemap.xml: ${error.message}`);
+    }
     throw error;
   }
 }
