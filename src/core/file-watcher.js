@@ -251,7 +251,15 @@ export class FileWatcher {
     
     try {
       // Use incremental build for better performance
-      await incrementalBuild(config, this.dependencyTracker, this.assetTracker);
+      // For multiple files, build each individually to ensure proper dependency tracking
+      if (changedFiles.length === 1) {
+        await incrementalBuild(config, this.dependencyTracker, this.assetTracker, changedFiles[0]);
+      } else {
+        // For multiple changed files, process each one to ensure all dependencies are caught
+        for (const changedFile of changedFiles) {
+          await incrementalBuild(config, this.dependencyTracker, this.assetTracker, changedFile);
+        }
+      }
       logger.success('Incremental build completed');
       
       // Emit reload event for live reload

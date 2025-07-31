@@ -352,6 +352,88 @@ unify watch [options]
 - Smart rebuilding of affected files only
 - Live reload with full page refresh for all file changes (CSS-only reloads not supported)
 
+### Component Asset Processing
+
+Currently, both SSI-style includes (`<!--#include -->`) and DOM-style includes (`<include>`) inline component content as-is without extracting or relocating `<style>` and `<script>` elements. Component styles and scripts remain embedded within the component content at the location where they are included.
+
+#### Current Behavior
+
+**Example Component** (`/.components/button.html`):
+
+```html
+<style>
+  .btn { background: blue; color: white; }
+</style>
+<button class="btn">Click Me</button>
+```
+
+**Page with SSI Include:**
+
+```html
+<div>
+  <!--#include virtual="/.components/button.html" -->
+</div>
+```
+
+**Final Output:**
+
+```html
+<div>
+  <style>
+    .btn { background: blue; color: white; }
+  </style>
+  <button class="btn">Click Me</button>
+</div>
+```
+
+The style remains inline within the component content, not moved to the `<head>` section.
+
+#### Planned Enhancement
+
+Future versions may include automatic extraction and relocation of component assets:
+
+- **Style Elements:** Extracted from components and moved to `<head>` section
+- **Script Elements:** Extracted from components and moved to end of `<body>` section  
+- **Deduplication:** Identical style/script blocks deduplicated when same component included multiple times
+- **Component Isolation:** Components remain self-contained with their styling and behavior
+
+### Live Reload System
+
+The development server provides live reload functionality that automatically refreshes the browser when source files change.
+
+#### Reload Triggers
+
+- **Page Files:** Changes to `.html` and `.md` files trigger full page reload
+- **Component Files:** Changes to files in the components directory trigger full page reload
+- **Layout Files:** Changes to files in the layouts directory trigger full page reload
+- **Asset Files:** Changes to CSS, JavaScript, and other static assets trigger full page reload
+- **Include Dependencies:** Changes to any file that is included by another file trigger full rebuild of dependent pages with updated content
+
+#### Rebuild Guarantees
+
+When component or include files change during development:
+
+1. **Dependency Detection:** The build system tracks which pages depend on which includes
+2. **Complete Rebuild:** Dependent pages are fully rebuilt from source, ensuring all includes are re-processed
+3. **Content Synchronization:** The final HTML output reflects the latest version of all included content
+4. **Browser Notification:** After successful rebuild, all connected browsers receive reload notifications
+
+**Critical Requirement:** Component changes must result in complete page reconstruction, not just cache invalidation. The served HTML must contain the updated component content before the browser reload is triggered.
+
+#### Technical Implementation
+
+- **Server-Sent Events (SSE):** Live reload uses SSE for efficient real-time communication
+- **File Watching:** Native file system watching with recursive directory monitoring
+- **Incremental Builds:** Only changed files and their dependencies are rebuilt
+- **Broadcast System:** All connected browser instances receive reload notifications
+- **Endpoint:** Live reload endpoint available at `/__live-reload`
+
+#### Browser Integration
+
+- **Automatic Injection:** Live reload client script is automatically injected into served HTML pages
+- **Connection Management:** Robust reconnection handling for interrupted connections
+- **Visual Feedback:** Console logging of connection status and reload events
+
 ## Error Handling and Exit Codes
 
 ### Exit Codes

@@ -414,8 +414,6 @@ export class DevServer {
   broadcastReload() {
     if (!this.config.liveReload) return;
     
-    logger.info(`Broadcasting reload to ${this.sseClients.size} connected clients`);
-    
     const message = `data: ${JSON.stringify({ type: 'reload', timestamp: Date.now() })}\n\n`;
     const data = new TextEncoder().encode(message);
     

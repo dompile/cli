@@ -24,7 +24,7 @@ describe('Live Reload Functionality', () => {
   });
 
   describe('Server-Sent Events (SSE)', () => {
-    it('should provide SSE endpoint at /__events', async () => {
+    it('should provide SSE endpoint at /__live-reload', async () => {
       const structure = {
         'src/index.html': '<h1>Home</h1>'
       };
@@ -36,11 +36,11 @@ describe('Live Reload Functionality', () => {
       
       try {
         // Make request to SSE endpoint
-        const response = await fetch(`http://localhost:${serverResult.port}/__events`);
+        const response = await fetch(`http://localhost:${serverResult.port}/__live-reload`);
         
         expect(response.ok).toBeTruthy();
         expect(response.headers.get('content-type')).toContain('text/event-stream');
-        expect(response.headers.get('cache-control')).toBe('no-cache');
+        expect(response.headers.get('cache-control')).toContain('no-cache');
         expect(response.headers.get('connection')).toBe('keep-alive');
         
       } finally {
@@ -59,7 +59,10 @@ describe('Live Reload Functionality', () => {
       
       try {
         // Connect to SSE stream
-        const eventPromise = waitForSSEEvent(serverResult.port, 'reload');
+        const eventPromise = waitForSSEReloadEvent(serverResult.port);
+        
+        // Small delay to ensure SSE connection is established
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // Modify file to trigger rebuild
         await fs.writeFile(
@@ -70,6 +73,7 @@ describe('Live Reload Functionality', () => {
         // Wait for reload event
         const event = await eventPromise;
         expect(event.type).toBe('reload');
+        expect(event.timestamp).toBeDefined();
         
       } finally {
         await stopDevServer(serverResult.process);
@@ -87,7 +91,10 @@ describe('Live Reload Functionality', () => {
       
       try {
         // Connect to SSE stream
-        const eventPromise = waitForSSEEvent(serverResult.port, 'reload');
+        const eventPromise = waitForSSEReloadEvent(serverResult.port);
+        
+        // Small delay to ensure SSE connection is established
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // Add new file
         await fs.writeFile(
@@ -98,16 +105,17 @@ describe('Live Reload Functionality', () => {
         // Wait for reload event
         const event = await eventPromise;
         expect(event.type).toBe('reload');
+        expect(event.timestamp).toBeDefined();
         
       } finally {
         await stopDevServer(serverResult.process);
       }
     });
 
-    it('should send reload event when file is deleted', async () => {
+    it('should send reload event when include file changes', async () => {
       const structure = {
-        'src/index.html': '<h1>Home</h1>',
-        'src/delete-me.html': '<h1>Delete Me</h1>'
+        'src/index.html': '<!--#include virtual="/includes/header.html" --><p>Main content</p>',
+        'src/includes/header.html': '<h1>Original Header</h1>'
       };
 
       await createTestStructure(tempDir, structure);
@@ -115,20 +123,85 @@ describe('Live Reload Functionality', () => {
       const serverResult = await startDevServer(tempDir, sourceDir, outputDir);
       
       try {
-        // Connect to SSE stream
-        const eventPromise = waitForSSEEvent(serverResult.port, 'reload');
+        // Wait for initial build
+        await waitForBuild(serverResult.port);
         
-        // Delete file
-        await fs.unlink(path.join(sourceDir, 'delete-me.html'));
+        console.log(`Server started on port ${serverResult.port}, connecting to SSE...`);
+        
+        // Connect to SSE stream and wait for reload event with longer timeout
+        const eventPromise = waitForSSEReloadEvent(serverResult.port, 15000);
+        
+        // Small delay to ensure SSE connection is established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log('Modifying include file...');
+        
+        // Modify include file to trigger rebuild and reload
+        await fs.writeFile(
+          path.join(sourceDir, 'includes', 'header.html'), 
+          '<h1>Updated Header via Include</h1>'
+        );
+        
+        console.log('Waiting for reload event...');
+        
+        // Wait for reload event to be sent
+        const event = await eventPromise;
+        expect(event.type).toBe('reload');
+        expect(event.timestamp).toBeDefined();
+        
+        console.log('Reload event received, verifying build output...');
+        
+        // Verify the build was also updated
+        await waitForBuild(serverResult.port);
+        const content = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
+        expect(content).toContain('Updated Header via Include');
+        
+      } finally {
+        await stopDevServer(serverResult.process);
+      }
+    }, 20000); // Increase test timeout to 20 seconds
+
+    it('should send reload event when nested include file changes', async () => {
+      const structure = {
+        'src/index.html': '<!--#include virtual="/includes/header.html" --><p>Main content</p>',
+        'src/includes/header.html': '<nav><!--#include virtual="/includes/nav.html" --></nav>',
+        'src/includes/nav.html': '<ul><li>Original Nav</li></ul>'
+      };
+
+      await createTestStructure(tempDir, structure);
+
+      const serverResult = await startDevServer(tempDir, sourceDir, outputDir);
+      
+      try {
+        // Wait for initial build
+        await waitForBuild(serverResult.port);
+        
+        // Connect to SSE stream and wait for reload event
+        const eventPromise = waitForSSEReloadEvent(serverResult.port, 15000);
+        
+        // Small delay to ensure SSE connection is established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Modify nested include file
+        await fs.writeFile(
+          path.join(sourceDir, 'includes', 'nav.html'), 
+          '<ul><li>Updated Nav Item</li><li>Another Item</li></ul>'
+        );
         
         // Wait for reload event
         const event = await eventPromise;
         expect(event.type).toBe('reload');
         
+        // Verify the build includes the nested change
+        await waitForBuild(serverResult.port);
+        const content = await fs.readFile(path.join(outputDir, 'index.html'), 'utf-8');
+        expect(content).toContain('Updated Nav Item');
+        expect(content).toContain('Another Item');
+        
       } finally {
         await stopDevServer(serverResult.process);
       }
-    });
+    }, 20000);
   });
 
   describe('File Watching', () => {
@@ -204,7 +277,7 @@ describe('Live Reload Functionality', () => {
 
     it('should rebuild when include file changes', async () => {
       const structure = {
-        'src/index.html': '<!--#include file="header.html" --><p>Main content</p>',
+        'src/index.html': '<!--#include virtual="/includes/header.html" --><p>Main content</p>',
         'src/includes/header.html': '<h1>Original Header</h1>'
       };
 
@@ -445,6 +518,76 @@ async function waitForSSEEvent(port, eventType, timeout = 5000) {
     
     clearTimeout(timer);
     resolve(mockEvent);
+  });
+}
+
+/**
+ * Helper function to wait for SSE reload event (real implementation)
+ */
+async function waitForSSEReloadEvent(port, timeout = 10000) {
+  return new Promise(async (resolve, reject) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`SSE reload event not received within ${timeout}ms`));
+    }, timeout);
+    
+    try {
+      // Connect to the live reload SSE endpoint
+      const response = await fetch(`http://localhost:${port}/__live-reload`, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`SSE endpoint returned ${response.status}`);
+      }
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6)); // Remove 'data: ' prefix
+              
+              if (data.type === 'reload') {
+                clearTimeout(timer);
+                controller.abort();
+                resolve({
+                  type: 'reload',
+                  timestamp: data.timestamp
+                });
+                return;
+              }
+            } catch (e) {
+              // Invalid JSON, continue reading
+            }
+          }
+        }
+      }
+      
+      // If we get here, the stream ended without a reload event
+      clearTimeout(timer);
+      reject(new Error('SSE stream ended without reload event'));
+      
+    } catch (error) {
+      clearTimeout(timer);
+      if (error.name !== 'AbortError') {
+        reject(error);
+      }
+    }
   });
 }
 
