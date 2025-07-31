@@ -197,12 +197,13 @@ describe('CLI Commands and Options', () => {
       // Start server (will timeout after short period)
       const result = await runCLIInDir(tempDir, [
         'serve',
-        '--source', outputDir,
-        '--port', '3001'
-      ], 2000); // 2 second timeout
+        '--output', outputDir,
+        '--port', '3101'
+      ], 3000); // 3 second timeout to allow server to start
 
       // Server should start successfully (will be killed by timeout)
-      expect(result.stdout.includes('3001') || result.stderr.includes('3001')).toBeTruthy();
+      expect(result.timeout).toBeTruthy(); // Test that timeout worked
+      expect(result.stdout.includes('3101') || result.stderr.includes('3101')).toBeTruthy();
     });
 
     it('should serve with custom port', async () => {
@@ -216,11 +217,12 @@ describe('CLI Commands and Options', () => {
 
       const result = await runCLIInDir(tempDir, [
         'serve',
-        '--source', outputDir,
-        '--port', '8080'
-      ], 2000);
+        '--output', outputDir,
+        '--port', '8102'
+      ], 3000);
 
-      expect(result.stdout.includes('8080') || result.stderr.includes('8080')).toBeTruthy();
+      expect(result.timeout).toBeTruthy(); 
+      expect(result.stdout.includes('8102') || result.stderr.includes('8102')).toBeTruthy();
     });
 
     it('should serve with short port flag', async () => {
@@ -234,11 +236,12 @@ describe('CLI Commands and Options', () => {
 
       const result = await runCLIInDir(tempDir, [
         'serve',
-        '--source', outputDir,
-        '-p', '9000'
-      ], 2000);
+        '--output', outputDir,
+        '-p', '9103'
+      ], 3000);
 
-      expect(result.stdout.includes('9000') || result.stderr.includes('9000')).toBeTruthy();
+      expect(result.timeout).toBeTruthy(); 
+      expect(result.stdout.includes('9103') || result.stderr.includes('9103')).toBeTruthy();
     });
   });
 
@@ -256,7 +259,8 @@ describe('CLI Commands and Options', () => {
         '--output', outputDir
       ], 3000);
 
-      // Watch should start and begin monitoring
+      // Watch should start and begin monitoring (check if timeout worked and output contains expected text)
+      expect(result.timeout).toBeTruthy(); 
       expect(result.stdout.includes('Watching') || result.stderr.includes('Watching') ||
              result.stdout.includes('Server') || result.stderr.includes('Server')).toBeTruthy();
     });
@@ -338,7 +342,7 @@ describe('CLI Commands and Options', () => {
       const result = await runCLIInDir(tempDir, ['unknown-command']);
       
       expect(result.code).not.toBe(0);
-      expect(result.stdout.includes("Unknown")).toBeTruthy();
+      expect(result.stdout.includes("Unknown") || result.stderr.includes("Unknown")).toBeTruthy();
     });
 
     it('should handle unknown options', async () => {
@@ -474,9 +478,13 @@ describe('CLI Commands and Options', () => {
 /**
  * Helper function to run CLI command with working directory
  */
-async function runCLIInDir(workingDir, args) {
+async function runCLIInDir(workingDir, args, timeout = null) {
   const { runCLI: importedRunCLI } = await import('../test-utils.js');
-  return await importedRunCLI(args, { cwd: workingDir });
+  const options = { cwd: workingDir };
+  if (timeout) {
+    options.timeout = timeout;
+  }
+  return await importedRunCLI(args, options);
 }
 
 /**

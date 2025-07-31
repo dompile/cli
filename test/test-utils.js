@@ -19,11 +19,58 @@ export async function runCLI(args, options = {}) {
     ...options
   });
   
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  const code = await proc.exited;
+  // Handle timeout if specified
+  let timeoutHandle;
+  let killed = false;
   
-  return { code, stdout, stderr };
+  if (options.timeout) {
+    timeoutHandle = setTimeout(() => {
+      killed = true;
+      proc.kill('SIGTERM');
+    }, options.timeout);
+  }
+  
+  try {
+    // Read streams as they come in
+    const stdoutPromise = new Response(proc.stdout).text();
+    const stderrPromise = new Response(proc.stderr).text();
+    const exitPromise = proc.exited;
+    
+    // Wait for all streams to finish
+    const [stdout, stderr, code] = await Promise.all([
+      stdoutPromise,
+      stderrPromise,  
+      exitPromise
+    ]);
+    
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+    
+    // If the process was killed by timeout, return special result
+    if (killed) {
+      return { code: 124, stdout, stderr, timeout: true };
+    }
+    
+    return { code, stdout, stderr };
+  } catch (error) {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
+    
+    // If killed by timeout, try to get partial output
+    if (killed) {
+      try {
+        const stdout = await new Response(proc.stdout).text();
+        const stderr = await new Response(proc.stderr).text();
+        return { code: 124, stdout, stderr, timeout: true };
+      } catch {
+        return { code: 124, stdout: '', stderr: 'Test timed out', timeout: true };
+      }
+    }
+    
+    throw error;
+  }
 }
 
 /**

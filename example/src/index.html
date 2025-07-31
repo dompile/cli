@@ -14,7 +14,9 @@
     <div>
       <h1>Unify</h1>
       <p><em>A modern, lightweight static site generator for a more peaceful future</em></p>
-      <p>Brings the power of server-side includes, markdown processing, and live development to your workflow. Build maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and navigation across multiple pages!</p>
+      <p>Brings the power of server-side includes, markdown processing, and live development to your workflow. Build
+        maintainable static sites with component-based architecture—no more copying and pasting headers, footers, and
+        navigation across multiple pages!</p>
       <div class="cta">
         <button class="glow-bg-on-hover">
           <a href="/download.html" style="all: unset; cursor: pointer;">Get Started</a>
@@ -24,7 +26,18 @@
   </section>
 
   <main class="container">
-
+    <!-- WHY UNIFY -->
+    <h2 class="text-accent" style="margin-top: 3rem;">🎯 Why Unify?</h2>
+    <div class="grid grid-cols-2">
+      <div class="card">
+        <h3>Simple & Fast</h3>
+        <p>Familiar HTML and Apache SSI syntax with incremental builds and smart dependency tracking.</p>
+      </div>
+      <div class="card">
+        <h3>Modern & Secure</h3>
+        <p>ESM modules, live reload, Docker support with path traversal prevention and input validation.</p>
+      </div>
+    </div>
     <!-- QUICK START -->
     <h2 class="text-accent" style="margin-top: 3rem;">✨ Perfect for Frontend Developers</h2>
     <div class="grid grid-cols-2">
@@ -50,21 +63,6 @@ curl -fsSL https://bun.sh/install | bash
 bun add -g @fwdslsh/unify</pre>
       <p>Then just run <code>unify build</code> to build your site or <code>unify serve</code> for live development!</p>
     </div>
-
-    <!-- EXAMPLES -->
-    <h2 class="text-accent" style="margin-top: 3rem;">📁 Simple Example</h2>
-    <div class="card">
-      <h3>HTML with Includes</h3>
-      <pre style="background: #1a1a1a; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0;">
-&lt;!-- src/index.html --&gt;
-&lt;!--#include virtual="/.components/header.html" --&gt;
-&lt;main&gt;
-  &lt;h1&gt;Welcome!&lt;/h1&gt;
-  &lt;p&gt;Build maintainable sites with includes and components.&lt;/p&gt;
-&lt;/main&gt;
-&lt;!--#include virtual="/.components/footer.html" --&gt;</pre>
-    </div>
-
     <!-- CORE COMMANDS -->
     <h2 class="text-accent" style="margin-top: 3rem;">⚡ Core Commands</h2>
     <div class="grid grid-cols-3">
@@ -81,37 +79,23 @@ bun add -g @fwdslsh/unify</pre>
         <p><code>unify watch</code><br>Watch for changes and rebuild</p>
       </div>
     </div>
-
-    <!-- WHY UNIFY -->
-    <h2 class="text-accent" style="margin-top: 3rem;">🎯 Why Unify?</h2>
-    <div class="grid grid-cols-2">
-      <div class="card">
-        <h3>Simple & Fast</h3>
-        <p>Familiar HTML and Apache SSI syntax with incremental builds and smart dependency tracking.</p>
-      </div>
-      <div class="card">
-        <h3>Modern & Secure</h3>
-        <p>ESM modules, live reload, Docker support with path traversal prevention and input validation.</p>
-      </div>
+    <!-- EXAMPLES -->
+    <h2 class="text-accent" style="margin-top: 3rem;">📁 Simple Example</h2>
+    <div class="card">
+      <h3>HTML with Includes</h3>
+      <pre style="background: #1a1a1a; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0;">
+&lt;!-- src/index.html --&gt;
+&lt;!--#include virtual="/.components/header.html" --&gt;
+&lt;main&gt;
+  &lt;h1&gt;Welcome!&lt;/h1&gt;
+  &lt;p&gt;Build maintainable sites with includes and components.&lt;/p&gt;
+&lt;/main&gt;
+&lt;!--#include virtual="/.components/footer.html" --&gt;</pre>
     </div>
 
-    <!-- FORM -->
-    <h2 class="text-accent" style="margin-top: 3rem;">Signup</h2>
-    <form>
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="you@darknet.local">
-      </div>
-      <div class="form-group">
-        <label for="handle">Username</label>
-        <input type="text" id="handle" placeholder="sysadmin_404">
-      </div>
-      <div class="form-group">
-        <label for="bio">Bio</label>
-        <textarea id="bio" rows="4" placeholder="Tell us about your off-grid setup..."></textarea>
-      </div>
-      <button type="submit">Join the Network</button>
-    </form>
+
+
+
 
     <!-- UTILITY CLASSES -->
     <h2 class="text-accent" style="margin-top: 3rem;">console.log</h2>

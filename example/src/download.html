@@ -1,23 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <!--#include virtual="/includes/head.html" -->
     <title>Download Unify CLI</title>
 </head>
+
 <body>
     <!--#include virtual="/includes/header.html" -->
-
-    <section class="hero" data-augmented-ui="tl-clip tr-clip bl-round br-scoop border">
-        <h1>Download Unify CLI</h1>
-        <p><em>Build static sites with peace, power, and simplicity.</em></p>
-    </section>
-
     <main class="container">
+        <section class="hero" data-augmented-ui="tl-clip tr-clip bl-round br-scoop border">
+            <h1>Download Unify CLI</h1>
+            <p><em>Build static sites with peace, power, and simplicity.</em></p>
+        </section>
+
 
         <section class="card" style="margin: 2rem 0;">
             <h2>Get Started</h2>
-            <p>Unify is a modern, lightweight static site generator for frontend developers who want maintainable, framework-free HTML sites. Install it globally or run instantly with <code>npx</code>.</p>
-            <div class="card" data-augmented-ui="r-scoop b-clip both" style="background: linear-gradient(135deg, var(--accent), #f4d860); color: var(--text); margin: 1.5rem 0;">
+            <p>Unify is a modern, lightweight static site generator for frontend developers who want maintainable,
+                framework-free HTML sites. Install it globally or run instantly with <code>npx</code>.</p>
+            <div>
                 <h3>✨ Quick Install</h3>
                 <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round">
 # With npm (recommended)
@@ -46,19 +48,20 @@ deno run -A npm:@fwdslsh/unify@latest --help
             <h2>Usage</h2>
             <p>Once installed, you can build and serve your site with a single command:</p>
             <pre class="cli" data-augmented-ui="border bl-clip br-clip tr-round">
+                <code>
 unify build         # Build from src/ to dist/
 unify serve         # Start dev server with live reload
 unify watch         # Watch for changes and rebuild
-            </pre>
+            </code></pre>
             <p>For advanced options, see the <a href="docs/cli-reference.md">CLI Reference</a>.</p>
         </section>
 
         <section class="card" style="margin: 2rem 0;">
             <h2>Supported Platforms</h2>
             <ul>
-                <li><strong>Node.js</strong> 14+ (native ESM support)</li>
                 <li><strong>Bun</strong> (fastest, native APIs)</li>
-                <li><strong>Deno</strong> (via npm compatibility mode)</li>
+                <li><strong>Linux/MacOS/Windows</strong> (compiled binary)</li>
+                <li><strong>Node.js</strong> 14+ (native ESM support)</li>
             </ul>
         </section>
 
@@ -84,7 +87,8 @@ src/
             <ul>
                 <li>Read the <a href="docs/getting-started.md">Getting Started Guide</a></li>
                 <li>See <a href="docs/include-syntax.md">Include Syntax</a> for reusable components</li>
-                <li>Explore <a href="docs/layouts-slots-templates.md">Layouts &amp; Slots</a> for advanced templating</li>
+                <li>Explore <a href="docs/layouts-slots-templates.md">Layouts &amp; Slots</a> for advanced templating
+                </li>
             </ul>
         </section>
 
@@ -92,4 +96,5 @@ src/
 
     <!--#include virtual="/includes/footer.html" -->
 </body>
+
 </html>

@@ -68,6 +68,27 @@ body {
   padding: 1rem;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+[data-augmented-ui] {
+  --aug-border-bg: var(--text);
+  --aug-border-all: 2px;
+  --aug-inlay-bg: var(--bg-alt);
+}
+
+pre[data-augmented-ui] {
+  padding: 2rem;
+}
+
 /* Generic glow effect for elements that use text color */
 .glow-on-hover:hover {
   text-shadow: 0 0 4px currentColor,
@@ -78,8 +99,8 @@ body {
 /* Glow effect for buttons or any element with background-color */
 .glow-bg-on-hover:hover {
   box-shadow: 0 0 4px var(--glow-color),
-      0 0 8px var(--glow-color),
-      0 0 12px var(--glow-color);
+    0 0 8px var(--glow-color),
+    0 0 12px var(--glow-color);
 }
 
 /* Optional: smooth transition */
@@ -167,19 +188,43 @@ button:hover {
   margin-top: 2rem;
 }
 
+.hero[data-augmented-ui] {
+
+  padding: 2rem 1rem;
+
+  h1 {
+    margin-bottom: 0rem;
+  }
+}
+
 .card {
   background: var(--bg-alt);
   border: 1px solid var(--border);
   border-left: 5px solid var(--accent);
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(to right, var(--accent-2) 0%, transparent 5%, transparent 100%);
+  border-image-slice: 1;
   border-radius: var(--radius);
   padding: 1.5rem;
   box-shadow: 0 0 10px #00000055;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-left-color 0.2s;
 }
 
 .card:hover {
   transform: translateY(-2px);
   border-left-color: var(--accent-2);
+}
+
+section.card {
+  border-bottom-left-radius: 0;
+  border-top-left-radius: 0;
+}
+
+section.card:hover {
+  box-shadow: 0 0 6px 3px var(--accent-2), 0 0 0 0 var(--accent-2);
+  transform: none;
+  border-left-color: var(--accent-2);
+  /* Remove scaling */
 }
 
 .card h3 {
@@ -189,6 +234,11 @@ button:hover {
 
 .card p {
   opacity: 0.9;
+}
+
+pre[data-augmented-ui]:has(code) {
+  color: var(--accent-2);
+  padding-block: 0.5rem;
 }
 
 .form-group {
