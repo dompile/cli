@@ -5,9 +5,10 @@
 
 export const BUILD_INFO = {
   "version": "0.6.0",
-  "buildTime": "2025-07-30T14:58:03.760Z",
-  "gitCommit": "453a8e2",
-  "runtime": "bun"
+  "buildTime": "2025-07-31T22:24:25.621Z",
+  "gitCommit": "d2c245e",
+  "runtime": "bun",
+  "bunVersion": "1.2.19"
 };
 
 export const RUNTIME_FEATURES = {
@@ -24,20 +25,4 @@ export function getRuntimeFeatures() {
 
 export function getBuildInfo() {
   return BUILD_INFO;
-}
-
-export function getVersionInfo() {
-  return {
-    version: BUILD_INFO.version,
-    buildTime: BUILD_INFO.buildTime,
-    gitCommit: BUILD_INFO.gitCommit,
-    runtime: BUILD_INFO.runtime
-  };
-}
-
-export function logRuntimeInfo() {
-  const info = getVersionInfo();
-  console.log(`unify v${info.version}`);
-  console.log(`[DEBUG] Runtime: ${info.runtime} (${Bun.version})`);
-  console.log(`Build: ${info.gitCommit} (${info.buildTime})`);
 }
