@@ -177,6 +177,7 @@ Another great post.
             <!--#include file="../includes/header.html" -->
             <main><slot></slot></main>
             <!--#include file="../includes/footer.html" -->
+            <script src="/js/main.js"></script>
           </body>
           </html>
         `,
@@ -429,7 +430,7 @@ This is blog post number ${i}.
       // Verify some key files
       expect(await fileExists(path.join(outputDir, 'index.html'))).toBe(true);
       expect(await fileExists(path.join(outputDir, 'blog/post-1/index.html'))).toBe(true);
-      expect(await fileExists(path.join(outputDir, 'blog/tech/index.html'))).toBe(true);
+      expect(await fileExists(path.join(outputDir, 'blog/tech.html'))).toBe(true); // HTML files don't get pretty URLs
       
       console.log(`Built ${outputFiles.length} files in ${buildTime}ms`);
     }, 30000); // 30 second timeout

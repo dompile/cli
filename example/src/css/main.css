@@ -213,13 +213,14 @@ button:hover {
   transition: transform 0.2s, box-shadow 1s, border-left-color 0.5s,
     border-image 0.5s;
 
-    ul{
-      list-style: square;
-      margin-left: 1.5rem;
-    }
-    small{
-      margin-left: 1rem;
-    }
+  ul {
+    list-style: square;
+    margin-left: 1.5rem;
+  }
+
+  small {
+    margin-left: 1rem;
+  }
 }
 
 .card:hover {
@@ -227,6 +228,8 @@ button:hover {
   border-left-color: var(--accent-2);
   border-image: linear-gradient(to right, var(--accent-2) 0%, transparent 50%, transparent 100%);
   border-image-slice: 1;
+  transition: transform 0.2s, box-shadow 1s, border-left-color 0.5s,
+    border-image 0.5s;
 }
 
 section.card:hover {

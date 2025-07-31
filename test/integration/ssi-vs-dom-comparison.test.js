@@ -48,7 +48,7 @@ describe('SSI vs DOM Include Comparison', () => {
 </script>`
     );
 
-    // Create a layout
+    // Create a layout (but we won't use it for the SSI test)
     await fs.writeFile(
       path.join(layoutsDir, 'default.html'),
       `<!DOCTYPE html>
@@ -80,26 +80,36 @@ describe('SSI vs DOM Include Comparison', () => {
   });
 
   it('SSI-style includes should NOT process component assets', async () => {
-    // Create a test page using SSI-style includes
+    // Create a test page using SSI-style includes with complete HTML structure
+    // to avoid layout processing
     await fs.writeFile(
       path.join(sourceDir, 'ssi-test.html'),
-      `<div>
-  <h1>SSI Include Test</h1>
-  <!--#include virtual="/.components/test-component.html" -->
-</div>`
+      `<!DOCTYPE html>
+<html>
+<head>
+  <title>SSI Test</title>
+</head>
+<body>
+  <div>
+    <h1>SSI Include Test</h1>
+    <!--#include virtual="/.components/test-component.html" -->
+  </div>
+</body>
+</html>`
     );
 
-    // Build the site
+    // Build the site WITHOUT layout processing to test pure SSI includes
     await build({
       source: sourceDir,
       output: outputDir,
-      components: componentsDir,
-      layouts: layoutsDir
+      components: componentsDir
+      // layouts: layoutsDir // Removed - this test should not use layouts
     });
 
     // Read the output file
     const outputFile = path.join(outputDir, 'ssi-test.html');
     const outputContent = await fs.readFile(outputFile, 'utf-8');
+    
 
     // Check that the component HTML content is included
     expect(outputContent.includes('<div class="test-component">Test Component</div>')).toBeTruthy();

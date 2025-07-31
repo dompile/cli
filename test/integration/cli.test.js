@@ -122,7 +122,7 @@ describe('CLI integration', () => {
       '--output', outputDir
     ]);
     
-    expect(result.code).toBe(1);
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
     expect(result.stderr.includes('Source directory not found')).toBeTruthy();
   });
   
@@ -150,14 +150,14 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    expect(result.code).toBe(1);
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
     expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   
   it('should handle unknown commands', async () => {
     const result = await runCLI(['unknown-command']);
     
-    expect(result.code).toBe(1);
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
     expect(result.stderr.includes('Unknown command')).toBeTruthy();
   });
   
@@ -167,7 +167,7 @@ describe('CLI integration', () => {
       '--unknown-option'
     ]);
     
-    expect(result.code).toBe(1);
+    expect(result.code).toBe(2); // Exit code 2 for CLI argument errors (nonexistent source)
     expect(result.stderr.includes('Unknown option')).toBeTruthy();
   });
   

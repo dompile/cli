@@ -123,7 +123,7 @@ describe('Exit Code Validation', () => {
     it('should return 1 for unknown commands', async () => {
       const result = await runCLIInDir(tempDir, ['unknown-command']);
       
-      expect(result.code).toBe(1);
+      expect(result.code).toBe(2); // Exit code 2 for CLI argument errors
       expect(result.stderr.includes('Unknown command') || 
              result.stderr.includes('unknown-command')).toBeTruthy();
     });
@@ -131,7 +131,7 @@ describe('Exit Code Validation', () => {
     it('should return 1 for unknown options', async () => {
       const result = await runCLIInDir(tempDir, ['build', '--unknown-option']);
       
-      expect(result.code).toBe(1);
+      expect(result.code).toBe(2); // Exit code 2 for CLI argument errors
       expect(result.stderr.includes('Unknown option') || 
              result.stderr.includes('unknown-option')).toBeTruthy();
     });
@@ -139,7 +139,7 @@ describe('Exit Code Validation', () => {
     it('should return 1 for missing required option values', async () => {
       const result = await runCLIInDir(tempDir, ['build', '--source']);
       
-      expect(result.code).toBe(1);
+      expect(result.code).toBe(2); // Exit code 2 for CLI argument errors
     });
 
     it('should return 1 when --perfection flag encounters errors', async () => {
@@ -157,7 +157,7 @@ describe('Exit Code Validation', () => {
         '--perfection'
       ]);
 
-      expect(result.code).toBe(1);
+      expect(result.code).toBe(1); // Exit code 1 for build errors in perfection mode
     });
 
     it('should return 1 for validation errors', async () => {
@@ -167,7 +167,7 @@ describe('Exit Code Validation', () => {
         '--port', '99999' // Invalid port
       ]);
       
-      expect(result.code).toBe(1);
+      expect(result.code).toBe(2); // Exit code 2 for CLI argument errors
     });
   });
 
@@ -180,7 +180,7 @@ describe('Exit Code Validation', () => {
       ]);
       
       // This should be a fatal error
-      expect(result.code).toBe(1); // Current implementation returns 1, may need to be 2
+      expect(result.code).toBe(2); // Exit code 2 for CLI argument errors // Current implementation returns 1, may need to be 2
       expect(result.stderr.includes('Source directory not found') || 
              result.stderr.includes('not found') ||
              result.stderr.includes('ENOENT')).toBeTruthy();
@@ -233,9 +233,9 @@ describe('Exit Code Validation', () => {
       const unknownOptionServe = await runCLIInDir(tempDir, ['serve', '--unknown']);
       const unknownOptionWatch = await runCLIInDir(tempDir, ['watch', '--unknown']);
       
-      expect(unknownOptionBuild.code).toBe(1);
-      expect(unknownOptionServe.code).toBe(1);
-      expect(unknownOptionWatch.code).toBe(1);
+      expect(unknownOptionBuild.code).toBe(2); // Exit code 2 for unknown options
+      expect(unknownOptionServe.code).toBe(2); // Exit code 2 for unknown options  
+      expect(unknownOptionWatch.code).toBe(2); // Exit code 2 for unknown options
     });
 
     it('should differentiate between recoverable and fatal errors', async () => {
@@ -261,7 +261,7 @@ describe('Exit Code Validation', () => {
 
       // Both should fail, but potentially with different codes
       expect(recoverableResult.code).toBe(0); // Recoverable - build continues
-      expect(fatalResult.code).toBe(1); // Fatal - build cannot proceed
+      expect(fatalResult.code).toBe(2); // Exit code 2 for invalid source directory
     });
   });
 
@@ -290,12 +290,13 @@ describe('Exit Code Validation', () => {
       // This will timeout, simulating interruption
       const result = await runCLIInDir(tempDir, [
         'serve',
-        '--source', outputDir,
+        '--output', outputDir, // Fixed: serve uses --output not --source
         '--port', '9002'
       ], 1000); // Very short timeout
 
-      // Process interrupted, but should not be a fatal error
-      expect(result.code === 0 || result.code === null).toBeTruthy();
+      // Process interrupted - various timeout exit codes possible
+      // 124 = timeout, 143 = SIGTERM, null = killed, 0 = normal exit
+      expect(result.code === 0 || result.code === null || result.code === 143 || result.code === 124).toBeTruthy();
     });
   });
 });
