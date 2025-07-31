@@ -414,6 +414,8 @@ export class DevServer {
   broadcastReload() {
     if (!this.config.liveReload) return;
     
+    logger.info(`Broadcasting reload to ${this.sseClients.size} connected clients`);
+    
     const message = `data: ${JSON.stringify({ type: 'reload', timestamp: Date.now() })}\n\n`;
     const data = new TextEncoder().encode(message);
     
@@ -427,10 +429,12 @@ export class DevServer {
       
       try {
         client.controller.enqueue(data);
+        logger.debug(`Sent reload message to client ${client.id}`);
       } catch (error) {
         // Mark client for removal
         client.active = false;
         disconnectedClients.add(client);
+        logger.debug(`Failed to send reload to client ${client.id}: ${error.message}`);
       }
     }
     

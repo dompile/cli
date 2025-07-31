@@ -60,6 +60,11 @@ export class FileWatcher {
       perfection: false // Watch mode should not use perfection flag
     };
 
+    // Register the onReload callback if provided
+    if (config.onReload && typeof config.onReload === 'function') {
+      this.on('reload', config.onReload);
+    }
+
     logger.info('Starting file watcher...');
 
     try {
@@ -248,6 +253,10 @@ export class FileWatcher {
       // Use incremental build for better performance
       await incrementalBuild(config, this.dependencyTracker, this.assetTracker);
       logger.success('Incremental build completed');
+      
+      // Emit reload event for live reload
+      this.emit('reload', 'build', changedFiles);
+      
     } catch (error) {
       if (error.formatForCLI) {
         logger.error(error.formatForCLI());
@@ -262,6 +271,10 @@ export class FileWatcher {
         this.dependencyTracker = result.dependencyTracker;
         this.assetTracker = result.assetTracker;
         logger.success('Full rebuild completed');
+        
+        // Emit reload event after successful fallback rebuild
+        this.emit('reload', 'rebuild', changedFiles);
+        
       } catch (rebuildError) {
         if (rebuildError.formatForCLI) {
           logger.error(rebuildError.formatForCLI());
