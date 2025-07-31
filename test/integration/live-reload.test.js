@@ -254,7 +254,7 @@ async function startDevServer(workingDir, sourceDir, outputDir, timeout = 10000)
   
   // Start server in background
   const cliPath = path.resolve(path.dirname(import.meta.path || import.meta.url.pathname), '../../bin/cli.js');
-  const bunPath = Bun.env?.BUN_PATH || '/home/founder3/.bun/bin/bun';
+  const bunPath = Bun.env?.BUN_PATH || process.execPath;
   
   const proc = Bun.spawn([
     bunPath,

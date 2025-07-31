@@ -548,7 +548,7 @@ async function startDevServer(sourceDir, outputDir, timeout = 10000) {
   
   const cliPath = new URL('../../bin/cli.js', import.meta.url).pathname;
   const serverProcess = Bun.spawn([
-    '/home/founder3/.bun/bin/bun', 
+    Bun.env.BUN_PATH || process.execPath, 
     cliPath, 
     'serve',
     '--source', sourceDir,
