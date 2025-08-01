@@ -112,8 +112,9 @@ async function startDevServer(workingDir, sourceDir, outputDir) {
   
   // Start server in background
   const cliPath = new URL('../../bin/cli.js', import.meta.url).pathname;
-  const process = Bun.spawn([
-    Bun.env.BUN_PATH || process.execPath, 
+  const bunPath = Bun.env.BUN_PATH || process.execPath;
+  const serverProcess = Bun.spawn([
+    bunPath, 
     cliPath, 
     'serve',
     '--source', sourceDir,
@@ -127,7 +128,7 @@ async function startDevServer(workingDir, sourceDir, outputDir) {
   // Wait for server to be ready
   await waitForServer(port);
   
-  return { process, port };
+  return { process: serverProcess, port };
 }
 
 /**
