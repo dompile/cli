@@ -25,8 +25,13 @@ jobs:
       - name: Run tests
         run: bun test
         
-      - name: Verify package files
-        run: bun pack --dry-run
+      - name: Verify package structure
+        run: |
+          # Verify main entry points exist
+          test -f bin/cli.js
+          test -f package.json
+          # Verify package can be installed
+          bun install --production --dry-run
         
       - name: Build test executable
         run: bun build --compile --outfile unify-test bin/cli.js
