@@ -16,11 +16,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile.nginx
     ports:
-      - "3000:3000"
+      - "8080:8080"
     volumes:
-      - ./example:/site
-    working_dir: /site
-    command: unify serve --source src --output /var/www/html --port 3000 --host 0.0.0.0 --watch
+      - ./example/src:/site
     profiles: [dev]
 
   # Production server with NGINX
@@ -31,7 +29,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./example:/site
+      - ./example/dist:/site
     profiles: [prod]
 
   # Apache production server
@@ -40,7 +38,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.apache
     ports:
-      - "8081:8080"
+      - "8080:8080"
     volumes:
       - ./example/dist:/var/www/html:ro
     depends_on:
